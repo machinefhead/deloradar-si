@@ -27,6 +27,17 @@ export const page = String.raw`<!doctype html>
     .filtergroup select:disabled{background:#f1f3ef;color:#9aa69f}
     .explain{margin:0 0 13px;padding:11px 13px;border:1px solid #dce6da;background:#f1f7ed;color:#557363;font-size:13px;line-height:1.5;border-radius:9px}
     .multi{position:relative;margin:0}.multi-trigger{width:100%;min-height:43px;border:1px solid #dfe8e0;border-radius:9px;background:#fbfcfa;color:#25493b;padding:10px 12px;text-align:left;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:680}.multi-trigger .count{font-size:12px;color:#4d876f;margin-left:6px}.multi-menu{position:absolute;left:0;top:calc(100% + 4px);z-index:20;background:white;border:1px solid #cde0d2;border-radius:11px;box-shadow:0 12px 30px #133e3020;padding:10px;min-width:100%;max-width:320px}.multi-menu[hidden]{display:none}.multi-menu .multi-search{width:100%;padding:9px 10px;border:1px solid #d9e7dd;border-radius:7px;margin-bottom:8px;font-size:14px}.multi-options{max-height:215px;overflow-y:auto}.multi-option{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;padding:7px 4px;color:#2e4b3f;cursor:pointer}.multi-option input{accent-color:#147b61;margin:0 7px 0 0}.multi-option small{margin:0;color:#98a99e;font-size:11px}.multi-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.multi-chip{display:inline-flex;gap:5px;align-items:center;border:1px solid #c6e5d6;background:#e8f6ed;border-radius:6px;padding:4px 7px;color:#197357;font-size:11px}.multi-chip button{background:transparent;border:0;color:#197357;font-weight:800;padding:0;font-size:13px}.multi-actions{display:flex;justify-content:flex-end;padding-top:7px;border-top:1px solid #edf2eb;margin-top:5px}.multi-actions button{font-size:12px;color:#127d64;border:0;background:transparent;font-weight:750}
+    .mobilefilters{display:none}
+    @media(max-width:770px){
+      .sidebar{display:flex;flex-direction:column;gap:10px;width:100%}
+      .mobilefilters{display:flex;justify-content:space-between;align-items:center;border:1px solid #cadbd0;background:#eaf5ed;color:#155e49;border-radius:10px;padding:14px 17px;width:100%;font-weight:800;font-size:14px}
+      .sidebar>.panel:first-of-type{display:none}
+      .sidebar.filters-open>.panel:first-of-type{display:block}
+      .sidebar>.panel:nth-of-type(2){display:none}
+      .asidecallout{display:none}
+      .mainpanel{width:100%}
+      .multi-menu{width:100%;max-width:none}
+    }
   </style>
 </head>
 <body>
@@ -270,6 +281,15 @@ export const page = String.raw`<!doctype html>
         var rows=[['Naziv','Podjetje','Kraj','Portal','Objava','Povezava','Status','Shranjeno']].concat(filtered().map(function(j){var s=getState(j.id);return [j.title,j.company,j.location,j.source,j.date,j.url,s.status||'',s.saved?'Da':'Ne']}));
         var csv='\uFEFF'+rows.map(function(r){return r.map(quote).join(';')}).join('\r\n');
         var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='deloradar-oglasi.csv';a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+      });
+      var mobileToggle=document.createElement('button');
+      mobileToggle.type='button';mobileToggle.className='mobilefilters';mobileToggle.setAttribute('aria-expanded','false');
+      mobileToggle.textContent='☷  Prikaži filtre';
+      var sidebar=document.querySelector('.sidebar');sidebar.prepend(mobileToggle);
+      mobileToggle.addEventListener('click',function(){
+        var open=sidebar.classList.toggle('filters-open');
+        mobileToggle.setAttribute('aria-expanded',String(open));
+        mobileToggle.textContent=open?'☷  Skrij filtre':'☷  Prikaži filtre';
       });
       updateStats();load();
     })();
