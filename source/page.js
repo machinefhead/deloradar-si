@@ -1,0 +1,278 @@
+export const page = String.raw`<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f7f8f5">
+  <meta name="description" content="Javni pregledovalnik prostih delovnih mest v Sloveniji">
+  <title>DeloRadar · Prosta delovna mesta v Sloveniji</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#192b2b;background:#f7f8f5;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}a{color:inherit}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #76b9a7;outline-offset:2px}
+    .shell{max-width:1470px;margin:auto;padding:0 38px}.topbar{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e9e4}.brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:850;font-size:21px;letter-spacing:-1px}.mark{background:#146a5c;color:#fff;width:34px;height:34px;display:grid;place-items:center;border-radius:11px;font-size:20px;box-shadow:0 3px 0 #bcd7cc}.brand span:last-child{color:#146a5c}.topright{display:flex;gap:12px;align-items:center;font-size:12px;font-weight:700;color:#77827c}.priv{background:#e7f1ed;color:#246c5b;border:1px solid #cde5dc;border-radius:24px;padding:7px 12px}.topright .smalllink{color:#52645e;text-decoration:none}.topright .smalllink:hover{text-decoration:underline}
+    .intro{display:flex;align-items:flex-end;justify-content:space-between;gap:25px;padding:43px 0 31px}.eyebrow{color:#16876d;font-size:11px;font-weight:850;letter-spacing:1.6px;text-transform:uppercase;margin-bottom:14px}.intro h1{font-size:clamp(30px,3.2vw,48px);line-height:1.1;letter-spacing:-2px;margin:0 0 11px;font-weight:820}.intro p{margin:0;color:#66716e;font-size:14px;line-height:1.65;max-width:690px}.refresh{display:flex;align-items:center;gap:9px;border:1px solid #cbd9d1;color:#1d6a5a;background:#fff;padding:12px 17px;border-radius:10px;font-weight:760;white-space:nowrap;box-shadow:0 2px 3px #e8ece6}.refresh:hover{background:#eff9f3}.refresh:disabled{opacity:.6;cursor:wait}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.stat{position:relative;border:1px solid #e4eae4;border-radius:14px;padding:21px 24px;background:#fff;min-height:116px}.stat .kicker{font-weight:700;font-size:12px;color:#75817d}.stat .n{display:block;font-weight:850;font-size:30px;letter-spacing:-1px;margin-top:12px;line-height:1}.stat .foot{position:absolute;right:22px;bottom:23px;font-size:11px;color:#8d9a96}.stat.highlight{background:#165f51;color:#fff;border-color:#165f51}.stat.highlight .kicker,.stat.highlight .foot{color:#b5d3ca}.stat.highlight .n{color:#fff}.stat .lightdot{position:absolute;right:22px;top:23px;width:10px;height:10px;border-radius:50%;background:#83dec0;box-shadow:0 0 0 5px #ffffff17}
+    .content{display:grid;grid-template-columns:236px minmax(0,1fr);gap:27px;margin-top:29px;align-items:start}.sidebar{display:flex;flex-direction:column;gap:18px}.panel{background:#fff;border:1px solid #e5ebe5;border-radius:13px;padding:21px}.sectionlabel{font-size:11px;text-transform:uppercase;letter-spacing:1.15px;font-weight:850;color:#8a9791;margin:0 0 18px}.filterhead{display:flex;justify-content:space-between;align-items:center}.clear{color:#0c8269;background:transparent;border:0;font-size:12px;font-weight:750;padding:3px}.filtergroup{margin-bottom:20px}.filtergroup:last-child{margin-bottom:0}.filtergroup label{display:block;font-size:12px;color:#475853;font-weight:800;margin-bottom:8px}.field{width:100%;border:1px solid #e0e7df;border-radius:9px;background:#fbfcfa;padding:10px 11px;font-size:12px;color:#263d36;outline:0}.field:focus{border-color:#61b393;box-shadow:0 0 0 3px #caeee0}.checkrow{display:flex;align-items:center;gap:10px;margin:11px 0;color:#53625d;font-size:12px;cursor:pointer}.checkrow input{accent-color:#167c62;width:15px;height:15px}.sourceitem{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:#52645d;margin:14px 0}.sourceitem .pill{font-size:10px;font-weight:800;color:#207e66;background:#e7f6ec;border-radius:8px;padding:3px 6px}.sourceitem .pill.err{background:#fff1e5;color:#ad6c35}.sourceitem .name{font-weight:700}.srcfooter{font-size:11px;color:#9aa69e;border-top:1px solid #edf0ea;padding-top:15px;line-height:1.7}.asidecallout{border-radius:13px;background:#e7f3ea;border:1px solid #d4e8d8;padding:20px;color:#315e4d}.asidecallout h3{margin:0 0 8px;font-size:13px}.asidecallout p{font-size:11px;line-height:1.65;margin:0 0 10px}.asidecallout button{border:0;background:transparent;color:#0f785e;font-weight:850;font-size:11px;padding:0;text-decoration:underline}
+    .mainpanel{min-width:0}.tablehead{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 15px}.tablehead h2{font-size:19px;letter-spacing:-.6px;margin:0}.countsub{color:#8d9992;font-size:12px;font-weight:550;margin-left:8px}.actions{display:flex;align-items:center;gap:9px}.sortselect,.outline{background:#fff;border:1px solid #dfe7de;border-radius:9px;padding:10px 12px;color:#52645d;font-size:12px;font-weight:700}.outline:hover{border-color:#a8c8b7;color:#176b55}.tablewrap{border:1px solid #e5ebe5;background:#fff;border-radius:14px;overflow:hidden}.listtable{border-collapse:collapse;width:100%;table-layout:fixed}.listtable th{text-align:left;font-size:10px;color:#97a39d;text-transform:uppercase;letter-spacing:1px;font-weight:850;background:#fcfdfb;padding:17px 20px;border-bottom:1px solid #e9eee7}.listtable td{padding:17px 20px;border-bottom:1px solid #eef1eb;vertical-align:middle}.listtable tbody tr:last-child td{border:0}.listtable tbody tr:hover{background:#fbfdf9}.jobtitle{font-size:13px;font-weight:800;line-height:1.5;color:#20382f;text-decoration:none;display:block}.jobtitle:hover{color:#0e856a;text-decoration:underline}.jobcompany{color:#8b9790;font-size:11px;margin-top:5px;line-height:1.5}.muted{color:#697b72;font-size:12px}.srcbadge{display:inline-block;font-size:10px;font-weight:800;color:#366a54;background:#eaf5ed;border-radius:6px;padding:6px 9px;white-space:nowrap}.srcbadge.kariera{background:#f1edf9;color:#775998}.dead{font-size:11px;color:#718078}.state{border:1px solid #dfe7e0;background:#fff;color:#718078;border-radius:9px;padding:7px 8px;font-size:11px;max-width:100%}.state.applied{color:#1c775e;background:#eaf8ee;border-color:#bad9c6}.state.saved{color:#9a672f;background:#fff8e9;border-color:#eedbad}.openjob{text-decoration:none;font-size:14px;color:#278469;font-weight:800}.rowactions{display:flex;align-items:center;gap:11px}.star{font-size:18px;border:0;background:none;color:#bac7bf;line-height:1;padding:3px}.star.active{color:#d9a52b}.more{padding:15px 21px;font-size:11px;color:#94a19a;background:#fcfdfa;border-top:1px solid #e9eee9}.empty{padding:52px 24px;text-align:center;color:#738279}.empty .big{font-size:30px;margin-bottom:8px}.empty h3{font-size:16px;color:#2d493b;margin:0 0 7px}.empty p{margin:0 auto;max-width:420px;font-size:12px;line-height:1.65}.loader{height:3px;background:linear-gradient(90deg,#d6eee3,#167f62,#d6eee3);background-size:200% 100%;animation:pulse 1s linear infinite}@keyframes pulse{to{background-position:200% 0}}.notice{margin:0 0 13px;border-radius:8px;padding:10px 13px;font-size:12px;color:#655a3d;background:#fff8e6;border:1px solid #f3e8c2}.refreshinfo{font-size:11px;color:#88978c;margin-top:13px}.bottom{border-top:1px solid #e2e8df;margin:52px 0 0;padding:21px 0 28px;display:flex;justify-content:space-between;gap:14px;color:#99a59e;font-size:11px}.bottom a{color:#668579}.sourcecatalog{display:none;margin-top:35px}.sourcecatalog.show{display:block}.sourcecatalog h2{font-size:20px;margin:0 0 6px}.sourcecatalog>p{margin:0 0 18px;color:#728079;font-size:12px;line-height:1.6}.sourcegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.sourcecard{padding:17px;background:white;border:1px solid #e3e9e1;border-radius:11px}.sourcecard a{font-weight:790;font-size:13px;color:#205b4c;text-decoration:none}.sourcecard a:hover{text-decoration:underline}.sourcecard p{font-size:11px;color:#86948b;line-height:1.55;margin:9px 0 0}.sourcecard .tag{display:inline-block;color:#ab8244;background:#fbf1dd;padding:4px 7px;border-radius:5px;font-size:9px;font-weight:800;text-transform:uppercase;margin-top:12px;letter-spacing:.4px}
+    @media(max-width:1100px){.shell{padding:0 24px}.content{grid-template-columns:205px minmax(0,1fr);gap:17px}.listtable th,.listtable td{padding:14px 11px}.listtable th:nth-child(4),.listtable td:nth-child(4){display:none}.stat{padding:20px}.stat .foot{display:none}}
+    @media(max-width:770px){.shell{padding:0 16px}.topbar{height:62px}.topright .smalllink{display:none}.intro{display:block;padding:30px 0 22px}.intro h1{letter-spacing:-1.4px}.intro p{font-size:12px}.refresh{margin-top:17px;width:100%;justify-content:center}.stats{grid-template-columns:repeat(2,1fr);gap:9px}.stat{padding:17px;min-height:98px}.stat .n{font-size:26px}.stat .kicker{font-size:11px}.content{grid-template-columns:1fr;margin-top:20px}.sidebar{display:grid;grid-template-columns:1fr 1fr;gap:9px}.panel{padding:15px}.asidecallout{grid-column:1/-1;padding:15px}.tablehead{align-items:flex-start;flex-direction:column}.actions{width:100%;justify-content:space-between}.tablewrap{border:0;background:transparent;overflow:visible}.listtable,.listtable tbody,.listtable tr,.listtable td{display:block;width:100%}.listtable thead{display:none}.listtable tr{position:relative;display:grid;grid-template-columns:1fr auto;gap:9px 15px;border:1px solid #e5ebe5;background:#fff;border-radius:12px;margin-bottom:10px;padding:17px}.listtable td{border:0!important;padding:0!important}.listtable td:nth-child(1){grid-column:1/3;padding-right:20px!important}.listtable td:nth-child(2),.listtable td:nth-child(3){font-size:11px}.listtable td:nth-child(4){display:none}.listtable td:nth-child(5){grid-column:1/2}.listtable td:nth-child(6){grid-column:2/3;justify-self:end}.listtable tbody tr:hover{background:#fff}.rowactions{gap:10px}.jobtitle{font-size:14px}.more{border:1px solid #e5ebe5;border-radius:10px}.sourcegrid{grid-template-columns:repeat(2,1fr)}.bottom{display:block;line-height:1.8}}
+    @media(max-width:390px){.sidebar{grid-template-columns:1fr}.sourcegrid{grid-template-columns:1fr}.brand{font-size:19px}}
+    /* Bolj berljivi filtri in pojasnila pri testnem lokalnem paketu. */
+    .filtergroup label,.field,.checkrow,.sourceitem,.clear{font-size:14px}
+    .field{min-height:43px;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#6f867b 50%),linear-gradient(135deg,#6f867b 50%,transparent 50%);background-position:calc(100% - 18px) 19px,calc(100% - 13px) 19px;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:33px}
+    input.field{appearance:auto;background-image:none;padding-right:11px}
+    .filtergroup small{display:block;color:#89978e;font-size:12px;line-height:1.55;margin-top:6px}
+    .filterheading{font-weight:850;font-size:12px;color:#1e8064;margin:19px 0 15px;border-top:1px solid #e6eee7;padding-top:17px;letter-spacing:.3px}
+    .previewflag{font-size:12px;font-weight:800;background:#fff1d5;color:#936229;border-radius:7px;padding:8px 11px;margin-left:8px}
+    .filtergroup select:disabled{background:#f1f3ef;color:#9aa69f}
+    .explain{margin:0 0 13px;padding:11px 13px;border:1px solid #dce6da;background:#f1f7ed;color:#557363;font-size:13px;line-height:1.5;border-radius:9px}
+    .multi{position:relative;margin:0}.multi-trigger{width:100%;min-height:43px;border:1px solid #dfe8e0;border-radius:9px;background:#fbfcfa;color:#25493b;padding:10px 12px;text-align:left;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:680}.multi-trigger .count{font-size:12px;color:#4d876f;margin-left:6px}.multi-menu{position:absolute;left:0;top:calc(100% + 4px);z-index:20;background:white;border:1px solid #cde0d2;border-radius:11px;box-shadow:0 12px 30px #133e3020;padding:10px;min-width:100%;max-width:320px}.multi-menu[hidden]{display:none}.multi-menu .multi-search{width:100%;padding:9px 10px;border:1px solid #d9e7dd;border-radius:7px;margin-bottom:8px;font-size:14px}.multi-options{max-height:215px;overflow-y:auto}.multi-option{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;padding:7px 4px;color:#2e4b3f;cursor:pointer}.multi-option input{accent-color:#147b61;margin:0 7px 0 0}.multi-option small{margin:0;color:#98a99e;font-size:11px}.multi-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.multi-chip{display:inline-flex;gap:5px;align-items:center;border:1px solid #c6e5d6;background:#e8f6ed;border-radius:6px;padding:4px 7px;color:#197357;font-size:11px}.multi-chip button{background:transparent;border:0;color:#197357;font-weight:800;padding:0;font-size:13px}.multi-actions{display:flex;justify-content:flex-end;padding-top:7px;border-top:1px solid #edf2eb;margin-top:5px}.multi-actions button{font-size:12px;color:#127d64;border:0;background:transparent;font-weight:750}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar"><a class="brand" href="./"><span class="mark">⌁</span><span>Delo<span>Radar</span></span></a><div class="topright"><span class="priv">● Javni pregled</span><a class="smalllink" href="#viri" id="topSources">Viri podatkov ↗</a></div></header>
+    <section class="intro"><div><div class="eyebrow">Tvoj pregled slovenskega trga dela</div><h1>Vsa zanimiva dela.<br>Na enem mestu.</h1><p>Poišči priložnosti iz trenutno povezanih virov, jih shrani in označi, kje si že stopil v stik. Prijave in klice opraviš sam, neposredno pri delodajalcu.</p></div><button id="refresh" class="refresh" type="button">↻ &nbsp; Osveži oglase</button></section>
+    <section class="stats" aria-label="Statistika"><div class="stat highlight"><span class="kicker">Zajeti oglasi</span><span class="n" id="total">—</span><span class="lightdot"></span><span class="foot">v povezanih virih</span></div><div class="stat"><span class="kicker">Povezani viri</span><span class="n" id="sourcesNum">—</span><span class="foot">od 2 začetnih</span></div><div class="stat"><span class="kicker">Shranjeni</span><span class="n" id="savedNum">0</span><span class="foot">v tem brskalniku</span></div><div class="stat"><span class="kicker">Kontaktirani</span><span class="n" id="appliedNum">0</span><span class="foot">označeno ročno</span></div></section>
+    <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div><div class="panel"><div class="sectionlabel">Stanje povezav</div><div id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><div class="srcfooter">Oglase strežnik zajema predvidoma na 6 ur, tudi ko je tvoj računalnik izklopljen. Ob obisku naložimo zadnji objavljeni seznam.</div></div><div class="asidecallout"><h3>Dodajamo nove portale</h3><p>V načrtu so ZRSZ, MojeDelo, Careerjet, javni razpisi in drugi slovenski viri.</p><button id="showCatalog" type="button">Poglej seznam virov →</button></div></aside>
+    <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="export" type="button">↓ Izvozi CSV</button></div></div><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Oglasi so povezave na originalne objave. Preveri veljavnost pred prijavo.</div></div><p class="refreshinfo" id="updated"></p></main></div>
+    <section id="viri" class="sourcecatalog"><h2>Viri, ki jih bomo še povezali</h2><p>Ta seznam še ni povezan nabor oglasov. Za vsak vir moramo preveriti dostop, pogoje uporabe in podvajanje objav.</p><div class="sourcegrid" id="planned"></div></section>
+    <footer class="bottom"><span>© DeloRadar · Osebni pregled prostih delovnih mest</span><span>Podatki so informativni · Veljavnost in pogoje preveri na izvornem portalu</span></footer>
+  </div>
+  <script>
+    (function(){
+      'use strict';
+      var jobs=[], sources=[], planned=[], checkedAt='', state={};
+      var key='deloradar-status-v1';
+      try {state=JSON.parse(localStorage.getItem(key)||'{}')||{}}catch(e){state={}}
+      var $=function(id){return document.getElementById(id)};
+      var safe=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+      // Lokalni preizkus lahko uporabi vgrajen posnetek; GitHub Pages bere jobs.json.
+      var offline=!!window.__DELORADAR_OFFLINE_DATA__;
+      var regionPlaces={
+        'Pomurska':['murska sobota','lendava','gornja radgona','ljutomer','beltinci','moravske toplice'],
+        'Podravska':['maribor','ptuj','slovenska bistrica','lenart','ormož','ruše','hoče','pesnica','kidričevo'],
+        'Koroška':['slovenj gradec','dravograd','ravne na koroškem','prevalje','mežica','radlje ob dravi'],
+        'Savinjska':['celje','velenje','žalec','slovenske konjice','šentjur','nazarje','laško','rogaška slatina','šoštanj','zreče'],
+        'Zasavska':['trbovlje','zagorje ob savi','hrastnik','litija'],
+        'Posavska':['krško','brežice','sevnica','radeče'],
+        'Jugovzhodna Slovenija':['novo mesto','trebnje','kočevje','ribnica','črnomelj','metlika','šentjernej','mirna peč'],
+        'Osrednjeslovenska':['ljubljana','domžale','kamnik','vrhnika','grosuplje','medvode','logatec','ig','vodice'],
+        'Gorenjska':['kranj','škofja loka','jesenice','bled','radovljica','tržič','železniki','bohinj'],
+        'Goriška':['nova gorica','ajdovščina','tolmin','idrija','šempeter pri gorici','kobarid'],
+        'Obalno-kraška':['koper','izola','piran','sežana','ankaran','portorož','divača'],
+        'Primorsko-notranjska':['postojna','ilirska bistrica','cerknica','pivka']
+      };
+      var sectors=[
+        ['Elektrotehnika in energetika',/elektr|elektro|energet|mehatron|avtomatiz|serviser|vzdrževalec elektro|inštalater elektr/i],
+        ['IT in telekomunikacije',/programer|razvijal|developer|informat|sistemsk|omrež|podatkov|it podpor|računalniš|software|telekomunik/i],
+        ['Proizvodnja in industrija',/proizvod|operater|strojnik|kovinar|varilec|tehnolog|kontrolor kakovosti|cnc|montaž|industrij/i],
+        ['Gradbeništvo in obrt',/gradben|zidar|tesar|klepar|mizar|pleskar|vodovodar|gradbišč|hišnik/i],
+        ['Logistika in prevoz',/voznik|transport|skladišč|logistik|dostavlj|viličar|kurir|špediter/i],
+        ['Trgovina in prodaja',/prodajal|prodajn|trgovin|komercial|blagajni|nabavn|tržnik|pospeševalec prodaje/i],
+        ['Gostinstvo in turizem',/kuhar|natakar|gostin|hotelsk|receptor|slaščičar|turistič|strežb|delilec hrane/i],
+        ['Zdravstvo in oskrba',/medicinsk|zdravstven|negoval|farmacevt|oskrboval|socialni delavec|fizioterapevt/i],
+        ['Pisarna, finance in pravo',/računovod|knjigovod|administr|referent|tajnic|finanč|pravnik|pravna služba|poslovn|kadrovs/i],
+        ['Izobraževanje in raziskave',/učitelj|vzgojitelj|profesor|pedagog|raziskoval|predavatelj|inštruktor/i]
+      ];
+      function regionOf(j){
+        var s=(j.location||'').toLocaleLowerCase('sl');
+        if(!s)s=(j.title||'').toLocaleLowerCase('sl');
+        var names=Object.keys(regionPlaces);
+        for(var n=0;n<names.length;n++){
+          var region=names[n];
+          if(s.includes(region.toLocaleLowerCase('sl'))||regionPlaces[region].some(function(t){return s.includes(t)}))return region;
+        }
+        return 'Neznana regija';
+      }
+      function sectorOf(j){
+        var t=j.title||'';
+        for(var n=0;n<sectors.length;n++)if(sectors[n][1].test(t))return sectors[n][0];
+        return 'Drugo / nerazvrščeno';
+      }
+      function dateValue(s){
+        if(!s)return NaN;
+        var m=String(s).match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
+        var d=m?new Date(+m[3],+m[2]-1,+m[1]):new Date(s);
+        return d.getTime();
+      }
+      function makeOptions(id,values,empty){
+        var el=$(id),selected=el.value;
+        el.innerHTML='<option value="">'+safe(empty)+'</option>'+values.map(function(v){return '<option value="'+safe(v)+'">'+safe(v)+'</option>'}).join('');
+        if(values.includes(selected))el.value=selected;
+      }
+      var filterKey='deloradar-filters-v1',savedFilters={};
+      try{savedFilters=JSON.parse(localStorage.getItem(filterKey)||'{}')||{}}catch(e){savedFilters={}}
+      var multiSelected=savedFilters.multi||{},multiLists={};
+      function selectedValues(id){return Array.isArray(multiSelected[id])?multiSelected[id]:[]}
+      function persistFilters(){
+        var values={};['search','place','published','deadline','myStatus','sort'].forEach(function(id){values[id]=$(id).value});
+        values.onlySaved=$('onlySaved').checked;values.hideApplied=$('hideApplied').checked;
+        try{localStorage.setItem(filterKey,JSON.stringify({multi:multiSelected,values:values}))}catch(e){}
+      }
+      function countFor(id,value){
+        return jobs.filter(function(j){
+          if(id==='sourceFilter')return j.source===value;
+          if(id==='region')return regionOf(j)===value;
+          if(id==='city')return j.location===value;
+          if(id==='sector')return sectorOf(j)===value;
+          return j.company===value;
+        }).length;
+      }
+      function configureMulti(id,options,emptyText){
+        var original=$(id),host=document.getElementById('multi-'+id);
+        multiLists[id]={options:Array.from(new Set(options.concat(selectedValues(id)))),empty:emptyText};
+        if(!host){
+          host=document.createElement('div');host.className='multi';host.id='multi-'+id;
+          host.innerHTML='<button type="button" class="multi-trigger" aria-expanded="false"><span></span><span>⌄</span></button><div class="multi-menu" hidden><input class="multi-search" type="search" placeholder="Išči možnost…" aria-label="Išči možnost"><div class="multi-options"></div><div class="multi-actions"><button type="button" data-clear="1">Počisti izbor</button></div></div><div class="multi-chips"></div>';
+          original.style.display='none';original.setAttribute('aria-hidden','true');original.after(host);
+          host.querySelector('.multi-trigger').addEventListener('click',function(){
+            document.querySelectorAll('.multi-menu').forEach(function(m){if(m!==host.querySelector('.multi-menu'))m.hidden=true});
+            var menu=host.querySelector('.multi-menu');menu.hidden=!menu.hidden;
+            host.querySelector('.multi-trigger').setAttribute('aria-expanded',String(!menu.hidden));
+            if(!menu.hidden)host.querySelector('.multi-search').focus();
+          });
+          host.querySelector('.multi-search').addEventListener('input',function(){
+            var q=this.value.toLocaleLowerCase('sl');host.querySelectorAll('.multi-option').forEach(function(row){row.hidden=!row.dataset.label.toLocaleLowerCase('sl').includes(q)});
+          });
+          host.addEventListener('change',function(e){
+            if(!e.target.matches('input[type=checkbox][data-value]'))return;
+            var val=e.target.dataset.value,arr=selectedValues(id);
+            multiSelected[id]=e.target.checked?Array.from(new Set(arr.concat([val]))):arr.filter(function(x){return x!==val});
+            persistFilters();drawMulti(id);render();
+          });
+          host.addEventListener('click',function(e){
+            var remove=e.target.closest('[data-remove]'),clear=e.target.closest('[data-clear]');
+            if(remove){multiSelected[id]=selectedValues(id).filter(function(x){return x!==remove.dataset.remove});persistFilters();drawMulti(id);render()}
+            if(clear){multiSelected[id]=[];persistFilters();drawMulti(id);render()}
+          });
+        }
+        drawMulti(id);
+      }
+      function drawMulti(id){
+        var host=$('multi-'+id);if(!host)return;
+        var options=multiLists[id].options,selected=selectedValues(id);
+        host.querySelector('.multi-trigger span:first-child').textContent=selected.length?selected.length+' izbranih':multiLists[id].empty;
+        host.querySelector('.multi-options').innerHTML=options.map(function(v){
+          return '<label class="multi-option" data-label="'+safe(v)+'"><span><input type="checkbox" data-value="'+safe(v)+'" '+(selected.includes(v)?'checked':'')+'>'+safe(v)+'</span><small>'+countFor(id,v)+'</small></label>';
+        }).join('');
+        host.querySelector('.multi-chips').innerHTML=selected.map(function(v){
+          return '<span class="multi-chip">'+safe(v)+'<button type="button" data-remove="'+safe(v)+'" aria-label="Odstrani '+safe(v)+'">×</button></span>';
+        }).join('');
+        var q=host.querySelector('.multi-search').value.toLocaleLowerCase('sl');
+        host.querySelectorAll('.multi-option').forEach(function(row){row.hidden=!row.dataset.label.toLocaleLowerCase('sl').includes(q)});
+      }
+      // Filtre zgradimo ločeno, da je obstoječi spletni prikaz še vedno uporaben.
+      $('sourceFilter').closest('.filtergroup').insertAdjacentHTML('afterend',[
+        '<div class="filterheading">PODROČJE IN LOKACIJA</div>',
+        '<div class="filtergroup"><label for="region">Regija Slovenije</label><select class="field" id="region"><option value="">Vse regije</option></select><small>Če kraj ni naveden, regije ni mogoče določiti.</small></div>',
+        '<div class="filtergroup"><label for="city">Kraj dela</label><select class="field" id="city"><option value="">Vsi kraji</option></select></div>',
+        '<div class="filtergroup"><label for="sector">Poklicno področje</label><select class="field" id="sector"><option value="">Vsa področja</option></select><small>Približna razvrstitev na podlagi naziva oglasa.</small></div>',
+        '<div class="filterheading">PODJETJE IN ČAS</div>',
+        '<div class="filtergroup"><label for="company">Delodajalec</label><select class="field" id="company"><option value="">Vsi delodajalci</option></select></div>',
+        '<div class="filtergroup"><label for="published">Datum objave</label><select class="field" id="published"><option value="">Kadar koli</option><option value="3">Zadnje 3 dni</option><option value="7">Zadnjih 7 dni</option><option value="30">Zadnjih 30 dni</option><option value="unknown">Datum ni naveden</option></select></div>',
+        '<div class="filtergroup"><label for="deadline">Rok prijave</label><select class="field" id="deadline"><option value="">Kateri koli</option><option value="7">V naslednjih 7 dneh</option><option value="14">V naslednjih 14 dneh</option><option value="unknown">Rok ni naveden</option></select></div>',
+        '<div class="filtergroup"><label for="myStatus">Moj status</label><select class="field" id="myStatus"><option value="">Vsi statusi</option><option value="none">Neoznačeni</option><option value="interested">Zanimivo</option><option value="contacted">Kontaktirano</option></select></div>',
+        '<div class="filtergroup"><label for="contract">Vrsta zaposlitve</label><select class="field" id="contract" disabled><option>Čaka na dodatne podatke</option></select><small>Oglasi za zdaj ne dajejo dovolj zanesljivih podatkov.</small></div>'
+      ].join(''));
+      $('place').closest('.filtergroup').querySelector('label').textContent='Dodaten iskalni niz za kraj';
+      configureMulti('sourceFilter',['Optius','Kariera.si'],'Vsi portali');
+      configureMulti('region',Object.keys(regionPlaces).concat(['Neznana regija']),'Vse regije');
+      configureMulti('sector',sectors.map(function(x){return x[0]}).concat(['Drugo / nerazvrščeno']),'Vsa področja');
+      configureMulti('city',[],'Vsi kraji');
+      configureMulti('company',[],'Vsi delodajalci');
+      var restored=savedFilters.values||{};
+      ['search','place','published','deadline','myStatus','sort'].forEach(function(id){if(restored[id]!==undefined)$(id).value=restored[id]});
+      if(restored.onlySaved!==undefined)$('onlySaved').checked=!!restored.onlySaved;
+      if(restored.hideApplied!==undefined)$('hideApplied').checked=!!restored.hideApplied;
+      document.addEventListener('click',function(e){
+        if(!e.target.closest('.multi'))document.querySelectorAll('.multi-menu').forEach(function(m){m.hidden=true});
+      });
+      if(offline){
+        document.querySelector('.eyebrow').textContent='Lokalni test · verzija pred objavo';
+        document.querySelector('.intro h1').textContent='Preglej. Filtriraj. Izberi.';
+        document.querySelector('.srcfooter').textContent='To je lokalni preizkus z vgrajenim posnetkom oglasov. Pridobivanje novih oglasov še ni omogočeno.';
+        $('refresh').textContent='↻ Preberi testni posnetek';
+        $('refresh').title='Lokalni ZIP se brez novega paketa ne osvežuje';
+      }
+      function getState(id){return state[id]||{}}
+      function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch(e){} updateStats()}
+      function updateStats(){
+        $('savedNum').textContent=Object.values(state).filter(function(s){return s.saved}).length;
+        $('appliedNum').textContent=Object.values(state).filter(function(s){return s.status==='contacted'}).length;
+      }
+      function dateLabel(s){if(!s)return '—';var d=new Date(s);return isNaN(d.getTime())?'—':new Intl.DateTimeFormat('sl-SI',{day:'numeric',month:'short',year:'numeric'}).format(d)}
+      function sourceRender(){
+        $('sourceStatus').innerHTML=sources.map(function(s){return '<div class="sourceitem"><span class="name">'+safe(s.name)+'</span><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov':'Ni odziva')+'</span></div>'}).join('');
+        $('sourcesNum').textContent=sources.filter(function(s){return s.status==='live'}).length;
+        $('planned').innerHTML=planned.map(function(s){return '<div class="sourcecard"><a target="_blank" rel="noopener noreferrer" href="'+safe(s.href)+'">'+safe(s.name)+' ↗</a><p>'+safe(s.note)+'</p><span class="tag">V pripravi</span></div>'}).join('');
+        var broken=sources.filter(function(s){return s.status!=='live'});
+        $('notice').innerHTML=broken.length?'<div class="notice">Pozor: '+broken.map(function(x){return safe(x.name)}).join(', ')+' trenutno ni dosegljiv. Spodaj so samo uspešno pridobljeni oglasi.</div>':'';
+      }
+      function filtered(){
+        var q=$('search').value.toLocaleLowerCase('sl').trim(),p=$('place').value.toLocaleLowerCase('sl').trim(),only=$('onlySaved').checked,hide=$('hideApplied').checked;
+        var pub=$('published').value,deadline=$('deadline').value,myStatus=$('myStatus').value;
+        function includesOrAll(id,value){var arr=selectedValues(id);return !arr.length||arr.includes(value)}
+        var current=Date.now(),day=86400000;
+        var result=jobs.filter(function(j){
+          var st=getState(j.id),published=dateValue(j.date),due=dateValue(j.deadline);
+          var statusMatch=!myStatus||(myStatus==='none'?!st.status:st.status===myStatus);
+          var pubMatch=!pub||(pub==='unknown'?!Number.isFinite(published):(Number.isFinite(published)&&published>=current-(+pub)*day));
+          var deadlineMatch=!deadline||(deadline==='unknown'?!Number.isFinite(due):(Number.isFinite(due)&&due>=current-day&&due<=current+(+deadline)*day));
+          return (!q||[j.title,j.company,j.location].join(' ').toLocaleLowerCase('sl').includes(q))&&
+            (!p||(j.location||'').toLocaleLowerCase('sl').includes(p))&&includesOrAll('sourceFilter',j.source)&&
+            (!only||st.saved)&&(!hide||st.status!=='contacted')&&includesOrAll('region',regionOf(j))&&
+            includesOrAll('city',j.location)&&includesOrAll('sector',sectorOf(j))&&includesOrAll('company',j.company)&&
+            statusMatch&&pubMatch&&deadlineMatch;
+        });
+        var sort=$('sort').value;result.sort(function(a,b){if(sort==='title')return a.title.localeCompare(b.title,'sl');if(sort==='source')return a.source.localeCompare(b.source,'sl');return (b.date||'').localeCompare(a.date||'')||a.title.localeCompare(b.title,'sl')});return result;
+      }
+      function render(){
+        var items=filtered();$('found').textContent='· '+items.length+' zadetkov';$('total').textContent=jobs.length.toLocaleString('sl-SI');
+        if(!items.length){$('jobRows').innerHTML='<tr><td colspan="6"><div class="empty"><div class="big">⌕</div><h3>Ni zadetkov</h3><p>'+(jobs.length?'Poskusi drug naziv ali počisti filtre.':'Trenutno ni mogoče prikazati oglasov. Poskusi osvežiti stran pozneje.')+'</p></div></td></tr>';return}
+        $('jobRows').innerHTML=items.slice(0,500).map(function(j){var s=getState(j.id);return '<tr><td><a target="_blank" rel="noopener noreferrer" class="jobtitle" href="'+safe(j.url)+'">'+safe(j.title)+'</a><div class="jobcompany">'+safe(j.company||'Oglej si delodajalca na portalu')+'</div></td><td class="muted">'+safe(j.location||'Ni navedeno')+'</td><td><span class="srcbadge '+(j.source==='Kariera.si'?'kariera':'')+'">'+safe(j.source)+'</span></td><td class="dead">'+dateLabel(j.date)+'</td><td><select class="state '+(s.status==='contacted'?'applied':s.status==='interested'?'saved':'')+'" data-status="'+safe(j.id)+'" aria-label="Status: '+safe(j.title)+'"><option value="" '+(!s.status?'selected':'')+'>Ni označeno</option><option value="interested" '+(s.status==='interested'?'selected':'')+'>Zanimivo</option><option value="contacted" '+(s.status==='contacted'?'selected':'')+'>Kontaktirano</option></select></td><td><div class="rowactions"><button class="star '+(s.saved?'active':'')+'" data-star="'+safe(j.id)+'" title="Shrani oglas" aria-label="Shrani oglas" type="button">'+(s.saved?'★':'☆')+'</button><a class="openjob" href="'+safe(j.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Odpri oglas">↗</a></div></td></tr>'}).join('');
+        $('summary').textContent='Prikazanih '+Math.min(items.length,500)+' od '+items.length+' zadetkov · Rok in pogoje vedno preveri na izvornem portalu.';
+      }
+      function noticeMessage(txt){$('notice').innerHTML='<div class="notice">'+safe(txt)+'</div>'}
+      function load(){
+        $('refresh').disabled=true;$('refresh').textContent='↻   Preverjam vire …';$('progress').style.display='block';
+        (offline?Promise.resolve(window.__DELORADAR_OFFLINE_DATA__):fetch((window.__DELORADAR_DATA_URL__||'./jobs.json')+'?v='+Date.now(),{cache:'no-store',headers:{accept:'application/json'}}).then(function(r){if(!r.ok)throw Error('Strežnik ni dosegljiv');return r.json()})).then(function(data){
+          jobs=data.jobs||[];sources=data.sources||[];planned=data.planned||[];checkedAt=data.checkedAt||'';
+          configureMulti('city',Array.from(new Set(jobs.map(function(j){return j.location}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'sl')}),'Vsi kraji');
+          configureMulti('company',Array.from(new Set(jobs.map(function(j){return j.company}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'sl')}),'Vsi delodajalci');
+          ['sourceFilter','region','sector'].forEach(drawMulti);
+          sourceRender();render();
+          if(offline){
+            noticeMessage('LOKALNI PREIZKUS: Posnetek resničnih oglasov. Ni samodejnega osveževanja; za aktualne oglase preveri povezave pri izvornih portalih.');
+            $('updated').textContent='Posnetek zbran: '+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+'. Kategorije so ocenjene iz nazivov; neznane regije so označene.';
+          }else{
+            $('updated').textContent='Zadnji zajem oglasov: '+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+' · Ob odprtju preberemo zadnji objavljeni posnetek; nov zajem običajno na 6 ur.';
+          }
+        }).catch(function(){noticeMessage('Oglasov trenutno ni mogoče pridobiti. Preveri povezavo in poskusi znova.');$('jobRows').innerHTML='<tr><td colspan="6" class="empty">Napaka pri pridobivanju podatkov.</td></tr>'}).finally(function(){$('progress').style.display='none';$('refresh').disabled=false;$('refresh').textContent=offline?'↻   Preberi testni posnetek':'↻   Osveži oglase'});
+      }
+      ['search','place'].forEach(function(id){$(id).addEventListener('input',render)});
+      ['sourceFilter','onlySaved','hideApplied','sort'].forEach(function(id){$(id).addEventListener('change',render)});
+      ['region','city','sector','company','published','deadline','myStatus'].forEach(function(id){$(id).addEventListener('change',render)});
+      $('clear').addEventListener('click',function(){
+        ['search','place','published','deadline','myStatus'].forEach(function(id){$(id).value=''});
+        ['sourceFilter','region','city','sector','company'].forEach(function(id){multiSelected[id]=[];drawMulti(id)});
+        $('onlySaved').checked=false;$('hideApplied').checked=false;persistFilters();render()
+      });
+      ['search','place'].forEach(function(id){$(id).addEventListener('input',persistFilters)});
+      ['published','deadline','myStatus','sort','onlySaved','hideApplied'].forEach(function(id){$(id).addEventListener('change',persistFilters)});
+      $('refresh').addEventListener('click',load);
+      $('jobRows').addEventListener('click',function(e){var b=e.target.closest('[data-star]');if(!b)return;var id=b.dataset.star;state[id]=Object.assign({},getState(id),{saved:!getState(id).saved});save();render()});
+      $('jobRows').addEventListener('change',function(e){var b=e.target.closest('[data-status]');if(!b)return;var id=b.dataset.status;state[id]=Object.assign({},getState(id),{status:b.value});save();render()});
+      function showSources(){var el=$('viri');el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'start'})}
+      $('showCatalog').addEventListener('click',showSources);$('topSources').addEventListener('click',function(e){e.preventDefault();showSources()});
+      $('export').addEventListener('click',function(){
+        var quote=function(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"'};
+        var rows=[['Naziv','Podjetje','Kraj','Portal','Objava','Povezava','Status','Shranjeno']].concat(filtered().map(function(j){var s=getState(j.id);return [j.title,j.company,j.location,j.source,j.date,j.url,s.status||'',s.saved?'Da':'Ne']}));
+        var csv='\uFEFF'+rows.map(function(r){return r.map(quote).join(';')}).join('\r\n');
+        var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='deloradar-oglasi.csv';a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+      });
+      updateStats();load();
+    })();
+  </script>
+</body>
+</html>`;
