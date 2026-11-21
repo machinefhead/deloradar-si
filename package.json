@@ -1,0 +1,14 @@
+{
+  "name": "deloradar-si",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Odprti pregledovalnik prostih delovnih mest iz slovenskih portalov",
+  "scripts": {
+    "test": "node scripts/test.mjs",
+    "build": "node scripts/build-site.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
