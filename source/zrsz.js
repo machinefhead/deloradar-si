@@ -86,7 +86,8 @@ export async function getZrszFromPublicBrowser() {
   const { chromium } = await import('playwright-core');
   // Na GitHubovem standardnem runnerju je Google Chrome že nameščen.
   // Ne uporabljamo osebne seje, shranjenih gesel ali internih API-jev.
-  const browser = await chromium.launch({ channel: 'chrome', headless: true, timeout: 30_000 });
+  // Na GitHubovih brezplačnih izvajalnikih je lahko prvi zagon Chrome počasen.
+  const browser = await chromium.launch({ channel: 'chrome', headless: true, timeout: 120_000 });
   try {
     const context = await browser.newContext({ acceptDownloads: true, locale: 'sl-SI' });
     const page = await context.newPage();
