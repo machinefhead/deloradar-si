@@ -6,6 +6,7 @@ const SOURCES = [
   { id: 'govsi', name: 'GOV.SI', url: 'https://www.gov.si/zbirke/delovna-mesta/' },
   { id: 'atama', name: 'Atama', url: 'https://atama.si/za-iskalce/aktualna-ponudba-dela' },
   { id: 'trenkwalder', name: 'Trenkwalder', url: 'https://si.trenkwalder.com/jobs' },
+  { id: 'agado', name: 'Agado', url: 'https://www.agado.si/iskalci/69/prosta-delovna-mesta' },
 ];
 const PLANNED = [
   { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'ZRSZ za ponovno objavo podatkov zahteva dovoljenje; do dovoljenja le povezava na iskalnik' },
@@ -186,9 +187,35 @@ async function getTrenkwalder() {
   if (!jobs.length) throw Error('Unexpected Trenkwalder listing format');
   return jobs;
 }
+export function parseAgadoListings(html) {
+  const jobs = [];
+  const cards = [...html.matchAll(/<div\s+class=["']single_job_student["'][^>]*>/gi)];
+  for (let i = 0; i < cards.length; i++) {
+    const card = html.slice(cards[i].index, cards[i + 1]?.index || Math.min(cards[i].index + 3500, html.length));
+    const link = card.match(/<a\b[^>]*href=["'](https:\/\/www\.agado\.si\/iskalci\/69\/vsa-prosta-delovna-mesta\/j(\d+)\/[^"']+)["']/i);
+    const title = plain(card.match(/<div\s+class=["']job_title["'][^>]*>[\s\S]*?<h5[^>]*>([\s\S]*?)<\/h5>/i)?.[1] || '');
+    if (!link || !title || /vpis v bazo iskalcev/i.test(title)) continue;
+    const dateText = card.match(/<div\s+class=["']job_date["'][^>]*>\s*(\d{1,2}\.\d{1,2}\.\d{2,4})/i)?.[1] || '';
+    const dateMatch = dateText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+    const year = dateMatch ? (dateMatch[3].length === 2 ? '20' + dateMatch[3] : dateMatch[3]) : '';
+    const date = dateMatch ? year + '-' + dateMatch[2].padStart(2, '0') + '-' + dateMatch[1].padStart(2, '0') : '';
+    const locationHtml = card.match(/<mark\b[^>]*>\s*Lokacija:\s*<\/mark>[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/i)?.[1] || '';
+    const location = plain(locationHtml.split(/<br\b/i)[0]);
+    // Portal oglašuje tudi delo v tujini; DeloRadar prikazuje le Slovenijo.
+    if (/(?:avstrij|nemčij|steiermark|oberosterreich|oberoesterreich|österreich|graz|wien|linz|kassel)/i.test(title + ' ' + locationHtml)) continue;
+    jobs.push({ id: 'agado:' + link[2], source: 'Agado', title, company: '', location,
+      date, deadline: '', url: link[1] });
+  }
+  return Array.from(new Map(jobs.map(j => [j.id, j])).values());
+}
+async function getAgado() {
+  const jobs = parseAgadoListings(await getText('https://www.agado.si/iskalci/69/prosta-delovna-mesta'));
+  if (!jobs.length) throw Error('Unexpected Agado listing format');
+  return jobs;
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado()]);
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));

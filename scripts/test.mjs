@@ -13,6 +13,11 @@ const script = page.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script, 'Predloga mora vsebovati odjemalsko skripto');
 new Script(script, { filename: 'deloradar-client.js' });
 assert.match(page, /\.multi-option\[hidden\]\{display:none!important\}/, 'Iskanje po večizbirnih možnostih mora dejansko skriti vrstice');
+assert.match(page, /<input class="field" type="search" id="search"/, 'Glavno iskalno polje mora imeti vgrajen gumb X');
+assert.match(script, /if\(clear\)\{multiSelected\[id\]=\[\];closeMulti\(host\);/, 'Počisti izbor mora zapreti večizbirni seznam');
+assert.match(page, /grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/, 'Navigacija mora biti poravnana na sredino');
+assert.match(page, /id="backToTop"/, 'Plavajoči gumb za vrnitev na vrh mora biti v dokumentu');
+assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passive:true\}\)/, 'Gumb za vrh se mora prilagajati drsenju');
 assert.match(page, /Ročni zajem prek GitHuba/);
 const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
 assert.match(workflow, /cron: '17,47 \* \* \* \*'/, 'Osveževanje mora biti predvideno vsakih 30 minut');
@@ -61,6 +66,10 @@ assert.match(navContext.pager.innerHTML, /data-page="1"/);
 assert.match(navContext.pager.innerHTML, /data-page="12"/);
 assert.match(navContext.pager.innerHTML, /data-page="2" aria-current="page"/);
 assert.match(navContext.pager.innerHTML, /Oglasov na stran/);
+assert.match(navContext.pager.innerHTML, /<option value="10"/);
+assert.match(navContext.pager.innerHTML, /<option value="25"/);
+assert.match(navContext.pager.innerHTML, /<option value="50"/);
+assert.match(navContext.pager.innerHTML, /<option value="100"/);
 const multiContext = {};
 runInNewContext(extract('function clearMultiSearch(', 'function configureMulti('), multiContext);
 const mockSearch={value:'ptu'},mockRows=[{hidden:true},{hidden:false}];
@@ -68,7 +77,7 @@ multiContext.clearMultiSearch({querySelector:()=>mockSearch,querySelectorAll:()=
 assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
-const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings } = await import('../source/collector.js');
+const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings } = await import('../source/collector.js');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -93,4 +102,17 @@ assert.equal(trenkwalder.length, 1, 'Tuji oglasi se ne vključijo');
 assert.equal(trenkwalder[0].location,'Maribor');
 assert.equal(trenkwalder[0].date,'2026-11-20');
 
-console.log('OK: filtri, stranjenje in parserji vseh petih virov');
+const agadoCard = (id, title, location, date) => `<div class="single_job_student" style="box-sizing:border-box;"><a target="_blank" href="https://www.agado.si/iskalci/69/vsa-prosta-delovna-mesta/j${id}/oglas-${id}"></a><div class="job_date">${date}<hr>${id}</div><div class="job_title"><h5>${title}</h5></div><div class="job_details"><div class="half_width"><mark>Vrsta dela</mark><br></br><span>ELEKTROTEHNIKA</span></div><div class="half_width"><mark>Lokacija:</mark><br></br><span>${location}</span></div></div></div>`;
+const agado = parseAgadoListings([
+  agadoCard('123', 'Elektrotehnik (m/ž)', 'Maribor<br>(Podravska)', '17.11.26'),
+  agadoCard('124', 'Električar - Avstrija', 'Graz<br>(Steiermark)', '16.11.26'),
+  agadoCard('125', 'Vpis v bazo iskalcev dela', 'Cela Slovenija', '30.07.25'),
+  agadoCard('126', 'Skladiščnik', 'Ljubljana<br>(Osrednjeslovenska regija)', '11.11.26'),
+].join(''));
+assert.equal(agado.length, 2, 'Agado: brez tujih zaposlitev in splošnih vpisov v bazo');
+assert.equal(agado[0].id, 'agado:123');
+assert.equal(agado[0].location, 'Maribor');
+assert.equal(agado[0].date, '2026-11-17');
+assert.equal(agado[0].url, 'https://www.agado.si/iskalci/69/vsa-prosta-delovna-mesta/j123/oglas-123');
+
+console.log('OK: filtri, stranjenje in parserji vseh šestih virov');
