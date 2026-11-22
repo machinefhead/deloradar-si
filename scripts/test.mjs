@@ -100,6 +100,24 @@ assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
 const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages } = await import('../source/collector.js');
+const { parseZrszJson } = await import('../source/zrsz.js');
+const zrszSample = { data: { items: [
+  { idDelovnegaMesta: 3502299, nazivDelovnegaMesta: 'Električar (m/ž)', nazivDelodajalca: 'Primer d.o.o.', krajDela: 'Maribor', drzava: 'Slovenija', datumObjave: '20. 11. 2026', rokPrijave: '30. 11. 2026' },
+  { idDelovnegaMesta: 3502299, nazivDelovnegaMesta: 'Električar (m/ž)', krajDela: 'Maribor', drzava: 'Slovenija' },
+  { idDelovnegaMesta: 3502288, nazivDelovnegaMesta: 'Delo v Gradcu', krajDela: 'Graz', drzava: 'Avstrija' },
+  { idDelovnegaMesta: 3400000, nazivDelovnegaMesta: 'Poteklo delo', rokPrijave: '1. 10. 2026' },
+] } };
+const zrsz = parseZrszJson(zrszSample, Date.parse('2026-11-22'));
+assert.equal(zrsz.length, 1, 'ZRSZ: izločimo tuje/potekle oglase in dvojnike po uradnem ID');
+assert.equal(zrsz[0].id, 'zrsz:3502299');
+assert.equal(zrsz[0].url, 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/?idp=3502299/');
+assert.equal(zrsz[0].date, '2026-11-20', 'ZRSZ: pri podvojenih zapisih ohranimo prve popolne metapodatke');
+assert.equal(zrsz[0].company, 'Primer d.o.o.');
+assert.equal(zrsz[0].deadline, '2026-11-30');
+assert.equal(zrsz[0].source, 'ZRSZ / PoiščiDelo');
+assert.throws(() => parseZrszJson({ unknown: [] }), /nepoznana oblika JSON/, 'Ne ugibamo neznanega formata JSON');
+assert.throws(() => parseZrszJson([{ title: 'Brez ID' }]), /nobenega veljavnega oglasa/, 'Ne objavimo neuporabnega izvoza');
+assert.equal(parseZrszJson([]).length, 0, 'Prazen seznam je veljaven, a ni potrjen delujoč vir');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -216,4 +234,4 @@ assert.equal(ziJobs[0].date,'2026-11-20');
 assert.equal(ziJobs[0].url,'https://zaposlitev.info/delo/elektricar-m-z/');
 assert.equal(zaposlitevInfoTotalPages(ziHtml),38,'Zajem vseh strani, ne samo prvih deset oglasov');
 
-console.log('OK: filtri, straničenje in parserji vseh trinajstih virov');
+console.log('OK: filtri, straničenje, 13 povezanih virov in pripravljeni ZRSZ JSON parser');

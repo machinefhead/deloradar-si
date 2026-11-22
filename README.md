@@ -30,6 +30,14 @@ Generirana statična stran je v `dist/` (`index.html`, `jobs.json`). Za lokalni 
 
 GitHub Pages uporablja **GitHub Actions** (`.github/workflows/pages.yml`): ob spremembi `main`, ročno in po urniku. Če vsi viri odpovedo oziroma vrnejo nič oglasov, sestavljanje odpove in prejšnja uspešna objava ostane na spletu.
 
+### ZRSZ – pripravljeno za dogovorjen JSON izvoz
+
+V `source/zrsz.js` je preizkušen osnovni pretvornik JSON oglasov v DeloRadarjevo tabelo (ID, naziv, delodajalec, kraj, objava, rok in izvirni URL). **ZRSZ še ni samodejno povezan**, ker neposredni spletni API brez dogovorjene avtentikacije vrne 403 in javnega stabilnega URL-ja za izvoz še nismo potrdili. Ne uporabljamo osebnega gesla za PoiščiDelo niti ključev, najdenih v tujih skriptah.
+
+Ko ZRSZ zagotovi primeren URL izvoza, v repozitoriju odpri **Settings → Secrets and variables → Actions → New repository secret** in dodaj `ZRSZ_JSON_URL` (celoten HTTPS naslov). Workflow ga posreduje samo koraku zbiranja. Virov ne aktiviramo pred preizkusom dejanskega izvoza in preverjanjem ujemanja njegovih polj. Če je zahtevan poseben API žeton ali glava HTTP, najprej pridobimo dokumentacijo in dodamo ustrezno podporo; žeton nikoli ne sodi v kodo ali javni `jobs.json`.
+
+Od ZRSZ potrebujemo: stabilen URL ali dokumentacijo API-ja, način dostopa za GitHub Actions, vzorec JSON s strukturo straničenja, omejitve osveževanja in potrditev dovoljenega prikaza osnovnih metapodatkov z izvirnimi povezavami.
+
 Razširitve z novimi viri, bolj zanesljivimi regijami in morebitnim zasebnim računom za uporabnika in partnerko bomo razvijali postopoma. **GitHub Pages je za zdaj javen**; prijava še ni vgrajena. V prvi različici **ni** oblačne podatkovne baze in **ni** avtomatskega pošiljanja prijav.
 
 Lastnik projekta je potrdil ustno soglasje ZRSZ, MojeDelo.com, Careerjet in Zaposlitev.info za nekomercialno zbiranje metapodatkov oglasov; soglasja nismo neodvisno preverjali. Zajem poteka samo z javno dostopnih strani oziroma neavtenticiranega vmesnika. **Careerjet** pri avtomatiziranem dostopu zahteva preverjanje obiskovalca, česar ne obhajamo; **ZRSZ** ima v uporabniškem vmesniku izvoz JSON, produkcijska povezava do njega pa še ni bila potrjena. Pri teh dveh ostaja neposredna povezava. EURES in Manpower brez ustreznega partnerstva/dovoljenja ostajata nepovezana.

@@ -1,4 +1,8 @@
 import { page } from './page.js';
+import { getZrszJson } from './zrsz.js';
+
+// Nastavimo le ob prejetem tehnično odobrenem izvozu. URL je GitHub Actions secret.
+const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
 
 const SOURCES = [
   { id: 'optius', name: 'Optius', url: 'https://www.optius.com/iskalci/prosta-delovna-mesta/' },
@@ -14,9 +18,10 @@ const SOURCES = [
   { id: 'kolektor', name: 'Kolektor', url: 'https://www.kolektor.com/kariera' },
   { id: 'mojedelo', name: 'MojeDelo.com', url: 'https://www.mojedelo.com/iskanje-zaposlitve' },
   { id: 'zaposlitevinfo', name: 'Zaposlitev.info', url: 'https://zaposlitev.info/prosta-delovna-mesta/' },
+  ...(ZRSZ_JSON_URL ? [{ id: 'zrsz', name: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/' }] : []),
 ];
 const PLANNED = [
-  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Uradni iskalnik; za samodejni zajem še potrebujemo delujoč podatkovni dostop.' },
+  ...(!ZRSZ_JSON_URL ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Uradni iskalnik; za samodejni zajem še potrebujemo dogovorjen podatkovni dostop.' }] : []),
   { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.' },
   { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjamo možnost rednega zajema.' },
   { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski iskalnik; za avtomatizacijo je potreben partnerski dostop.' },
@@ -490,7 +495,9 @@ async function getZaposlitevInfo() {
 }
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo()]);
+  const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo()];
+  if (ZRSZ_JSON_URL) collectors.push(getZrszJson(ZRSZ_JSON_URL));
+  const results = await Promise.allSettled(collectors);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
       const reason = result.reason;
