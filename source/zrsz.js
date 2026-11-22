@@ -94,9 +94,12 @@ export async function getZrszFromPublicBrowser() {
     await page.goto(SEARCH_PAGE, { waitUntil: 'domcontentloaded', timeout: 35_000 });
     const button = page.getByRole('button', { name: /\.json/i });
     await button.waitFor({ state: 'visible', timeout: 45_000 });
-    const downloadPromise = page.waitForEvent('download', { timeout: 70_000 });
-    await button.click({ timeout: 15_000 });
-    const download = await downloadPromise;
+    // Obe obljubi morata biti povezani: če klik odpove, ne sme ostati
+    // nezaščiteno čakanje na prenos, ki bi podrlo proces pri zapiranju.
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 70_000 }),
+      button.click({ timeout: 25_000 }),
+    ]);
     const { readFile, stat } = await import('node:fs/promises');
     const file = await download.path();
     if ((await stat(file)).size > MAX_BYTES) throw Error('ZRSZ: preneseni JSON je prevelik');
