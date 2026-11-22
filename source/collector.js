@@ -7,6 +7,7 @@ const SOURCES = [
   { id: 'atama', name: 'Atama', url: 'https://atama.si/za-iskalce/aktualna-ponudba-dela' },
   { id: 'trenkwalder', name: 'Trenkwalder', url: 'https://si.trenkwalder.com/jobs' },
   { id: 'agado', name: 'Agado', url: 'https://www.agado.si/iskalci/69/prosta-delovna-mesta' },
+  { id: 'adecco', name: 'Adecco', url: 'https://www.adecco.com/sl-si/prosta-delovna-mesta' },
 ];
 const PLANNED = [
   { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'ZRSZ za ponovno objavo podatkov zahteva dovoljenje; do dovoljenja le povezava na iskalnik' },
@@ -15,7 +16,7 @@ const PLANNED = [
   { name: 'Nove zaposlitve', href: 'https://novezaposlitve.si/', note: 'Preverjanje strukture in pogojev uporabe' },
   { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjanje strukture in pogojev uporabe' },
   { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski portal s slovenskim trgom dela' },
-  { name: 'Druge zaposlitvene agencije', href: 'https://www.adecco.com/sl-si/', note: 'Adecco in drugi; Manpower prepoveduje avtomatsko zbiranje podatkov' },
+  { name: 'Druge zaposlitvene agencije', href: 'https://www.prohuman.si/', note: 'Prohuman in drugi; Manpower prepoveduje avtomatsko zbiranje podatkov' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
@@ -213,9 +214,59 @@ async function getAgado() {
   if (!jobs.length) throw Error('Unexpected Agado listing format');
   return jobs;
 }
+export function parseAdeccoSitemap(xmlText) {
+  if (!/<urlset\b/i.test(xmlText)) throw Error('Unexpected Adecco sitemap format');
+  const listings = [];
+  for (const match of xmlText.matchAll(/<url>([\s\S]*?)<\/url>/gi)) {
+    const url = xml(match[1], 'loc');
+    const id = url.match(/^https:\/\/www\.adecco\.com\/sl-si\/prosta-delovna-mesta\/[^/?#]+\/(jn-\d{6}-\d+)\/?$/i)?.[1];
+    if (id) listings.push({ id: 'adecco:' + id.toLowerCase(), url });
+  }
+  return Array.from(new Map(listings.map(item => [item.id, item])).values());
+}
+export function parseAdeccoJobPreview(html, listing, now = Date.now()) {
+  const raw = html.match(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i)?.[1];
+  if (!raw) return null;
+  let data;
+  try { data = JSON.parse(raw); } catch { return null; }
+  if (Array.isArray(data)) data = data.find(item => item['@type'] === 'JobPosting');
+  if (!data || data['@type'] !== 'JobPosting') return null;
+  const address = data.jobLocation?.address || {};
+  const country = address.addressCountry?.name || address.addressCountry || '';
+  if (country && !/^(SI|Slovenia|Slovenija)$/i.test(String(country))) return null;
+  const title = plain(data.title || '');
+  if (!title) return null;
+  const due = Date.parse(String(data.validThrough || '').trim());
+  if (Number.isFinite(due) && due < now) return null;
+  const published = Date.parse(data.datePosted || '');
+  return { id: listing.id, source: 'Adecco', title, company: '',
+    location: plain(address.addressLocality || address.location || ''),
+    date: Number.isFinite(published) ? new Date(published).toISOString() : '',
+    deadline: Number.isFinite(due) ? new Date(due).toISOString() : '', url: listing.url };
+}
+async function getAdeccoPreview(listing) {
+  // Javni, v robots.txt dovoljeni URL-ji in samo začetek HTML-ja.
+  // Adecco podpira HTTP Range; 30 KB vsebuje strukturirane podatke JobPosting.
+  const response = await fetch(listing.url, { signal: AbortSignal.timeout(12500),
+    headers: { range: 'bytes=0-29999', 'user-agent': 'DeloRadar/0.1 (personal job listing index)', accept: 'text/html' } });
+  if (response.status !== 206) throw Error('Adecco did not honor a small range request');
+  return parseAdeccoJobPreview(await response.text(), listing);
+}
+async function getAdecco() {
+  const listings = parseAdeccoSitemap(await getText('https://www.adecco.com/sitemap-jobs-slovenia-sl.xml'));
+  if (!listings.length) throw Error('Adecco sitemap has no job listings');
+  const jobs = [];
+  for (let start = 0; start < listings.length; start += 6) {
+    const batch = await Promise.allSettled(listings.slice(start, start + 6).map(getAdeccoPreview));
+    for (const result of batch) if (result.status === 'fulfilled' && result.value) jobs.push(result.value);
+    if (start + 6 < listings.length) await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  if (!jobs.length) throw Error('Adecco details unavailable');
+  return jobs;
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco()]);
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));

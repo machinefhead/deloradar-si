@@ -18,7 +18,10 @@ assert.match(script, /if\(clear\)\{multiSelected\[id\]=\[\];closeMulti\(host\);/
 assert.match(page, /grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/, 'Navigacija mora biti poravnana na sredino');
 assert.match(page, /id="backToTop"/, 'Plavajoči gumb za vrnitev na vrh mora biti v dokumentu');
 assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passive:true\}\)/, 'Gumb za vrh se mora prilagajati drsenju');
-assert.match(page, /Ročni zajem prek GitHuba/);
+assert.match(page, /manualLink\.textContent='↻ Osveži'/, 'Osveži mora biti povezava na ročni zajem v GitHub Actions');
+assert.match(page, /\$\('refresh'\)\.replaceWith\(manualLink\)/, 'Podvojeni gumb za branje istega posnetka ne sme ostati na javni strani');
+assert.match(page, /class="refreshinfo" id="updated">Zadnji zajem oglasov: —/, 'Datum mora biti pod gumbom za osvežitev');
+assert.doesNotMatch(page, /Ob odprtju preberemo zadnji objavljeni posnetek/, 'Podvojeno pojasnilo pod tabelo je odvečno');
 const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
 assert.match(workflow, /cron: '17,47 \* \* \* \*'/, 'Osveževanje mora biti predvideno vsakih 30 minut');
 
@@ -65,7 +68,13 @@ navContext.pageNavigation(12);
 assert.match(navContext.pager.innerHTML, /data-page="1"/);
 assert.match(navContext.pager.innerHTML, /data-page="12"/);
 assert.match(navContext.pager.innerHTML, /data-page="2" aria-current="page"/);
+assert.match(navContext.pager.innerHTML, /aria-label="Prva stran">«<\/button>/);
+assert.match(navContext.pager.innerHTML, /aria-label="Zadnja stran">»<\/button>/);
 assert.match(navContext.pager.innerHTML, /Oglasov na stran/);
+navContext.currentPage=1;navContext.pageNavigation(12);
+assert.match(navContext.pager.innerHTML, /data-page="1" disabled aria-label="Prva stran"/, 'Prva stran mora biti onemogočena na začetku');
+navContext.currentPage=12;navContext.pageNavigation(12);
+assert.match(navContext.pager.innerHTML, /data-page="12" disabled aria-label="Zadnja stran"/, 'Zadnja stran mora biti onemogočena na koncu');
 assert.match(navContext.pager.innerHTML, /<option value="10"/);
 assert.match(navContext.pager.innerHTML, /<option value="25"/);
 assert.match(navContext.pager.innerHTML, /<option value="50"/);
@@ -77,7 +86,7 @@ multiContext.clearMultiSearch({querySelector:()=>mockSearch,querySelectorAll:()=
 assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
-const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings } = await import('../source/collector.js');
+const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview } = await import('../source/collector.js');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -115,4 +124,16 @@ assert.equal(agado[0].location, 'Maribor');
 assert.equal(agado[0].date, '2026-11-17');
 assert.equal(agado[0].url, 'https://www.agado.si/iskalci/69/vsa-prosta-delovna-mesta/j123/oglas-123');
 
-console.log('OK: filtri, stranjenje in parserji vseh šestih virov');
+const adeccoUrl='https://www.adecco.com/sl-si/prosta-delovna-mesta/elektrikar-m-maribor/jn-112026-1190001';
+const adeccoSitemap=parseAdeccoSitemap(`<?xml version="1.0"?><urlset><url><loc>${adeccoUrl}</loc></url><url><loc>https://www.adecco.com/en-si/job-search/test/jn-112026-1190002</loc></url></urlset>`);
+assert.equal(adeccoSitemap.length,1,'Zajemamo samo slovensko različico Adecco');
+const adeccoData={ '@type':'JobPosting', title:'Električar (m/ž)', datePosted:'2026-11-20T10:00:00Z', validThrough:'2026-12-20T23:59:59Z', jobLocation:{address:{addressLocality:'Maribor',addressCountry:'SI'}} };
+const adeccoHtml=`<html><script type="application/ld+json">${JSON.stringify(adeccoData)}</script></html>`;
+const adecco=parseAdeccoJobPreview(adeccoHtml,adeccoSitemap[0],Date.parse('2026-11-22'));
+assert.equal(adecco.title,'Električar (m/ž)');
+assert.equal(adecco.location,'Maribor');
+assert.equal(adecco.id,'adecco:jn-112026-1190001');
+assert.equal(adecco.source,'Adecco');
+assert.equal(parseAdeccoJobPreview(adeccoHtml,adeccoSitemap[0],Date.parse('2027-01-01')),null,'Poteklih oglasov ne vključujemo');
+
+console.log('OK: filtri, straničenje in parserji vseh sedmih virov');
