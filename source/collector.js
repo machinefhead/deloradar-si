@@ -11,6 +11,9 @@ const SOURCES = [
   { id: 'rekruter', name: 'Rekruter', url: 'https://zaposlitev.rekruter.si/jobs' },
   { id: 'nove', name: 'Nove zaposlitve', url: 'https://novezaposlitve.si/' },
   { id: 'lidl', name: 'Lidl Slovenija', url: 'https://kariera.lidl.si/' },
+  { id: 'spar', name: 'SPAR Slovenija', url: 'https://www.spar.si/zaposlitev' },
+  { id: 'kolektor', name: 'Kolektor', url: 'https://www.kolektor.com/kariera' },
+  { id: 'sz', name: 'Slovenske železnice', url: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/' },
 ];
 const PLANNED = [
   { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Uradni iskalnik ZRSZ. Samodejni zajem in ponovna objava zahtevata dovoljenje ZRSZ.', access: 'link' },
@@ -301,7 +304,7 @@ export function parseNoveSitemap(xmlText) {
 }
 function slDate(value) {
   const months = ['januarja','februarja','marca','aprila','maja','junija','julija','avgusta','septembra','oktobra','novembra','decembra'];
-  const m = plain(value).toLocaleLowerCase('sl').match(/(\d{1,2})\s+([a-zčšž]+),?\s+(\d{4})/i);
+  const m = plain(value).toLocaleLowerCase('sl').match(/(\d{1,2})\.?\s+([a-zčšž]+),?\s+(\d{4})/i);
   if (!m) return '';
   const month = months.indexOf(m[2]) + 1;
   return month ? m[3] + '-' + String(month).padStart(2,'0') + '-' + m[1].padStart(2,'0') : '';
@@ -373,9 +376,94 @@ async function getLidl() {
   if (!jobs.length) throw Error('Lidl job details unavailable');
   return jobs;
 }
+export function parseSparSitemap(xmlText, now = Date.now()) {
+  if (!/<urlset\b/i.test(xmlText)) throw Error('Unexpected SPAR jobs sitemap');
+  const listings = [];
+  const cutoff = now - 75 * 86400000;
+  for (const match of xmlText.matchAll(/<url>([\s\S]*?)<\/url>/gi)) {
+    const url = xml(match[1], 'loc');
+    const slug = url.match(/^https:\/\/www\.spar\.si\/zaposlitev\/([a-z0-9-]+)\/?$/i)?.[1];
+    const modified = Date.parse(xml(match[1], 'lastmod'));
+    if (slug && (!Number.isFinite(modified) || modified >= cutoff)) {
+      listings.push({ id: 'spar:' + slug.toLowerCase(), url });
+    }
+  }
+  return Array.from(new Map(listings.map(item => [item.id, item])).values()).slice(0, 150);
+}
+export function parseSparJob(html, listing, now = Date.now()) {
+  const title = plain(html.match(/<h1\b[^>]*\bjob-detail__headline\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '');
+  if (!title) return null;
+  const location = plain(html.match(/Kraj zaposlitve:\s*<\/h4>\s*<div\b[^>]*\bjob-detail__info-text\b[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
+  const deadlineLine = plain(html.match(/Rok za prijavo kandidatov:\s*[^<]{0,125}/i)?.[0] || '');
+  const dates = Array.from(deadlineLine.matchAll(/\d{1,2}\.\s*\d{1,2}\.\s*\d{4}/g), m => parseLocalDate(m[0]));
+  const deadline = dates.at(-1) || '';
+  if (deadline && Date.parse(deadline + 'T23:59:59Z') < now) return null;
+  // Stare strani brez datuma v javnem seznamu ne obravnavamo kot aktualen razpis.
+  if (!deadline) return null;
+  return { id: listing.id, source: 'SPAR Slovenija', title, company: 'SPAR Slovenija',
+    location, date: '', deadline, url: listing.url };
+}
+async function getSpar() {
+  const listings = parseSparSitemap(await getText('https://www.spar.si/index.sitemap.zaposlitev-sitemap.xml'));
+  if (!listings.length) throw Error('SPAR sitemap has no recent listings');
+  const jobs = [];
+  for (let start = 0; start < listings.length; start += 3) {
+    const results = await Promise.allSettled(listings.slice(start, start + 3).map(async listing =>
+      parseSparJob(await getText(listing.url), listing)));
+    for (const result of results) if (result.status === 'fulfilled' && result.value) jobs.push(result.value);
+    if (start + 3 < listings.length) await new Promise(resolve => setTimeout(resolve, 400));
+  }
+  if (!jobs.length) throw Error('SPAR job details unavailable');
+  return jobs;
+}
+export function parseKolektorListings(html, now = Date.now()) {
+  const table = html.match(/<table\b[^>]*class=["'][^"']*\blist\b[^"']*["'][^>]*>([\s\S]*?)<\/table>/i)?.[1];
+  if (!table) throw Error('Kolektor vacancies table missing');
+  const jobs = [];
+  for (const row of table.matchAll(/<tr\b[^>]*class=["'][^"']*\bitem\b[^"']*["'][^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const cells = Array.from(row[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi), m => m[1]);
+    if (cells.length !== 4) continue;
+    const link = cells[1].match(/<a\b[^>]*href=["'](\/sl\/o-nas\/kadri-in-izobrazevanje\/[^"'#?]+)["'][^>]*>([\s\S]*?)<\/a>/i);
+    if (!link) continue;
+    const title = plain(link[2]), location = plain(cells[2]);
+    if (!title || (/(BIH|Bosna|Srbija|Hrvaška|Klašnice)/i.test(location) && !/Slovenij/i.test(location))) continue;
+    const deadline = parseLocalDate(plain(cells[3]));
+    if (deadline && Date.parse(deadline + 'T23:59:59Z') < now) continue;
+    const url = new URL(link[1], 'https://www.kolektor.com').href;
+    jobs.push({ id: 'kolektor:' + link[1], source: 'Kolektor', title, company: 'Kolektor',
+      location, date: '', deadline, url });
+  }
+  return Array.from(new Map(jobs.map(j => [j.id, j])).values());
+}
+async function getKolektor() {
+  const jobs = parseKolektorListings(await getText('https://www.kolektor.com/kariera'));
+  if (!jobs.length) throw Error('Kolektor has no active jobs in table');
+  return jobs;
+}
+export function parseSzListings(html, now = Date.now()) {
+  const jobs = [];
+  for (const card of html.matchAll(/<article\b[^>]*class=["'][^"']*\btype-razpisi_za_delo\b[^"']*["'][^>]*>([\s\S]*?)<\/article>/gi)) {
+    const link = card[1].match(/<a\b[^>]*href=["'](https:\/\/www\.sz\.si\/pogoji_za_zaposlitev\/[^"'#?]+)["']/i)?.[1];
+    const title = plain(card[1].match(/<div\b[^>]*class=["'][^"']*\bpost-title\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
+    const deadline = slDate(card[1].match(/Rok za prijavo:\s*(\d{1,2}\.?\s+[a-zčšž]+\s+\d{4})/i)?.[1] || '');
+    if (!link || !title || !deadline || Date.parse(deadline + 'T23:59:59Z') < now) continue;
+    jobs.push({ id: 'sz:' + link, source: 'Slovenske železnice', title,
+      company: 'Slovenske železnice', location: '', date: '', deadline, url: link });
+  }
+  return Array.from(new Map(jobs.map(j => [j.id, j])).values());
+}
+export function parseSzLocation(html) {
+  return plain(html.match(/<strong>\s*Lokacija zaposlitve\s*<\/strong>\s*:\s*([^<]+)/i)?.[1] || '');
+}
+async function getSz() {
+  const jobs = parseSzListings(await getText('https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/'));
+  const enriched = await Promise.allSettled(jobs.map(async job => ({ ...job,
+    location: parseSzLocation(await getText(job.url)) })));
+  return jobs.map((job, i) => enriched[i].status === 'fulfilled' ? enriched[i].value : job);
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getSpar(), getKolektor(), getSz()]);
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));
