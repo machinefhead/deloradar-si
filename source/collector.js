@@ -5,6 +5,7 @@ const SOURCES = [
   { id: 'kariera', name: 'Kariera.si', url: 'https://www.kariera.si/sl/delovna-mesta' },
   { id: 'govsi', name: 'GOV.SI', url: 'https://www.gov.si/zbirke/delovna-mesta/' },
   { id: 'atama', name: 'Atama', url: 'https://atama.si/za-iskalce/aktualna-ponudba-dela' },
+  { id: 'trenkwalder', name: 'Trenkwalder', url: 'https://si.trenkwalder.com/jobs' },
 ];
 const PLANNED = [
   { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'ZRSZ za ponovno objavo podatkov zahteva dovoljenje; do dovoljenja le povezava na iskalnik' },
@@ -13,7 +14,7 @@ const PLANNED = [
   { name: 'Nove zaposlitve', href: 'https://novezaposlitve.si/', note: 'Preverjanje strukture in pogojev uporabe' },
   { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjanje strukture in pogojev uporabe' },
   { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski portal s slovenskim trgom dela' },
-  { name: 'Druge zaposlitvene agencije', href: 'https://www.adecco.si/', note: 'Adecco, Trenkwalder in drugi; Manpower prepoveduje avtomatsko zbiranje podatkov' },
+  { name: 'Druge zaposlitvene agencije', href: 'https://www.adecco.com/sl-si/', note: 'Adecco in drugi; Manpower prepoveduje avtomatsko zbiranje podatkov' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
@@ -160,9 +161,34 @@ async function getAtama() {
   if (!jobs.length) throw Error('Unexpected Atama listing format');
   return jobs;
 }
+export function parseTrenkwalderListings(html) {
+  const jobs = [];
+  // Strežnik javno izriše prvo stran (do 30). Njihov /api/* je izključen
+  // v robots.txt, zato ne uporabljamo skritih internih API-jev.
+  for (const match of html.matchAll(/<h3\b[^>]*class=["'][^"']*subtitle_highlight[^"']*["'][^>]*>([\s\S]*?)<\/h3>/gi)) {
+    const title = plain(match[1]);
+    const url = match[1].match(/<a\s+href=["'](https:\/\/si\.trenkwalder\.com\/jobs\/a0t[a-zA-Z0-9]+)["']/i)?.[1];
+    if (!title || !url) continue;
+    const before = html.slice(Math.max(0, match.index - 2800), match.index);
+    const dateParts = Array.from(before.matchAll(/<span class=["']micro_highlight text-gray-40 mr-auto["']>(\d{4})\.(\d{2})\.(\d{2})<\/span>/gi)).at(-1);
+    const after = html.slice(match.index + match[0].length, match.index + match[0].length + 1700);
+    const location = plain(after.match(/<p class=["']micro_highlight truncate leading-5["']>([^<]+)<\/p>/i)?.[1] || '');
+    // Tuja prosta mesta ne sodijo v zbirko za Slovenijo.
+    if (/(?:nemčij|avstrij|kassel|hrvašk)/i.test(title + ' ' + location)) continue;
+    jobs.push({ id: 'trenkwalder:' + url, source: 'Trenkwalder', title, company: '', location,
+      date: dateParts ? dateParts[1] + '-' + dateParts[2] + '-' + dateParts[3] : '',
+      deadline: '', url });
+  }
+  return jobs;
+}
+async function getTrenkwalder() {
+  const jobs = parseTrenkwalderListings(await getText('https://si.trenkwalder.com/jobs'));
+  if (!jobs.length) throw Error('Unexpected Trenkwalder listing format');
+  return jobs;
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder()]);
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));
