@@ -15,7 +15,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Namesti odvisnosti
+        run: npm ci
       - name: Preveri JavaScript in parserje
         run: npm test
       - name: Preveri dejanski zajem tudi na GitHubu
         run: npm run build
+        env:
+          ZRSZ_BROWSER_ENABLED: '1'

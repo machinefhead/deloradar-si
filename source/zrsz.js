@@ -1,5 +1,5 @@
-// ZRSZ: uradni dnevni JSON seznam. Samodejni zajem zahteva posebej
-// odobren podatkovni URL, ki ga nastavimo kot skrivnost GitHub Actions.
+// ZRSZ: dnevni JSON. Javnega gumba se dotaknemo prek običajnega
+// brskalnika; aplikacijskega dostopnega ključa ne beremo niti ne kopiramo.
 const SEARCH_PAGE = 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/';
 const MAX_BYTES = 15_000_000;
 
@@ -80,4 +80,31 @@ export async function getZrszJson(url) {
   const raw = await response.text();
   if (raw.length > MAX_BYTES) throw Error('ZRSZ: prevelik JSON');
   return parseZrszJson(JSON.parse(raw));
+}
+
+export async function getZrszFromPublicBrowser() {
+  const { chromium } = await import('playwright-core');
+  // Na GitHubovem standardnem runnerju je Google Chrome že nameščen.
+  // Ne uporabljamo osebne seje, shranjenih gesel ali internih API-jev.
+  const browser = await chromium.launch({ channel: 'chrome', headless: true, timeout: 30_000 });
+  try {
+    const context = await browser.newContext({ acceptDownloads: true, locale: 'sl-SI' });
+    const page = await context.newPage();
+    await page.goto(SEARCH_PAGE, { waitUntil: 'domcontentloaded', timeout: 35_000 });
+    const button = page.getByRole('button', { name: /\.json/i });
+    await button.waitFor({ state: 'visible', timeout: 45_000 });
+    const downloadPromise = page.waitForEvent('download', { timeout: 70_000 });
+    await button.click({ timeout: 15_000 });
+    const download = await downloadPromise;
+    const { readFile, stat } = await import('node:fs/promises');
+    const file = await download.path();
+    if ((await stat(file)).size > MAX_BYTES) throw Error('ZRSZ: preneseni JSON je prevelik');
+    const payload = JSON.parse(await readFile(file, 'utf8'));
+    const jobs = parseZrszJson(payload);
+    // V dnevnik zapišemo le osnovno stanje, ne vsebine ali zahtevkov.
+    console.log('ZRSZ: javni JSON ' + payload.DatumObjave + ', aktualnih oglasov ' + jobs.length);
+    return jobs;
+  } finally {
+    await browser.close();
+  }
 }
