@@ -3,14 +3,14 @@ import { page } from './page.js';
 const SOURCES = [
   { id: 'optius', name: 'Optius', url: 'https://www.optius.com/iskalci/prosta-delovna-mesta/' },
   { id: 'kariera', name: 'Kariera.si', url: 'https://www.kariera.si/sl/delovna-mesta' },
+  { id: 'govsi', name: 'GOV.SI', url: 'https://www.gov.si/zbirke/delovna-mesta/' },
 ];
 const PLANNED = [
-  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Preveriti dovoljenje in uradni izvoz podatkov' },
+  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'ZRSZ za ponovno objavo podatkov zahteva dovoljenje; do dovoljenja le povezava na iskalnik' },
   { name: 'MojeDelo.com', href: 'https://www.mojedelo.com/', note: 'Povezava za podatke še ni preverjena' },
   { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Že združuje vire; preprečiti dvojnike' },
   { name: 'Nove zaposlitve', href: 'https://novezaposlitve.si/', note: 'Preverjanje strukture in pogojev uporabe' },
   { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjanje strukture in pogojev uporabe' },
-  { name: 'GOV.SI – javni natečaji', href: 'https://www.gov.si/zbirke/delovna-mesta/', note: 'Poseben vir za javni sektor' },
   { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski portal s slovenskim trgom dela' },
   { name: 'Zaposlitvene agencije', href: 'https://www.manpower.si/', note: 'Manpower, Adecco, Trenkwalder, Atama in drugi' },
 ];
@@ -81,9 +81,40 @@ async function getKariera() {
   if (!jobs.length) throw Error('Unexpected listing format');
   return jobs;
 }
+export function parseGovListings(html) {
+  // GOV.SI v HTML-ju zapira <tbody> po vsaki vrstici; zato razčlenimo celotno tabelo.
+  const table = html.match(/<table\b[^>]*>([\s\S]*?)<\/table>/i)?.[1];
+  if (!table) throw Error('GOV.SI listings table not found');
+  const jobs = [];
+  for (const row of table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const cells = Array.from(row[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi), m => m[1]);
+    if (cells.length < 8) continue;
+    if (!/^v teku$/i.test(plain(cells[7]))) continue;
+    const link = cells[0].match(/<a\b[^>]*href=["'](\/zbirke\/delovna-mesta\/[^"'#?]+)["'][^>]*>([\s\S]*?)<\/a>/i);
+    if (!link) continue;
+    const title = plain(link[2]);
+    if (!title) continue;
+    const url = new URL(link[1], 'https://www.gov.si').href;
+    jobs.push({ id: 'govsi:' + link[1], source: 'GOV.SI', title,
+      company: plain(cells[3]), location: '', date: parseLocalDate(plain(cells[1])),
+      deadline: parseLocalDate(plain(cells[2])), url });
+  }
+  return jobs;
+}
+async function getGov() {
+  const jobs = [];
+  for (let page = 0; page < 8; page++) {
+    const url = `https://www.gov.si/zbirke/delovna-mesta/?nrOfItems=100&status=ongoing&start=${page * 100}`;
+    const found = parseGovListings(await getText(url));
+    if (page === 0 && found.length === 0) throw Error('GOV.SI returned no current jobs');
+    jobs.push(...found);
+    if (found.length < 100) break;
+  }
+  return jobs;
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov()]);
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));

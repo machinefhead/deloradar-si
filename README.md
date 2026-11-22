@@ -4,11 +4,12 @@ Pregled prostih delovnih mest iz slovenskih zaposlitvenih portalov: **[odpri apl
 
 ## Prva različica
 
-- Vira: **Optius** in **Kariera.si**. Pri vsakem oglasu je povezava do izvirnega portala.
+- Viri: **Optius**, **Kariera.si** in **GOV.SI** (aktualni javni razpisi). Pri vsakem oglasu je povezava do izvirnega portala.
 - Večizbirni filtri: zaposlitveni portal, regija, kraj, poklicno področje, delodajalec. Dodatno: iskanje, datum objave, rok prijave, status, zaznamki.
 - Izvoz filtriranega seznama v CSV; ročno označevanje zanimivih in kontaktiranih oglasov.
 - Filtri in osebne oznake so shranjeni **v trenutnem brskalniku** (`localStorage`); telefon in računalnik za zdaj **nista sinhronizirana**.
-- GitHub Actions predvidoma na **6 ur** pridobi oglase in objavi statično stran; stran se ob obisku poveže z zadnjim objavljenim `jobs.json`. Osveži gumb ponovno prebere ta posnetek, ne sproži novega zajema.
+- GitHub Actions predvidoma na **6 ur** pridobi oglase in objavi statično stran; stran se ob obisku poveže z zadnjim objavljenim `jobs.json`. Gumb »Preveri zadnji zajem« ponovno prebere ta posnetek, **ne sproži novega zajema**. Sprotno osveževanje ob kliku potrebuje dodatni strežniški API.
+- Nevtralna temna tema in mobilna zložljiva razdelka »Filtri« ter »Stanje povezav in viri«.
 - Regije in področja so ocenjena iz navedenega kraja/naziva; nepopolnih podatkov ne ugibamo. Oglasi lahko že potečejo med dvema zajemoma, zato preveri izvirnik.
 
 ## Zagon in preverjanje
@@ -27,3 +28,5 @@ Generirana statična stran je v `dist/` (`index.html`, `jobs.json`). Za lokalni 
 GitHub Pages uporablja **GitHub Actions** (`.github/workflows/pages.yml`): ob spremembi `main`, ročno in po urniku. Če oba vira odpovesta, sestavljanje odpove in prejšnja uspešna objava ostane na spletu.
 
 Razširitve z novimi viri, bolj zanesljivimi regijami in morebitnim zasebnim računom bomo razvijali postopoma. V prvi različici **ni** oblačne podatkovne baze in **ni** avtomatskega pošiljanja prijav.
+
+ZRSZ v svojem iskalniku izrecno navaja, da ponovno objavljanje njihovih podatkov brez dovoljenja ni dovoljeno; zato tega vira ne vključujemo brez soglasja.

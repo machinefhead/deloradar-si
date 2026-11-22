@@ -3,7 +3,7 @@ export const page = String.raw`<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f7f8f5">
+  <meta name="theme-color" content="#212121">
   <meta name="description" content="Javni pregledovalnik prostih delovnih mest v Sloveniji">
   <title>DeloRadar · Prosta delovna mesta v Sloveniji</title>
   <style>
@@ -34,9 +34,60 @@ export const page = String.raw`<!doctype html>
       .sidebar>.panel:first-of-type{display:none}
       .sidebar.filters-open>.panel:first-of-type{display:block}
       .sidebar>.panel:nth-of-type(2){display:none}
+      .sidebar.sources-open>.panel:nth-of-type(2){display:block}
       .asidecallout{display:none}
+      .sidebar.sources-open>.asidecallout{display:block}
       .mainpanel{width:100%}
       .multi-menu{width:100%;max-width:none}
+    }
+    /* Temna različica, navdihnjena z nevtralno grafitno paleto. */
+    :root{color-scheme:dark;color:#eeeeee;background:#212121;--base:#212121;--panel:#2f2f2f;--field:#383838;--line:#484848;--muted:#b2b2b2;--accent:#c4b5fd}
+    body{background:var(--base)}
+    button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline-color:#b3a4ff}
+    .topbar,.bottom{border-color:var(--line)}
+    .brand span:last-child,.eyebrow,.clear,.sourcecard a,.smalllink,.jobtitle:hover,.openjob,.asidecallout button{color:var(--accent)}
+    .mark{background:#51467b;color:#fff;box-shadow:0 3px 0 #272237}
+    .priv{background:#373442;color:#d4caff;border-color:#534b68}
+    .intro p,.countsub,.stat .kicker,.stat .foot,.filtergroup label,.checkrow,.sourceitem,.sourceitem .name,.srcfooter,.muted,.dead,.refreshinfo,.bottom,.sourcecatalog>p,.sourcecard p,.filtergroup small,.filterheading,.sectionlabel,.more,.sourceitem .name{color:var(--muted)}
+    .refresh,.outline,.sortselect,.panel,.stat,.tablewrap,.sourcecard,.field,.multi-trigger,.multi-menu,.multi-menu .multi-search,.state{background:var(--panel);color:#ededed;border-color:var(--line);box-shadow:none}
+    .refresh:hover,.outline:hover,.multi-trigger:hover,.state:hover{background:#3b3b3b;color:#fff;border-color:#777087}
+    .stat.highlight{background:#48405d;border-color:#635577}
+    .stat.highlight .kicker,.stat.highlight .foot{color:#d2c9e7}
+    .stat .lightdot{background:#c7b5ff;box-shadow:0 0 0 5px #c4b5fd1c}
+    .field:focus,.multi-menu .multi-search:focus{border-color:#b6a6ff;box-shadow:0 0 0 3px #7a69b74d}
+    input.field::placeholder,.multi-menu .multi-search::placeholder{color:#a9a9a9}
+    .field,.multi-trigger,.multi-menu .multi-search{background-color:var(--field)}
+    .filterheading{color:#b8a7f2;border-color:var(--line)}
+    .filtergroup select:disabled{background:#292929;color:#929292}
+    .checkrow input,.multi-option input{accent-color:#a995ee}
+    .multi-menu{background:#303030;box-shadow:0 16px 40px #0008}
+    .multi-option{color:#e4e4e4}.multi-option small{color:#a9a9a9}
+    .multi-actions{border-color:var(--line)}.multi-actions button{color:var(--accent)}
+    .multi-chip{background:#454053;color:#e7dcff;border-color:#645a7e}
+    .multi-chip button{color:#e7dcff}
+    .tablewrap{background:var(--panel)}
+    .listtable th{background:#303030;color:#bcbcbc;border-color:var(--line)}
+    .listtable td{border-color:#434343}.listtable tbody tr:hover{background:#393939}
+    .jobtitle{color:#f5f5f5}.jobcompany{color:#b4b4b4}
+    .srcbadge{background:#414052;color:#dcd3fc}.srcbadge.kariera{background:#423b54;color:#dbc6fd}
+    .state.applied{background:#393f53;color:#c9d8ff;border-color:#5c6690}
+    .state.saved{background:#4a4039;color:#ffe0b6;border-color:#7a6556}
+    .star{color:#a7a7a7}.star.active{color:#f9c977}
+    .more{background:#292929;border-color:var(--line)}
+    .empty,.empty h3{color:#c9c9c9}
+    .notice{background:#494030;border-color:#6b5c3d;color:#ffe3a6}
+    .sourceitem .pill{background:#434057;color:#d9caff}
+    .sourceitem .pill.err{background:#594038;color:#ffd6c3}
+    .srcfooter{border-color:var(--line)}
+    .asidecallout,.explain{background:#35313d;border-color:#504858;color:#e5deed}
+    .asidecallout h3,.asidecallout p,.explain{color:#ddd5e6}
+    .sourcecard{background:var(--panel)}
+    .sourcecard .tag{background:#4b4140;color:#ffe0ba}
+    .mobilefilters{background:#373343;border-color:#514861;color:#e4d9ff}
+    .bottom a{color:var(--accent)}
+    @media(max-width:770px){
+      .listtable tr,.listtable tbody tr:hover{background:var(--panel);border-color:var(--line)}
+      .more{border-color:var(--line)}
     }
   </style>
 </head>
@@ -205,6 +256,8 @@ export const page = String.raw`<!doctype html>
         document.querySelector('.srcfooter').textContent='To je lokalni preizkus z vgrajenim posnetkom oglasov. Pridobivanje novih oglasov še ni omogočeno.';
         $('refresh').textContent='↻ Preberi testni posnetek';
         $('refresh').title='Lokalni ZIP se brez novega paketa ne osvežuje';
+      }else{
+        $('refresh').title='Ponovno naloži zadnji objavljeni zajem. Nov strežniški zajem se za zdaj izvede po urniku.';
       }
       function getState(id){return state[id]||{}}
       function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch(e){} updateStats()}
@@ -216,6 +269,7 @@ export const page = String.raw`<!doctype html>
       function sourceRender(){
         $('sourceStatus').innerHTML=sources.map(function(s){return '<div class="sourceitem"><span class="name">'+safe(s.name)+'</span><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov':'Ni odziva')+'</span></div>'}).join('');
         $('sourcesNum').textContent=sources.filter(function(s){return s.status==='live'}).length;
+        document.querySelector('.stats .stat:nth-child(2) .foot').textContent='od '+sources.length+' povezanih';
         $('planned').innerHTML=planned.map(function(s){return '<div class="sourcecard"><a target="_blank" rel="noopener noreferrer" href="'+safe(s.href)+'">'+safe(s.name)+' ↗</a><p>'+safe(s.note)+'</p><span class="tag">V pripravi</span></div>'}).join('');
         var broken=sources.filter(function(s){return s.status!=='live'});
         $('notice').innerHTML=broken.length?'<div class="notice">Pozor: '+broken.map(function(x){return safe(x.name)}).join(', ')+' trenutno ni dosegljiv. Spodaj so samo uspešno pridobljeni oglasi.</div>':'';
@@ -246,9 +300,10 @@ export const page = String.raw`<!doctype html>
       }
       function noticeMessage(txt){$('notice').innerHTML='<div class="notice">'+safe(txt)+'</div>'}
       function load(){
-        $('refresh').disabled=true;$('refresh').textContent='↻   Preverjam vire …';$('progress').style.display='block';
+        $('refresh').disabled=true;$('refresh').textContent='↻   Nalagam posnetek …';$('progress').style.display='block';
         (offline?Promise.resolve(window.__DELORADAR_OFFLINE_DATA__):fetch((window.__DELORADAR_DATA_URL__||'./jobs.json')+'?v='+Date.now(),{cache:'no-store',headers:{accept:'application/json'}}).then(function(r){if(!r.ok)throw Error('Strežnik ni dosegljiv');return r.json()})).then(function(data){
           jobs=data.jobs||[];sources=data.sources||[];planned=data.planned||[];checkedAt=data.checkedAt||'';
+          configureMulti('sourceFilter',sources.map(function(s){return s.name}),'Vsi portali');
           configureMulti('city',Array.from(new Set(jobs.map(function(j){return j.location}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'sl')}),'Vsi kraji');
           configureMulti('company',Array.from(new Set(jobs.map(function(j){return j.company}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'sl')}),'Vsi delodajalci');
           ['sourceFilter','region','sector'].forEach(drawMulti);
@@ -259,7 +314,7 @@ export const page = String.raw`<!doctype html>
           }else{
             $('updated').textContent='Zadnji zajem oglasov: '+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+' · Ob odprtju preberemo zadnji objavljeni posnetek; nov zajem običajno na 6 ur.';
           }
-        }).catch(function(){noticeMessage('Oglasov trenutno ni mogoče pridobiti. Preveri povezavo in poskusi znova.');$('jobRows').innerHTML='<tr><td colspan="6" class="empty">Napaka pri pridobivanju podatkov.</td></tr>'}).finally(function(){$('progress').style.display='none';$('refresh').disabled=false;$('refresh').textContent=offline?'↻   Preberi testni posnetek':'↻   Osveži oglase'});
+        }).catch(function(){noticeMessage('Oglasov trenutno ni mogoče pridobiti. Preveri povezavo in poskusi znova.');$('jobRows').innerHTML='<tr><td colspan="6" class="empty">Napaka pri pridobivanju podatkov.</td></tr>'}).finally(function(){$('progress').style.display='none';$('refresh').disabled=false;$('refresh').textContent=offline?'↻   Preberi testni posnetek':'↻   Preveri zadnji zajem'});
       }
       ['search','place'].forEach(function(id){$(id).addEventListener('input',render)});
       ['sourceFilter','onlySaved','hideApplied','sort'].forEach(function(id){$(id).addEventListener('change',render)});
@@ -290,6 +345,15 @@ export const page = String.raw`<!doctype html>
         var open=sidebar.classList.toggle('filters-open');
         mobileToggle.setAttribute('aria-expanded',String(open));
         mobileToggle.textContent=open?'☷  Skrij filtre':'☷  Prikaži filtre';
+      });
+      var sourcesToggle=document.createElement('button');
+      sourcesToggle.type='button';sourcesToggle.className='mobilefilters';sourcesToggle.setAttribute('aria-expanded','false');
+      sourcesToggle.textContent='◉  Stanje povezav in viri';
+      sidebar.querySelectorAll('.panel')[1].before(sourcesToggle);
+      sourcesToggle.addEventListener('click',function(){
+        var open=sidebar.classList.toggle('sources-open');
+        sourcesToggle.setAttribute('aria-expanded',String(open));
+        sourcesToggle.textContent=open?'◉  Skrij stanje povezav':'◉  Stanje povezav in viri';
       });
       updateStats();load();
     })();
