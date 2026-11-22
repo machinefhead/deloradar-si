@@ -16,13 +16,13 @@ const SOURCES = [
   { id: 'zaposlitevinfo', name: 'Zaposlitev.info', url: 'https://zaposlitev.info/prosta-delovna-mesta/' },
 ];
 const PLANNED = [
-  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Za povezavo še iščemo javno dostopen produkcijski izvoz JSON.', access: 'review' },
-  { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Samodejnim zahtevam se prikaže preverjanje obiskovalca; potreben je dostopen podatkovni vir.', access: 'link' },
-  { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjamo dostopnost, strukturo in pogoje uporabe.', access: 'review' },
-  { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski portal. Strojni dostop je namenjen pooblaščenim partnerjem.', access: 'link' },
-  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev', note: 'GitHubov strežnik prejme HTTP 403; oglase odpri na uradni strani.', access: 'link' },
-  { name: 'Slovenske železnice', href: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/', note: 'GitHubov strežnik prejme HTTP 403; odprte razpise odpri na uradni strani.', access: 'link' },
-  { name: 'Druge zaposlitvene agencije', href: 'https://www.prohuman.si/', note: 'Prohuman in drugi; Manpower prepoveduje avtomatsko zbiranje podatkov' },
+  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Uradni iskalnik; za samodejni zajem še potrebujemo delujoč podatkovni dostop.' },
+  { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.' },
+  { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjamo možnost rednega zajema.' },
+  { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski iskalnik; za avtomatizacijo je potreben partnerski dostop.' },
+  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev', note: 'Strežnik za zajem prejme HTTP 403; uporabi izvirni seznam.' },
+  { name: 'Slovenske železnice', href: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/', note: 'Strežnik za zajem prejme HTTP 403; uporabi izvirne razpise.' },
+  { name: 'Prohuman', href: 'https://www.prohuman.si/', note: 'Dodatna zaposlitvena agencija v preverjanju.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
