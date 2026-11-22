@@ -29,7 +29,7 @@ const context = {
     { id: '1', title: 'Električar', company: 'A', location: 'Maribor', region: 'Podravska', sector: 'Elektrotehnika', source: 'Optius' },
     { id: '2', title: 'Programer', company: 'B', location: 'Ptuj', region: 'Podravska', sector: 'IT', source: 'Kariera.si' },
     { id: '3', title: 'Programer', company: 'A', location: 'Ljubljana', region: 'Osrednjeslovenska', sector: 'IT', source: 'Optius' },
-    { id: '4', title: 'Programer', company: 'A', location: 'Maribor', region: 'Podravska', sector: 'IT', source: 'GOV.SI' }
+    { id: '4', title: 'Programer', company: 'A', location: 'Maribor', region: 'Podravska', regions: ['Podravska', 'Savinjska'], sector: 'IT', source: 'GOV.SI' }
   ],
   multiIds: ['sourceFilter', 'region', 'city', 'sector', 'company'],
   selectedValues: id => selected[id] || [],
@@ -50,8 +50,10 @@ assert.deepEqual(JSON.parse(JSON.stringify(Array.from(context.facetCounts('city'
 selected.city = ['Maribor'];
 assert.equal(context.jobs.filter(job => context.matchesJob(job)).length, 1, 'Filtri morajo delovati skupaj');
 assert.equal(context.facetCounts('region').get('Podravska'), 1, 'Število pri regiji upošteva ostale filtre');
+assert.equal(context.facetCounts('region').get('Savinjska'), 1, 'Oglas lahko pripada več regijam, ne sme se podvajati v tabeli');
+assert.match(page, /id="loadMore"/, 'Ob več kot 500 oglasih mora biti omogočen prikaz preostalih zadetkov');
 
-const { parseGovListings } = await import('../source/collector.js');
+const { parseGovListings, parseAtamaListings, parseOptiusFeed } = await import('../source/collector.js');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -64,4 +66,12 @@ assert.equal(gov[0].date, '2026-11-20');
 assert.equal(gov[0].deadline, '2026-12-04');
 assert.equal(gov[0].url, 'https://www.gov.si/zbirke/delovna-mesta/test-1/');
 
-console.log('OK: predloga, odjemalski JS in parser GOV.SI');
+const atama = parseAtamaListings('<div class="pos_novica_ps_spisek"><h3>Električar (m/ž) Maribor</h3><div class="povzetev_nov_ps_spisek">Opis dela</div><div class="vec_nov_ps_spisek"><a href="S2210/D28068/Elektricar">Več o tem</a></div><div class="clear"></div></div>');
+assert.equal(atama.length, 1);
+assert.equal(atama[0].title, 'Električar (m/ž) Maribor');
+assert.equal(atama[0].url, 'https://atama.si/S2210/D28068/Elektricar');
+const optius = parseOptiusFeed('<rss><item><title>Elektrotehnik</title><link>https://www.optius.com/iskalci/prosta-delovna-mesta/test/</link><employer>Podjetje</employer><pubDate>Fri, 20 Nov 2026 15:17:00 +0100</pubDate></item></rss>');
+assert.equal(optius.length, 1);
+assert.equal(optius[0].company, 'Podjetje');
+
+console.log('OK: predloga, povezani filtri in parserji GOV.SI, Atama, Optius');
