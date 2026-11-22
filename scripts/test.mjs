@@ -68,13 +68,14 @@ navContext.pageNavigation(12);
 assert.match(navContext.pager.innerHTML, /data-page="1"/);
 assert.match(navContext.pager.innerHTML, /data-page="12"/);
 assert.match(navContext.pager.innerHTML, /data-page="2" aria-current="page"/);
-assert.match(navContext.pager.innerHTML, /aria-label="Prva stran">«<\/button>/);
-assert.match(navContext.pager.innerHTML, /aria-label="Zadnja stran">»<\/button>/);
+assert.match(navContext.pager.innerHTML, /aria-label="Prejšnja stran">‹<\/button>/);
+assert.match(navContext.pager.innerHTML, /aria-label="Naslednja stran">›<\/button>/);
+assert.doesNotMatch(navContext.pager.innerHTML, /Prva stran|Zadnja stran|«|»/, 'Odstranimo skoka na prvo in zadnjo stran');
 assert.match(navContext.pager.innerHTML, /Oglasov na stran/);
 navContext.currentPage=1;navContext.pageNavigation(12);
-assert.match(navContext.pager.innerHTML, /data-page="1" disabled aria-label="Prva stran"/, 'Prva stran mora biti onemogočena na začetku');
+assert.match(navContext.pager.innerHTML, /data-page="0" disabled aria-label="Prejšnja stran"/, 'Prejšnja stran mora biti onemogočena na začetku');
 navContext.currentPage=12;navContext.pageNavigation(12);
-assert.match(navContext.pager.innerHTML, /data-page="12" disabled aria-label="Zadnja stran"/, 'Zadnja stran mora biti onemogočena na koncu');
+assert.match(navContext.pager.innerHTML, /data-page="13" disabled aria-label="Naslednja stran"/, 'Naslednja stran mora biti onemogočena na koncu');
 assert.match(navContext.pager.innerHTML, /<option value="10"/);
 assert.match(navContext.pager.innerHTML, /<option value="25"/);
 assert.match(navContext.pager.innerHTML, /<option value="50"/);
@@ -86,7 +87,7 @@ multiContext.clearMultiSearch({querySelector:()=>mockSearch,querySelectorAll:()=
 assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
-const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview } = await import('../source/collector.js');
+const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob } = await import('../source/collector.js');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -136,4 +137,20 @@ assert.equal(adecco.id,'adecco:jn-112026-1190001');
 assert.equal(adecco.source,'Adecco');
 assert.equal(parseAdeccoJobPreview(adeccoHtml,adeccoSitemap[0],Date.parse('2027-01-01')),null,'Poteklih oglasov ne vključujemo');
 
-console.log('OK: filtri, straničenje in parserji vseh sedmih virov');
+const rekruterFeed=`<rss><channel><item><title>Elektrotehnik (m/ž)</title><link>https://zaposlitev.rekruter.si/jobs/8775101-elektrotehnik</link><pubDate>Fri, 20 Nov 2026 13:34:44 +0100</pubDate><tt:locations><tt:location><tt:name>Podravska</tt:name><tt:city>Maribor</tt:city><tt:country>Slovenia</tt:country></tt:location></tt:locations></item><item><title>Delo na Hrvaškem</title><link>https://zaposlitev.rekruter.si/jobs/1234567-tujina</link><tt:locations><tt:location><tt:city>Zagreb</tt:city><tt:country>Croatia</tt:country></tt:location></tt:locations></item></channel></rss>`;
+const rekruter=parseRekruterFeed(rekruterFeed);
+assert.equal(rekruter.length,1,'Rekruter: brez izključno tujih zaposlitev');
+assert.equal(rekruter[0].location,'Maribor');
+assert.equal(rekruter[0].id,'rekruter:8775101');
+assert.equal(rekruter[0].date,'2026-11-20T12:34:44.000Z');
+const noveUrl='https://novezaposlitve.si/razisci/delovna-mesta/elektricarji-in-monterji-m-z/';
+const noveList=parseNoveSitemap(`<urlset><url><loc>${noveUrl}</loc></url><url><loc>https://novezaposlitve.si/razisci/iscem-zaposlitev/kandidat/</loc></url></urlset>`);
+assert.equal(noveList.length,1,'Nove zaposlitve: ne vključimo oglasov iskalcev zaposlitve');
+const noveHtml='<h1 class="case27-primary-text">Električarji in monterji (m/ž)</h1><div class="lmb-label">Prijave do: </div><div class="value">23 decembra, 2026</div><li><div class="item-attr">Podjetje</div><div class="item-property">DMB d.o.o.</div></li><li><div class="item-attr">Datum objave</div><div class="item-property">29 oktobra, 2026</div></li>';
+const nove=parseNoveJob(noveHtml,noveList[0],Date.parse('2026-11-22'));
+assert.equal(nove.company,'DMB d.o.o.');
+assert.equal(nove.date,'2026-10-29');
+assert.equal(nove.deadline,'2026-12-23');
+assert.equal(parseNoveJob(noveHtml,noveList[0],Date.parse('2027-01-01')),null,'Poteklih oglasov Nove zaposlitve ne vključimo');
+
+console.log('OK: filtri, straničenje in parserji vseh devetih virov');
