@@ -92,15 +92,17 @@ export const page = String.raw`<!doctype html>
     .manualrefresh{font-size:12px;color:var(--accent);text-decoration:none;font-weight:720}
     .manualrefresh:hover{text-decoration:underline}
     .more button{margin-left:10px;padding:6px 10px;border:1px solid #665b81;border-radius:7px;background:#454053;color:#e7dcff;font-weight:750}
-    .pager{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px;color:var(--muted);font-size:13px}
-    .pager .pagebuttons{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+    .filterhead{gap:8px;margin-bottom:18px}.filterhead .sectionlabel{margin:0;letter-spacing:.65px}.filterhead .clear{flex:none;white-space:nowrap;padding:5px 7px;border:1px solid #5b536d;border-radius:7px;background:#3a3644;color:var(--accent);font-size:12px}.filterhead .clear:hover{background:#4b435b;border-color:#8f7ab8}
+    .pager{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;margin-top:14px;color:var(--muted);font-size:13px}
+    .pager .pagebuttons{grid-column:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:5px}
     .pager button{min-width:35px;min-height:35px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:#eee;font-weight:700}
     .pager button[aria-current="page"]{background:#51467b;border-color:#9884d1;color:#fff}
     .pager button:disabled{opacity:.35;cursor:default}
-    .pager .pagesize{display:flex;align-items:center;gap:8px}
+    .pager .pagesize{grid-column:3;justify-self:end;display:flex;align-items:center;gap:8px;white-space:nowrap}
     .pager select{color:#eee;background:var(--panel);border:1px solid var(--line);padding:8px;border-radius:8px}
     .pager .gapdots{padding:0 4px;color:var(--muted)}
-    @media(max-width:770px){.pager{justify-content:center}.pager .pagesize{order:-1;width:100%;justify-content:center}.pager .pagebuttons{justify-content:center}}
+    .backtotop{position:fixed;right:24px;bottom:24px;z-index:50;width:46px;height:46px;border:1px solid #8173ad;border-radius:50%;background:#4a405f;color:#f6f0ff;font-size:23px;font-weight:750;box-shadow:0 7px 25px #0009;display:grid;place-items:center}.backtotop:hover{background:#62547e}.backtotop[hidden]{display:none}
+    @media(max-width:770px){.pager{display:flex;flex-direction:column;align-items:center;gap:14px}.pager .pagesize{justify-self:auto}.pager .pagebuttons{justify-content:center}.backtotop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom))}}
     @media(max-width:770px){
       .listtable tr,.listtable tbody tr:hover{background:var(--panel);border-color:var(--line)}
       .more{border-color:var(--line)}
@@ -114,7 +116,8 @@ export const page = String.raw`<!doctype html>
     <header class="topbar"><a class="brand" href="./"><span class="mark">⌁</span><span>Delo<span>Radar</span></span></a><div class="topright"><span class="priv">● Javni pregled</span><a class="smalllink" href="#viri" id="topSources">Viri podatkov ↗</a></div></header>
     <section class="intro"><div><div class="eyebrow">Tvoj pregled slovenskega trga dela</div><h1>Vsa zanimiva dela.<br>Na enem mestu.</h1><p>Poišči priložnosti iz trenutno povezanih virov, jih shrani in označi, kje si že stopil v stik. Prijave in klice opraviš sam, neposredno pri delodajalcu.</p></div><button id="refresh" class="refresh" type="button">↻ &nbsp; Osveži oglase</button></section>
     <section class="stats" aria-label="Statistika"><div class="stat highlight"><span class="kicker">Zajeti oglasi</span><span class="n" id="total">—</span><span class="lightdot"></span><span class="foot">v povezanih virih</span></div><div class="stat"><span class="kicker">Povezani viri</span><span class="n" id="sourcesNum">—</span><span class="foot">od 2 začetnih</span></div><div class="stat"><span class="kicker">Shranjeni</span><span class="n" id="savedNum">0</span><span class="foot">v tem brskalniku</span></div><div class="stat"><span class="kicker">Kontaktirani</span><span class="n" id="appliedNum">0</span><span class="foot">označeno ročno</span></div></section>
-    <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div><div class="panel"><div class="sectionlabel">Stanje povezav</div><div id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><div class="srcfooter">Oglase strežnik zajema predvidoma na 6 ur, tudi ko je tvoj računalnik izklopljen. Ob obisku naložimo zadnji objavljeni seznam.</div></div><div class="asidecallout"><h3>Dodajamo nove portale</h3><p>V načrtu so ZRSZ, MojeDelo, Careerjet, javni razpisi in drugi slovenski viri.</p><button id="showCatalog" type="button">Poglej seznam virov →</button></div></aside>
+    <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" type="search" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div><div class="panel"><div class="sectionlabel">Stanje povezav</div><div id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><div class="srcfooter">Oglase strežnik zajema predvidoma na 6 ur, tudi ko je tvoj računalnik izklopljen. Ob obisku naložimo zadnji objavljeni seznam.</div></div><div class="asidecallout"><h3>Dodajamo nove portale</h3><p>V načrtu so ZRSZ, MojeDelo, Careerjet, javni razpisi in drugi slovenski viri.</p><button id="showCatalog" type="button">Poglej seznam virov →</button></div></aside>
+    <button class="backtotop" id="backToTop" type="button" aria-label="Na vrh strani" title="Na vrh strani" hidden>↑</button>
     <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="export" type="button">↓ Izvozi CSV</button></div></div><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Oglasi so povezave na originalne objave. Preveri veljavnost pred prijavo.</div></div><p class="refreshinfo" id="updated"></p></main></div>
     <section id="viri" class="sourcecatalog"><h2>Viri, ki jih bomo še povezali</h2><p>Ta seznam še ni povezan nabor oglasov. Za vsak vir moramo preveriti dostop, pogoje uporabe in podvajanje objav.</p><div class="sourcegrid" id="planned"></div></section>
     <footer class="bottom"><span>© DeloRadar · Osebni pregled prostih delovnih mest</span><span>Podatki so informativni · Veljavnost in pogoje preveri na izvornem portalu</span></footer>
@@ -183,7 +186,7 @@ export const page = String.raw`<!doctype html>
       }
       var filterKey='deloradar-filters-v1',savedFilters={};
       try{savedFilters=JSON.parse(localStorage.getItem(filterKey)||'{}')||{}}catch(e){savedFilters={}}
-      var pageSize=[50,100].includes(Number(savedFilters.values&&savedFilters.values.pageSize))?Number(savedFilters.values.pageSize):50,currentPage=1;
+      var pageSize=[10,25,50,100].includes(Number(savedFilters.values&&savedFilters.values.pageSize))?Number(savedFilters.values.pageSize):50,currentPage=1;
       var multiSelected=savedFilters.multi||{},multiLists={};
       function selectedValues(id){return Array.isArray(multiSelected[id])?multiSelected[id]:[]}
       function persistFilters(){
@@ -254,7 +257,7 @@ export const page = String.raw`<!doctype html>
           host.addEventListener('click',function(e){
             var remove=e.target.closest('[data-remove]'),clear=e.target.closest('[data-clear]');
             if(remove){multiSelected[id]=selectedValues(id).filter(function(x){return x!==remove.dataset.remove});persistFilters();render()}
-            if(clear){multiSelected[id]=[];persistFilters();render()}
+            if(clear){multiSelected[id]=[];closeMulti(host);persistFilters();render()}
           });
           host.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMulti(host);host.querySelector('.multi-trigger').focus()}});
         }
@@ -367,7 +370,7 @@ export const page = String.raw`<!doctype html>
           buttons+=pageButton(n,String(n),totalPages,n===currentPage);last=n;
         });
         buttons+=pageButton(currentPage+1,'›',totalPages,false);
-        pager.innerHTML='<div class="pagebuttons">'+buttons+'</div><label class="pagesize" for="pageSize">Oglasov na stran <select id="pageSize" aria-label="Oglasov na stran"><option value="50" '+(pageSize===50?'selected':'')+'>50</option><option value="100" '+(pageSize===100?'selected':'')+'>100</option></select></label>';
+        pager.innerHTML='<div class="pagebuttons">'+buttons+'</div><label class="pagesize" for="pageSize">Oglasov na stran <select id="pageSize" aria-label="Oglasov na stran"><option value="10" '+(pageSize===10?'selected':'')+'>10</option><option value="25" '+(pageSize===25?'selected':'')+'>25</option><option value="50" '+(pageSize===50?'selected':'')+'>50</option><option value="100" '+(pageSize===100?'selected':'')+'>100</option></select></label>';
       }
       function render(keepPage){
         var items=filtered();$('found').textContent='· '+items.length+' zadetkov';$('total').textContent=jobs.length.toLocaleString('sl-SI');
@@ -410,6 +413,11 @@ export const page = String.raw`<!doctype html>
       $('refresh').addEventListener('click',load);
       pager.addEventListener('click',function(e){var b=e.target.closest('[data-page]');if(!b||b.disabled)return;currentPage=Number(b.dataset.page);render(true);$('jobRows').scrollIntoView({behavior:'smooth',block:'start'})});
       pager.addEventListener('change',function(e){if(e.target.id!=='pageSize')return;pageSize=Number(e.target.value);persistFilters();render()});
+      var backToTop=$('backToTop');
+      function updateBackToTop(){backToTop.hidden=window.scrollY<400}
+      window.addEventListener('scroll',updateBackToTop,{passive:true});
+      backToTop.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'})});
+      updateBackToTop();
       $('jobRows').addEventListener('click',function(e){var b=e.target.closest('[data-star]');if(!b)return;var id=b.dataset.star;state[id]=Object.assign({},getState(id),{saved:!getState(id).saved});save();render(true)});
       $('jobRows').addEventListener('change',function(e){var b=e.target.closest('[data-status]');if(!b)return;var id=b.dataset.status;state[id]=Object.assign({},getState(id),{status:b.value});save();render(true)});
       function showSources(){var el=$('viri');el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'start'})}
