@@ -14,15 +14,16 @@ const SOURCES = [
   { id: 'kolektor', name: 'Kolektor', url: 'https://www.kolektor.com/kariera' },
   { id: 'mojedelo', name: 'MojeDelo.com', url: 'https://www.mojedelo.com/iskanje-zaposlitve' },
   { id: 'zaposlitevinfo', name: 'Zaposlitev.info', url: 'https://zaposlitev.info/prosta-delovna-mesta/' },
+  { id: 'mercator', name: 'Mercator', url: 'https://www.mercatorgroup.si/sl/kariera/prosta-delovna-mesta/seznam-prostih-delovnih-mest/' },
+  { id: 'iscidelo', name: 'IščiDelo', url: 'https://iscidelo.com/delovna-mesta/' },
 ];
 const PLANNED = [
   { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Uradni iskalnik; za samodejni zajem še potrebujemo delujoč podatkovni dostop.' },
   { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.' },
-  { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjamo možnost rednega zajema.' },
   { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski iskalnik; za avtomatizacijo je potreben partnerski dostop.' },
   { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev', note: 'Strežnik za zajem prejme HTTP 403; uporabi izvirni seznam.' },
   { name: 'Slovenske železnice', href: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/', note: 'Strežnik za zajem prejme HTTP 403; uporabi izvirne razpise.' },
-  { name: 'Prohuman', href: 'https://www.prohuman.si/', note: 'Dodatna zaposlitvena agencija v preverjanju.' },
+  { name: 'Prohuman', href: 'https://www.prohuman.si/', note: 'Številni oglasi so že na MojeDelo; preverjamo neposreden seznam.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
@@ -488,9 +489,86 @@ async function getZaposlitevInfo() {
   if (failures.length) throw Error('Zaposlitev.info missing pages ' + failures.join(', '));
   return Array.from(new Map(jobs.map(job => [job.id, job])).values());
 }
+const MERCATOR_REGIONS = {
+  1: 'Savinjska', 2: 'Gorenjska', 4: 'Jugovzhodna Slovenija',
+  5: 'Obalno-kraška', 6: 'Osrednjeslovenska', 8: 'Goriška',
+  10: 'Podravska', 11: 'Primorsko-notranjska', 13: 'Posavska',
+};
+export function parseMercatorListings(html) {
+  if (!html.includes('class="active-job-list"')) throw Error('Mercator: javni seznam delovnih mest manjka');
+  const jobs = new Map();
+  for (const match of html.matchAll(/<div\s+class=["']active-job-item\s+([^"']*)["'][^>]*>([\s\S]*?)<\/div>/gi)) {
+    const classes = match[1];
+    const link = match[2].match(/<a\s+href=["'](\/sl\/kariera\/prosta-delovna-mesta\/[^"'?#]+\/)['"][^>]*>\s*<h3[^>]*>([\s\S]*?)<\/h3>/i);
+    if (!link) continue;
+    const title = plain(link[2]);
+    const location = plain(match[2].match(/<p[^>]*>([\s\S]*?)<\/p>/i)?.[1] || '');
+    if (!title) continue;
+    const regionIds = [...classes.matchAll(/\bjobregion-(\d+)\b/g)].map(x => Number(x[1]));
+    const regions = [...new Set(regionIds.map(id => MERCATOR_REGIONS[id]).filter(Boolean))];
+    if (regionIds.includes(14) && !regions.length) continue; // Izključno tuji razpisi.
+    const id = link[1].match(/-(\d+)\/$/)?.[1] || link[1];
+    jobs.set(id, { id: 'mercator:' + id, source: 'Mercator', title, company: 'Mercator',
+      location, regions, date: '', deadline: '', url: 'https://www.mercatorgroup.si' + link[1] });
+  }
+  return [...jobs.values()];
+}
+async function getMercator() {
+  const jobs = parseMercatorListings(await getText('https://www.mercatorgroup.si/sl/kariera/prosta-delovna-mesta/seznam-prostih-delovnih-mest/'));
+  if (!jobs.length) throw Error('Mercator: javni seznam ne vsebuje veljavnih oglasov');
+  return jobs;
+}
+export function parseIscideloListings(html, now = Date.now()) {
+  if (!html.includes('id="job-results"')) throw Error('IščiDelo: javni seznam manjka');
+  const jobs = new Map();
+  for (const match of html.matchAll(/<article\b(?=[^>]*\bdata-job-card\b)[^>]*>([\s\S]*?)<\/article>/gi)) {
+    const body = match[1];
+    const link = body.match(/<a\s+href=["'](\/delovna-mesta\/[^"'?#/]+)["'][^>]*\bdata-card-title\b[^>]*>([\s\S]*?)<\/a>/i);
+    if (!link) continue;
+    const title = plain(link[2]);
+    const company = plain(body.match(/<div\s+class=["']legacy-result-company["'][^>]*\bdata-card-company\b[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
+    const location = plain(body.match(/<span\s+data-card-city[^>]*>([\s\S]*?)<\/span>/i)?.[1] || '').replace(/^Kraj dela:\s*/i, '');
+    const deadline = parseLocalDate(plain(body.match(/<span\s+data-card-deadline[^>]*>([\s\S]*?)<\/span>/i)?.[1] || ''));
+    if (!title || (deadline && Date.parse(deadline + 'T23:59:59+01:00') < now)) continue;
+    if (/^(Avstrija|Hrvaška|Nemčija|Italija|Srbija|Bosna)/i.test(location)) continue;
+    const id = link[1].slice('/delovna-mesta/'.length);
+    jobs.set(id, { id: 'iscidelo:' + id, source: 'IščiDelo', title, company, location,
+      date: '', deadline, url: 'https://iscidelo.com' + link[1] });
+  }
+  return [...jobs.values()];
+}
+export function iscideloPages(html) {
+  const match = html.match(/<nav\b[^>]*\bclass=["'][^"']*\bjobs-pagination\b[^"']*["'][^>]*\bdata-page=["'](\d+)["'][^>]*\bdata-pages=["'](\d+)["']/i);
+  if (!match) throw Error('IščiDelo: podatki o straneh manjkajo');
+  const page = Number(match[1]), total = Number(match[2]);
+  if (page < 1 || total < 1 || total > 40 || page > total) throw Error('IščiDelo: nepričakovano straničenje');
+  return { page, total };
+}
+async function getIscidelo() {
+  const base = 'https://iscidelo.com/delovna-mesta/?perPage=30&sort=relevance&page=';
+  const first = await getText(base + '1');
+  const pagination = iscideloPages(first);
+  if (pagination.page !== 1) throw Error('IščiDelo: prva stran ni bila vrnjena');
+  const jobs = parseIscideloListings(first);
+  if (!jobs.length) throw Error('IščiDelo: prvi seznam je prazen');
+  for (let p = 2; p <= pagination.total; p += 2) {
+    const pages = Array.from({ length: Math.min(2, pagination.total - p + 1) }, (_, i) => p + i);
+    const results = await Promise.allSettled(pages.map(async page => {
+      const html = await getText(base + page);
+      if (iscideloPages(html).page !== page) throw Error('IščiDelo: zahtevana stran ni bila vrnjena');
+      const entries = parseIscideloListings(html);
+      if (!entries.length) throw Error('IščiDelo: prazna naslednja stran');
+      return entries;
+    }));
+    if (results.some(r => r.status === 'rejected')) throw Error('IščiDelo: nepopoln zajem strani ' + pages.join(', '));
+    jobs.push(...results.flatMap(r => r.value));
+    if (p + 2 <= pagination.total) await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  return [...new Map(jobs.map(job => [job.id, job])).values()];
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()]);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
       const reason = result.reason;

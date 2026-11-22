@@ -99,7 +99,7 @@ multiContext.clearMultiSearch({querySelector:()=>mockSearch,querySelectorAll:()=
 assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
-const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages } = await import('../source/collector.js');
+const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages, parseMercatorListings, parseIscideloListings, iscideloPages } = await import('../source/collector.js');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -216,4 +216,27 @@ assert.equal(ziJobs[0].date,'2026-11-20');
 assert.equal(ziJobs[0].url,'https://zaposlitev.info/delo/elektricar-m-z/');
 assert.equal(zaposlitevInfoTotalPages(ziHtml),38,'Zajem vseh strani, ne samo prvih deset oglasov');
 
-console.log('OK: filtri, straničenje in parserji vseh trinajstih virov');
+const mercatorHtml = `<div class="active-job-list"><div class="active-job-row">
+ <div class="active-job-item jobposition-50 jobregion-6 jobregion-4 jobregion-2"><a href="/sl/kariera/prosta-delovna-mesta/elektricarji-11765/"><h3>ELEKTRIČARJI (m/ž)</h3></a><p>Jesenice, Kočevje, Ljubljana</p><p></p></div>
+ <div class="active-job-item jobposition-60 jobregion-14"><a href="/sl/kariera/prosta-delovna-mesta/delo-v-tujini-11766/"><h3>Delo v tujini</h3></a><p>Zagreb</p></div></div></div>`;
+const mercator = parseMercatorListings(mercatorHtml);
+assert.equal(mercator.length,1,'Mercator: izključimo izključno tuje oglase');
+assert.equal(mercator[0].id,'mercator:11765');
+assert.deepEqual(mercator[0].regions,['Osrednjeslovenska','Jugovzhodna Slovenija','Gorenjska'],'Mercator: več regij v enem oglasu');
+assert.equal(mercator[0].location,'Jesenice, Kočevje, Ljubljana');
+assert.equal(mercator[0].url,'https://www.mercatorgroup.si/sl/kariera/prosta-delovna-mesta/elektricarji-11765/');
+assert.throws(()=>parseMercatorListings('<html>brez oglasov</html>'),/Mercator/,'Sprememba HTML ne sme veljati za uspešen zajem');
+
+const iscideloCard=(id,title,company,location,deadline)=>`<article class="legacy-result-card rp-job-result" data-job-card><h2><a href="/delovna-mesta/${id}" data-card-title>${title}</a></h2><div class="legacy-result-company" data-card-company>${company}</div><span data-card-city><b>Kraj dela:</b>${location}</span><span data-card-deadline><b>Prijave odprte do:</b>${deadline}</span></article>`;
+const iscideloHtml=`<div id="job-results">${iscideloCard('elektricar-m-z','Električar (m/ž)','Test d.o.o.','Maribor','30. 11. 2026')}${iscideloCard('star-oglas','Star oglas','Test','Maribor','1. 10. 2026')}${iscideloCard('delo-v-avstriji','Delo v tujini','Test','Avstrija','30. 11. 2026')}</div><nav class="jobs-pagination" data-page="1" data-pages="2"></nav>`;
+const iscidelo = parseIscideloListings(iscideloHtml,Date.parse('2026-11-22'));
+assert.equal(iscidelo.length,1,'IščiDelo: brez poteklih in izključno tujih razpisov');
+assert.equal(iscidelo[0].title,'Električar (m/ž)');
+assert.equal(iscidelo[0].company,'Test d.o.o.');
+assert.equal(iscidelo[0].location,'Maribor');
+assert.equal(iscidelo[0].deadline,'2026-11-30');
+assert.equal(iscidelo[0].url,'https://iscidelo.com/delovna-mesta/elektricar-m-z');
+assert.deepEqual(iscideloPages(iscideloHtml),{page:1,total:2});
+assert.throws(()=>iscideloPages('<html>napaka</html>'),/straneh/,'Manjkajoča paginacija mora pomeniti napako');
+
+console.log('OK: filtri, straničenje in parserji petnajstih virov');
