@@ -16,11 +16,17 @@ assert.match(page, /\.multi-option\[hidden\]\{display:none!important\}/, 'Iskanj
 assert.match(page, /<input class="field" type="search" id="search"/, 'Glavno iskalno polje mora imeti vgrajen gumb X');
 assert.match(script, /if\(clear\)\{multiSelected\[id\]=\[\];closeMulti\(host\);/, 'Počisti izbor mora zapreti večizbirni seznam');
 assert.match(page, /grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/, 'Navigacija mora biti poravnana na sredino');
+assert.match(page, /\.bottom\{margin-top:14px\}/, 'Razmik pod navigacijo naj bo primerljiv razmiku nad njo');
 assert.match(page, /id="backToTop"/, 'Plavajoči gumb za vrnitev na vrh mora biti v dokumentu');
 assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passive:true\}\)/, 'Gumb za vrh se mora prilagajati drsenju');
 assert.match(page, /manualLink\.textContent='↻ Osveži'/, 'Osveži mora biti povezava na ročni zajem v GitHub Actions');
 assert.match(page, /\$\('refresh'\)\.replaceWith\(manualLink\)/, 'Podvojeni gumb za branje istega posnetka ne sme ostati na javni strani');
 assert.match(page, /class="refreshinfo" id="updated">Zadnji zajem oglasov: —/, 'Datum mora biti pod gumbom za osvežitev');
+assert.match(page, /class="srcfooter">Oglasi se posodabljajo približno vsakih 30 minut\./, 'Stanje povezav mora imeti samo kratko pojasnilo pogostosti zajema');
+assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približno vsakih 30 minut\./, 'Javna stran ne sme prepisati kratkega pojasnila');
+for (const source of ['ZRSZ ↗','MojeDelo ↗','Careerjet ↗','Zaposlitev.info ↗']) {
+  assert.ok(page.includes(source), `Med hitro dostopnimi iskalniki manjka ${source}`);
+}
 assert.doesNotMatch(page, /Ob odprtju preberemo zadnji objavljeni posnetek/, 'Podvojeno pojasnilo pod tabelo je odvečno');
 const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
 assert.match(workflow, /cron: '17,47 \* \* \* \*'/, 'Osveževanje mora biti predvideno vsakih 30 minut');
@@ -87,7 +93,7 @@ multiContext.clearMultiSearch({querySelector:()=>mockSearch,querySelectorAll:()=
 assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
-const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob } = await import('../source/collector.js');
+const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob } = await import('../source/collector.js');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -153,4 +159,22 @@ assert.equal(nove.date,'2026-10-29');
 assert.equal(nove.deadline,'2026-12-23');
 assert.equal(parseNoveJob(noveHtml,noveList[0],Date.parse('2027-01-01')),null,'Poteklih oglasov Nove zaposlitve ne vključimo');
 
-console.log('OK: filtri, straničenje in parserji vseh devetih virov');
+const lidlUrl='https://kariera.lidl.si/jobs/pomocnik-vodje-poslovne-enote-m-z-maribor-borova-vas-maribor-770466';
+const lidlLinks=parseLidlSitemap(`<urlset><url><loc>${lidlUrl}</loc></url><url><loc>${lidlUrl}</loc></url><url><loc>https://kariera.lidl.si/ostalo/123</loc></url></urlset>`);
+assert.equal(lidlLinks.length,1,'Lidl: iz uradnega seznama zajemamo samo povezave /jobs/ in odstranimo dvojnike');
+assert.equal(lidlLinks[0].id,'lidl:770466');
+const lidlData={ '@context':'https://schema.org', '@type':'JobPosting', title:'Pomočnik vodje poslovne enote (m/ž) Maribor',
+  datePosted:'2026-11-15T23:00:00+00:00', validThrough:'2026-11-26T22:59:59+00:00',
+  hiringOrganization:{name:'Prodaja'},jobLocation:{address:{addressLocality:'Maribor',addressCountry:'SI'}} };
+const lidlHtml=`<script type="application/ld+json">${JSON.stringify(lidlData)}</script>`;
+const lidl=parseLidlJob(lidlHtml,lidlLinks[0],Date.parse('2026-11-22'));
+assert.equal(lidl.title,'Pomočnik vodje poslovne enote (m/ž) Maribor');
+assert.equal(lidl.company,'Lidl Slovenija','Oddelek »Prodaja« ni ime delodajalca');
+assert.equal(lidl.location,'Maribor');
+assert.equal(lidl.date,'2026-11-15T23:00:00.000Z');
+assert.equal(lidl.deadline,'2026-11-26T22:59:59.000Z');
+assert.equal(parseLidlJob(lidlHtml,lidlLinks[0],Date.parse('2026-12-01')),null,'Lidl: izločimo potekle oglase');
+assert.equal(parseLidlJob(lidlHtml.replace('"addressCountry":"SI"','"addressCountry":"AT"'),lidlLinks[0],Date.parse('2026-11-22')),null,'Lidl: izločimo oglase izven Slovenije');
+assert.equal(parseLidlJob('<script type="application/ld+json">invalid</script>',lidlLinks[0]),null,'Lidl: neveljavni JSON-LD ne sme ustaviti zajema');
+
+console.log('OK: filtri, straničenje in parserji vseh desetih virov');
