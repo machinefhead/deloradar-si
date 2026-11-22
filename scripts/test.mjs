@@ -27,6 +27,8 @@ assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približ
 assert.doesNotMatch(page, /Več oglasov na velikih portalih/, 'Povezana portala se ne smeta prikazovati kot nepovezana');
 assert.doesNotMatch(page, /class="quicklinks"/, 'Podvojene hitre povezave niso več potrebne');
 assert.match(page, /id="showCatalog"[^>]*aria-controls="viri"[^>]*aria-expanded="false"/, 'Dodatni viri morajo ostati dosegljivi iz stanja povezav tudi na telefonu');
+assert.match(page, /ZRSZ oznaka: '\+safe\(j\.reference\)/, 'ZRSZ referenca mora biti vidna, ker JSON nima neposrednih URL-jev posameznih oglasov');
+assert.match(page, /Odpri iskalnik ZRSZ/, 'Pri ZRSZ mora biti jasno, da gumb odpre iskalnik in ne posameznega oglasa');
 assert.match(page, /function showSources\(\)\{var el=\$\('viri'\),open=el\.classList\.toggle\('show'\)/, 'En sam gumb mora odpreti in zapreti dodatne vire');
 assert.match(page, /<h2>Še nepovezani viri<\/h2>/, 'Seznam naj jasno razlikuje nepovezane vire od že zajetih');
 const collectorSource=readFileSync(new URL('../source/collector.js',import.meta.url),'utf8');
@@ -100,6 +102,28 @@ assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
 const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages, parseMercatorListings, parseIscideloListings, iscideloPages } = await import('../source/collector.js');
+const { parseZrszJson } = await import('../source/zrsz.js');
+const zrszSample = {
+  DatumObjave: '2026-11-21T00:00:00', SteviloPDM: 3,
+  ProstaDelovnaMesta: [
+    { RegStPrijave: 'NY31603 ', NazivDelMesta: 'ELEKTRIČAR - M/Ž', PoslovniSubjekt: 'Primer, d.o.o., Industrijska cesta 4, 2000 MARIBOR',
+      UEPDM: 'MARIBOR', RokZaPrijavoKandidatov: '19.12.2026', DatumObjave: '19.11.2026',
+      OpisDelInNalog: 'Ne kopiraj v javno tabelo', KontaktZaKandidate: 'Osebni kontakt' },
+    { RegStPrijave: 'AB12345', NazivDelMesta: 'Stari razpis', UEPDM: 'LJUBLJANA', RokZaPrijavoKandidatov: '1.11.2026', DatumObjave: '1.11.2026' },
+    { RegStPrijave: 'NY31603 ', NazivDelMesta: 'ELEKTRIČAR - M/Ž', UEPDM: 'MARIBOR', RokZaPrijavoKandidatov: '19.12.2026', DatumObjave: '19.11.2026' },
+  ],
+};
+const zrsz = parseZrszJson(zrszSample, Date.parse('2026-11-22T12:00:00+01:00'));
+assert.equal(zrsz.length, 1, 'ZRSZ: izločimo potekle oglase in dvojnike po uradni referenci');
+assert.equal(zrsz[0].id, 'zrsz:NY31603');
+assert.equal(zrsz[0].company, 'Primer, d.o.o.');
+assert.equal(zrsz[0].location, 'UE Maribor', 'Upravne enote ne smemo prikazati kot točnega kraja');
+assert.equal(zrsz[0].date, '2026-11-19');
+assert.equal(zrsz[0].deadline, '2026-12-19');
+assert.equal(zrsz[0].url, 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/');
+assert.ok(!('OpisDelInNalog' in zrsz[0]) && !('KontaktZaKandidate' in zrsz[0]), 'ZRSZ: brez celotnih opisov in kontaktnih podatkov');
+assert.throws(() => parseZrszJson({ DatumObjave: '2026-11-21T00:00:00', SteviloPDM: 4, ProstaDelovnaMesta: zrszSample.ProstaDelovnaMesta }, Date.parse('2026-11-22')), /nepopoln/, 'Ne objavimo nepopolnega dnevnega izvoza');
+assert.throws(() => parseZrszJson(zrszSample, Date.parse('2026-12-05')), /zastarel/, 'Starega posnetka ne objavimo kot aktualne oglase');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -239,4 +263,4 @@ assert.equal(iscidelo[0].url,'https://iscidelo.com/delovna-mesta/elektricar-m-z'
 assert.deepEqual(iscideloPages(iscideloHtml),{page:1,total:2});
 assert.throws(()=>iscideloPages('<html>napaka</html>'),/straneh/,'Manjkajoča paginacija mora pomeniti napako');
 
-console.log('OK: filtri, straničenje in parserji petnajstih virov');
+console.log('OK: filtri, straničenje, 15 aktivnih virov in ZRSZ dnevni JSON');

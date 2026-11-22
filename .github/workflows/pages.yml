@@ -26,10 +26,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Namesti odvisnosti
+        run: npm ci
       - name: Preveri kodo
         run: npm test
       - name: Pridobi oglase in zgradi stran
         run: npm run build
+        env:
+          ZRSZ_JSON_URL: ${{ secrets.ZRSZ_JSON_URL }}
+          ZRSZ_BROWSER_ENABLED: '1'
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact

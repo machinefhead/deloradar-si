@@ -1,4 +1,9 @@
 import { page } from './page.js';
+import { getZrszJson, getZrszFromPublicBrowser } from './zrsz.js';
+
+// Naslov poda ZRSZ in ostane v zaščiteni GitHub Actions skrivnosti.
+const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
+const ZRSZ_BROWSER_ENABLED = process.env.ZRSZ_BROWSER_ENABLED === '1';
 
 const SOURCES = [
   { id: 'optius', name: 'Optius', url: 'https://www.optius.com/iskalci/prosta-delovna-mesta/' },
@@ -16,9 +21,10 @@ const SOURCES = [
   { id: 'zaposlitevinfo', name: 'Zaposlitev.info', url: 'https://zaposlitev.info/prosta-delovna-mesta/' },
   { id: 'mercator', name: 'Mercator', url: 'https://www.mercatorgroup.si/sl/kariera/prosta-delovna-mesta/seznam-prostih-delovnih-mest/' },
   { id: 'iscidelo', name: 'IščiDelo', url: 'https://iscidelo.com/delovna-mesta/' },
+  ...(ZRSZ_JSON_URL || ZRSZ_BROWSER_ENABLED ? [{ id: 'zrsz', name: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/' }] : []),
 ];
 const PLANNED = [
-  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Uradni iskalnik; za samodejni zajem še potrebujemo delujoč podatkovni dostop.' },
+  ...(!ZRSZ_JSON_URL && !ZRSZ_BROWSER_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Dnevni JSON je preverjen; preverjamo samodejni prenos prek javnega gumba.' }] : []),
   { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.' },
   { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski iskalnik; za avtomatizacijo je potreben partnerski dostop.' },
   { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev', note: 'Strežnik za zajem prejme HTTP 403; uporabi izvirni seznam.' },
@@ -568,7 +574,9 @@ async function getIscidelo() {
 }
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()]);
+  const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
+  if (ZRSZ_JSON_URL || ZRSZ_BROWSER_ENABLED) collectors.push(ZRSZ_JSON_URL ? getZrszJson(ZRSZ_JSON_URL) : getZrszFromPublicBrowser());
+  const results = await Promise.allSettled(collectors);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
       const reason = result.reason;

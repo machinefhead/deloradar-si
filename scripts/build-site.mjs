@@ -21,6 +21,10 @@ assert.ok(Array.isArray(data.jobs), 'Manjka jobs');
 assert.ok(Array.isArray(data.sources), 'Manjka sources');
 assert.ok(Array.isArray(data.planned), 'Manjka planned');
 assert.ok(data.checkedAt && !Number.isNaN(Date.parse(data.checkedAt)), 'Manjka checkedAt');
+if (process.env.ZRSZ_BROWSER_ENABLED === '1') {
+  const zrsz = data.sources.find(s => s.id === 'zrsz');
+  assert.ok(zrsz?.status === 'live' && zrsz.count > 0, 'Samodejni ZRSZ prenos prek javnega gumba ni uspel');
+}
 if (data.jobs.length === 0) {
   // Ne objavi prazne strani ob začasnem izpadu vseh virov.
   throw new Error('Nobeden od povezanih portalov ni vrnil oglasov. Obdrži prejšnjo objavo.');

@@ -31,6 +31,16 @@ Generirana statična stran je v `dist/` (`index.html`, `jobs.json`). Za lokalni 
 
 GitHub Pages uporablja **GitHub Actions** (`.github/workflows/pages.yml`): ob spremembi `main`, ročno in po urniku. Če vsi viri odpovedo oziroma vrnejo nič oglasov, sestavljanje odpove in prejšnja uspešna objava ostane na spletu.
 
+### ZRSZ – javni dnevni JSON (samodejni brskalniški zajem v preverjanju)
+
+Preverili smo dva javna prenosa `seznamDelovnihMest.json`, ki ju je 22. 11. 2026 prenesel uporabnik brez prijave. Prvi je imel časovno oznako 21. 11. 2026 in 3.772 objav, drugi oznako 22. 11. 2026 in 3.554 objav; 218 razpisom je vmes potekel rok. Priključek v `source/zrsz.js` je preizkušen na dejanskih datotekah. Izloči pretečene, podvojene in nepopolne zapise, ohrani samo naslov, naziv delodajalca, upravno enoto, datuma in uradno referenco. Ne objavlja opisov ali kontaktov.
+
+Pomembno: JSON ne vsebuje **neposrednih URL-jev posameznih oglasov** ali točnih krajev dela. Zato povezava za ZRSZ odpre javni iskalnik in pod naslovom prikažemo uradno registrsko oznako, upravno enoto pa izrecno označimo kot `UE ...`.
+
+Javni gumb `.json` datoteko prenese prek ZRSZ-jevega javnega iskalnika. Na željo lastnika poskusimo **enak uporabniški postopek** izvajati s samostojnim brskalnikom Chrome v GitHub Actions (`ZRSZ_BROWSER_ENABLED=1`, knjižnica `playwright-core`). Ne uporabljamo uporabnikovega računa, ne preberemo in ne kopiramo aplikacijskega ključa ter ne kličemo interne poti neposredno. Brskalnik uporabi normalen gumb in preveri vsebino prenosa. Za ločen uradno odobren URL ostaja podpora `ZRSZ_JSON_URL` iz GitHubove zaščitene skrivnosti. Skrivnosti ne shranjujemo v kodo ali javni JSON.
+
+Preverjanje GitHub Pull Requesta mora dokazati, da Chrome na GitHubovem strežniku dejansko prenese veljaven dnevni JSON, preden ta način vključimo v javno objavo. Ob izpadu ZRSZ načrtovana izdelava spletne strani odpove, zato prejšnja uspešna objava ostane na spletu.
+
 Razširitve z novimi viri, bolj zanesljivimi regijami in morebitnim zasebnim računom za uporabnika in partnerko bomo razvijali postopoma. **GitHub Pages je za zdaj javen**; prijava še ni vgrajena. V prvi različici **ni** oblačne podatkovne baze in **ni** avtomatskega pošiljanja prijav.
 
-Lastnik projekta je potrdil ustno soglasje ZRSZ, MojeDelo.com, Careerjet in Zaposlitev.info za nekomercialno zbiranje metapodatkov oglasov; soglasja nismo neodvisno preverjali. Zajem poteka samo z javno dostopnih strani oziroma neavtenticiranega vmesnika. **Careerjet** pri avtomatiziranem dostopu zahteva preverjanje obiskovalca, česar ne obhajamo; **ZRSZ** ima v uporabniškem vmesniku izvoz JSON, produkcijska povezava do njega pa še ni bila potrjena. Pri teh dveh ostaja neposredna povezava. EURES in Manpower brez ustreznega partnerstva/dovoljenja ostajata nepovezana.
+Lastnik projekta je potrdil ustno soglasje ZRSZ, MojeDelo.com, Careerjet in Zaposlitev.info za nekomercialno zbiranje metapodatkov oglasov; soglasja nismo neodvisno preverjali. Zajem poteka samo z javno dostopnih strani oziroma neavtenticiranega vmesnika. **Careerjet** pri avtomatiziranem dostopu zahteva preverjanje obiskovalca, česar ne obhajamo. ZRSZ je omogočil javni prenos JSON prek gumba; avtomatizacijo tega postopka preverjamo na GitHub Runnerju. EURES in Manpower brez ustreznega partnerstva/dovoljenja ostajata nepovezana.
