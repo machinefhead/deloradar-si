@@ -92,6 +92,15 @@ export const page = String.raw`<!doctype html>
     .manualrefresh{font-size:12px;color:var(--accent);text-decoration:none;font-weight:720}
     .manualrefresh:hover{text-decoration:underline}
     .more button{margin-left:10px;padding:6px 10px;border:1px solid #665b81;border-radius:7px;background:#454053;color:#e7dcff;font-weight:750}
+    .pager{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px;color:var(--muted);font-size:13px}
+    .pager .pagebuttons{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+    .pager button{min-width:35px;min-height:35px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:#eee;font-weight:700}
+    .pager button[aria-current="page"]{background:#51467b;border-color:#9884d1;color:#fff}
+    .pager button:disabled{opacity:.35;cursor:default}
+    .pager .pagesize{display:flex;align-items:center;gap:8px}
+    .pager select{color:#eee;background:var(--panel);border:1px solid var(--line);padding:8px;border-radius:8px}
+    .pager .gapdots{padding:0 4px;color:var(--muted)}
+    @media(max-width:770px){.pager{justify-content:center}.pager .pagesize{order:-1;width:100%;justify-content:center}.pager .pagebuttons{justify-content:center}}
     @media(max-width:770px){
       .listtable tr,.listtable tbody tr:hover{background:var(--panel);border-color:var(--line)}
       .more{border-color:var(--line)}
@@ -113,7 +122,7 @@ export const page = String.raw`<!doctype html>
   <script>
     (function(){
       'use strict';
-      var jobs=[], sources=[], planned=[], checkedAt='', state={},visibleLimit=500;
+      var jobs=[], sources=[], planned=[], checkedAt='', state={};
       var key='deloradar-status-v1';
       try {state=JSON.parse(localStorage.getItem(key)||'{}')||{}}catch(e){state={}}
       var $=function(id){return document.getElementById(id)};
@@ -174,10 +183,12 @@ export const page = String.raw`<!doctype html>
       }
       var filterKey='deloradar-filters-v1',savedFilters={};
       try{savedFilters=JSON.parse(localStorage.getItem(filterKey)||'{}')||{}}catch(e){savedFilters={}}
+      var pageSize=[50,100].includes(Number(savedFilters.values&&savedFilters.values.pageSize))?Number(savedFilters.values.pageSize):50,currentPage=1;
       var multiSelected=savedFilters.multi||{},multiLists={};
       function selectedValues(id){return Array.isArray(multiSelected[id])?multiSelected[id]:[]}
       function persistFilters(){
-        var values={};['search','place','published','deadline','myStatus','sort'].forEach(function(id){values[id]=$(id).value});
+        var values={};['search','published','deadline','myStatus','sort'].forEach(function(id){values[id]=$(id).value});
+        values.pageSize=pageSize;
         values.onlySaved=$('onlySaved').checked;values.hideApplied=$('hideApplied').checked;
         try{localStorage.setItem(filterKey,JSON.stringify({multi:multiSelected,values:values}))}catch(e){}
       }
@@ -206,6 +217,17 @@ export const page = String.raw`<!doctype html>
         });
         return counts;
       }
+      function clearMultiSearch(host){
+        var input=host.querySelector('.multi-search');
+        if(!input||!input.value)return;
+        input.value='';
+        host.querySelectorAll('.multi-option').forEach(function(row){row.hidden=false});
+      }
+      function closeMulti(host){
+        host.querySelector('.multi-menu').hidden=true;
+        host.querySelector('.multi-trigger').setAttribute('aria-expanded','false');
+        clearMultiSearch(host);
+      }
       function configureMulti(id,options,emptyText){
         var original=$(id),host=document.getElementById('multi-'+id);
         multiLists[id]={options:Array.from(new Set(options.concat(selectedValues(id)))),empty:emptyText};
@@ -214,10 +236,10 @@ export const page = String.raw`<!doctype html>
           host.innerHTML='<button type="button" class="multi-trigger" aria-expanded="false"><span></span><span>⌄</span></button><div class="multi-menu" hidden><input class="multi-search" type="search" placeholder="Išči možnost…" aria-label="Išči možnost"><div class="multi-options"></div><div class="multi-actions"><button type="button" data-clear="1">Počisti izbor</button></div></div><div class="multi-chips"></div>';
           original.style.display='none';original.setAttribute('aria-hidden','true');original.after(host);
           host.querySelector('.multi-trigger').addEventListener('click',function(){
-            document.querySelectorAll('.multi-menu').forEach(function(m){if(m!==host.querySelector('.multi-menu'))m.hidden=true});
-            var menu=host.querySelector('.multi-menu');menu.hidden=!menu.hidden;
-            host.querySelector('.multi-trigger').setAttribute('aria-expanded',String(!menu.hidden));
-            if(!menu.hidden)host.querySelector('.multi-search').focus();
+            document.querySelectorAll('.multi').forEach(function(other){if(other!==host)closeMulti(other)});
+            var menu=host.querySelector('.multi-menu');
+            if(menu.hidden){menu.hidden=false;host.querySelector('.multi-trigger').setAttribute('aria-expanded','true');host.querySelector('.multi-search').focus()}
+            else closeMulti(host);
           });
           host.querySelector('.multi-search').addEventListener('input',function(){
             var q=normalizeTerm(this.value);
@@ -227,13 +249,14 @@ export const page = String.raw`<!doctype html>
             if(!e.target.matches('input[type=checkbox][data-value]'))return;
             var val=e.target.dataset.value,arr=selectedValues(id);
             multiSelected[id]=e.target.checked?Array.from(new Set(arr.concat([val]))):arr.filter(function(x){return x!==val});
-            persistFilters();render();
+            clearMultiSearch(host);persistFilters();render();host.querySelector('.multi-search').focus();
           });
           host.addEventListener('click',function(e){
             var remove=e.target.closest('[data-remove]'),clear=e.target.closest('[data-clear]');
             if(remove){multiSelected[id]=selectedValues(id).filter(function(x){return x!==remove.dataset.remove});persistFilters();render()}
             if(clear){multiSelected[id]=[];persistFilters();render()}
           });
+          host.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMulti(host);host.querySelector('.multi-trigger').focus()}});
         }
         drawMulti(id);
       }
@@ -262,21 +285,20 @@ export const page = String.raw`<!doctype html>
         '<div class="filtergroup"><label for="company">Delodajalec</label><select class="field" id="company"><option value="">Vsi delodajalci</option></select></div>',
         '<div class="filtergroup"><label for="published">Datum objave</label><select class="field" id="published"><option value="">Kadar koli</option><option value="3">Zadnje 3 dni</option><option value="7">Zadnjih 7 dni</option><option value="30">Zadnjih 30 dni</option><option value="unknown">Datum ni naveden</option></select></div>',
         '<div class="filtergroup"><label for="deadline">Rok prijave</label><select class="field" id="deadline"><option value="">Kateri koli</option><option value="7">V naslednjih 7 dneh</option><option value="14">V naslednjih 14 dneh</option><option value="unknown">Rok ni naveden</option></select></div>',
-        '<div class="filtergroup"><label for="myStatus">Moj status</label><select class="field" id="myStatus"><option value="">Vsi statusi</option><option value="none">Neoznačeni</option><option value="interested">Zanimivo</option><option value="contacted">Kontaktirano</option></select></div>',
-        '<div class="filtergroup"><label for="contract">Vrsta zaposlitve</label><select class="field" id="contract" disabled><option>Čaka na dodatne podatke</option></select><small>Oglasi za zdaj ne dajejo dovolj zanesljivih podatkov.</small></div>'
+        '<div class="filtergroup"><label for="myStatus">Moj status</label><select class="field" id="myStatus"><option value="">Vsi statusi</option><option value="none">Neoznačeni</option><option value="interested">Zanimivo</option><option value="contacted">Kontaktirano</option></select></div>'
       ].join(''));
-      $('place').closest('.filtergroup').querySelector('label').textContent='Dodaten iskalni niz za kraj';
+      $('place').closest('.filtergroup').remove();
       configureMulti('sourceFilter',['Optius','Kariera.si'],'Vsi portali');
       configureMulti('region',Object.keys(regionPlaces).concat(['Neznana regija']),'Vse regije');
       configureMulti('sector',sectors.map(function(x){return x[0]}).concat(['Drugo / nerazvrščeno']),'Vsa področja');
       configureMulti('city',[],'Vsi kraji');
       configureMulti('company',[],'Vsi delodajalci');
       var restored=savedFilters.values||{};
-      ['search','place','published','deadline','myStatus','sort'].forEach(function(id){if(restored[id]!==undefined)$(id).value=restored[id]});
+      ['search','published','deadline','myStatus','sort'].forEach(function(id){if(restored[id]!==undefined)$(id).value=restored[id]});
       if(restored.onlySaved!==undefined)$('onlySaved').checked=!!restored.onlySaved;
       if(restored.hideApplied!==undefined)$('hideApplied').checked=!!restored.hideApplied;
       document.addEventListener('click',function(e){
-        if(!e.target.closest('.multi'))document.querySelectorAll('.multi-menu').forEach(function(m){m.hidden=true});
+        if(!e.target.closest('.multi'))document.querySelectorAll('.multi').forEach(closeMulti);
       });
       if(offline){
         document.querySelector('.eyebrow').textContent='Lokalni test · verzija pred objavo';
@@ -312,7 +334,7 @@ export const page = String.raw`<!doctype html>
         $('notice').innerHTML=broken.length?'<div class="notice">Pozor: '+broken.map(function(x){return safe(x.name)}).join(', ')+' trenutno ni dosegljiv. Spodaj so samo uspešno pridobljeni oglasi.</div>':'';
       }
       function matchesJob(j,exceptFacet){
-        var q=normalizeTerm($('search').value),p=normalizeTerm($('place').value);
+        var q=normalizeTerm($('search').value);
         var only=$('onlySaved').checked,hide=$('hideApplied').checked;
         var pub=$('published').value,deadline=$('deadline').value,myStatus=$('myStatus').value;
         var current=Date.now(),day=86400000;
@@ -321,7 +343,7 @@ export const page = String.raw`<!doctype html>
         var pubMatch=!pub||(pub==='unknown'?!Number.isFinite(published):(Number.isFinite(published)&&published>=current-(+pub)*day));
         var deadlineMatch=!deadline||(deadline==='unknown'?!Number.isFinite(due):(Number.isFinite(due)&&due>=current-day&&due<=current+(+deadline)*day));
         return (!q||normalizeTerm([j.title,j.company,j.location].join(' ')).includes(q))&&
-          (!p||normalizeTerm(j.location).includes(p))&&(!only||st.saved)&&(!hide||st.status!=='contacted')&&
+          (!only||st.saved)&&(!hide||st.status!=='contacted')&&
           multiIds.every(function(id){var values=selectedValues(id);return id===exceptFacet||!values.length||facetValues(j,id).some(function(v){return values.includes(v)})})&&
           statusMatch&&pubMatch&&deadlineMatch;
       }
@@ -329,12 +351,34 @@ export const page = String.raw`<!doctype html>
         var result=jobs.filter(function(j){return matchesJob(j)});
         var sort=$('sort').value;result.sort(function(a,b){if(sort==='title')return a.title.localeCompare(b.title,'sl');if(sort==='source')return a.source.localeCompare(b.source,'sl');return (b.date||'').localeCompare(a.date||'')||a.title.localeCompare(b.title,'sl')});return result;
       }
-      function render(){
+      var pager=document.createElement('nav');pager.id='pager';pager.className='pager';pager.setAttribute('aria-label','Strani oglasov');$('summary').after(pager);
+      function pageButton(number,label,totalPages,active){
+        var disabled=number<1||number>totalPages;
+        var aria=label==='‹'?'Prejšnja stran':label==='›'?'Naslednja stran':(active?'Trenutna stran ':'Stran ')+number;
+        return '<button type="button" data-page="'+number+'" '+(disabled?'disabled ':'')+(active?'aria-current="page" ':'')+'aria-label="'+aria+'">'+label+'</button>';
+      }
+      function pageNavigation(totalPages){
+        var shown=new Set([1,totalPages]);
+        for(var n=currentPage-2;n<=currentPage+2;n++)if(n>=1&&n<=totalPages)shown.add(n);
+        var numbers=Array.from(shown).sort(function(a,b){return a-b}),last=0;
+        var buttons=pageButton(currentPage-1,'‹',totalPages,false);
+        numbers.forEach(function(n){
+          if(n-last>1)buttons+='<span class="gapdots" aria-hidden="true">…</span>';
+          buttons+=pageButton(n,String(n),totalPages,n===currentPage);last=n;
+        });
+        buttons+=pageButton(currentPage+1,'›',totalPages,false);
+        pager.innerHTML='<div class="pagebuttons">'+buttons+'</div><label class="pagesize" for="pageSize">Oglasov na stran <select id="pageSize" aria-label="Oglasov na stran"><option value="50" '+(pageSize===50?'selected':'')+'>50</option><option value="100" '+(pageSize===100?'selected':'')+'>100</option></select></label>';
+      }
+      function render(keepPage){
         var items=filtered();$('found').textContent='· '+items.length+' zadetkov';$('total').textContent=jobs.length.toLocaleString('sl-SI');
         drawAllMultis();
-        if(!items.length){$('summary').textContent='Ni zadetkov za izbrane filtre.';$('jobRows').innerHTML='<tr><td colspan="6"><div class="empty"><div class="big">⌕</div><h3>Ni zadetkov</h3><p>'+(jobs.length?'Poskusi drug naziv ali počisti filtre.':'Trenutno ni mogoče prikazati oglasov. Poskusi osvežiti stran pozneje.')+'</p></div></td></tr>';return}
-        $('jobRows').innerHTML=items.slice(0,visibleLimit).map(function(j){var s=getState(j.id);var location=j.location||(Array.isArray(j.regions)&&j.regions.length?(j.regions.length===1?j.regions[0]+' (regija)':'Več regij ('+j.regions.length+')'):'Ni navedeno');return '<tr><td><a target="_blank" rel="noopener noreferrer" class="jobtitle" href="'+safe(j.url)+'">'+safe(j.title)+'</a><div class="jobcompany">'+safe(j.company||'Oglej si delodajalca na portalu')+'</div></td><td class="muted">'+safe(location)+'</td><td><span class="srcbadge '+(j.source==='Kariera.si'?'kariera':'')+'">'+safe(j.source)+'</span></td><td class="dead">'+dateLabel(j.date)+'</td><td><select class="state '+(s.status==='contacted'?'applied':s.status==='interested'?'saved':'')+'" data-status="'+safe(j.id)+'" aria-label="Status: '+safe(j.title)+'"><option value="" '+(!s.status?'selected':'')+'>Ni označeno</option><option value="interested" '+(s.status==='interested'?'selected':'')+'>Zanimivo</option><option value="contacted" '+(s.status==='contacted'?'selected':'')+'>Kontaktirano</option></select></td><td><div class="rowactions"><button class="star '+(s.saved?'active':'')+'" data-star="'+safe(j.id)+'" title="Shrani oglas" aria-label="Shrani oglas" type="button">'+(s.saved?'★':'☆')+'</button><a class="openjob" href="'+safe(j.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Odpri oglas">↗</a></div></td></tr>'}).join('');
-        $('summary').innerHTML='Prikazanih '+Math.min(items.length,visibleLimit)+' od '+items.length+' zadetkov · Rok in pogoje preveri na izvornem portalu.'+(items.length>visibleLimit?' <button type="button" id="loadMore">Prikaži naslednjih 500</button>':'');
+        if(!keepPage)currentPage=1;
+        var totalPages=Math.max(1,Math.ceil(items.length/pageSize));currentPage=Math.min(currentPage,totalPages);
+        var start=(currentPage-1)*pageSize,end=Math.min(start+pageSize,items.length);
+        if(!items.length){$('summary').textContent='Ni zadetkov za izbrane filtre.';pager.innerHTML='';$('jobRows').innerHTML='<tr><td colspan="6"><div class="empty"><div class="big">⌕</div><h3>Ni zadetkov</h3><p>'+(jobs.length?'Poskusi drug naziv ali počisti filtre.':'Trenutno ni mogoče prikazati oglasov. Poskusi osvežiti stran pozneje.')+'</p></div></td></tr>';return}
+        $('jobRows').innerHTML=items.slice(start,end).map(function(j){var s=getState(j.id);var location=j.location||(Array.isArray(j.regions)&&j.regions.length?(j.regions.length===1?j.regions[0]+' (regija)':'Več regij ('+j.regions.length+')'):'Ni navedeno');return '<tr><td><a target="_blank" rel="noopener noreferrer" class="jobtitle" href="'+safe(j.url)+'">'+safe(j.title)+'</a><div class="jobcompany">'+safe(j.company||'Oglej si delodajalca na portalu')+'</div></td><td class="muted">'+safe(location)+'</td><td><span class="srcbadge '+(j.source==='Kariera.si'?'kariera':'')+'">'+safe(j.source)+'</span></td><td class="dead">'+dateLabel(j.date)+'</td><td><select class="state '+(s.status==='contacted'?'applied':s.status==='interested'?'saved':'')+'" data-status="'+safe(j.id)+'" aria-label="Status: '+safe(j.title)+'"><option value="" '+(!s.status?'selected':'')+'>Ni označeno</option><option value="interested" '+(s.status==='interested'?'selected':'')+'>Zanimivo</option><option value="contacted" '+(s.status==='contacted'?'selected':'')+'>Kontaktirano</option></select></td><td><div class="rowactions"><button class="star '+(s.saved?'active':'')+'" data-star="'+safe(j.id)+'" title="Shrani oglas" aria-label="Shrani oglas" type="button">'+(s.saved?'★':'☆')+'</button><a class="openjob" href="'+safe(j.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Odpri oglas">↗</a></div></td></tr>'}).join('');
+        $('summary').textContent='Prikazanih '+(start+1)+'–'+end+' od '+items.length+' zadetkov · Stran '+currentPage+' od '+totalPages+' · Rok in pogoje preveri na izvornem portalu.';
+        pageNavigation(totalPages);
       }
       function noticeMessage(txt){$('notice').innerHTML='<div class="notice">'+safe(txt)+'</div>'}
       function load(){
@@ -353,20 +397,21 @@ export const page = String.raw`<!doctype html>
           }
         }).catch(function(){noticeMessage('Oglasov trenutno ni mogoče pridobiti. Preveri povezavo in poskusi znova.');$('jobRows').innerHTML='<tr><td colspan="6" class="empty">Napaka pri pridobivanju podatkov.</td></tr>'}).finally(function(){$('progress').style.display='none';$('refresh').disabled=false;$('refresh').textContent=offline?'↻   Preberi testni posnetek':'↻   Preveri zadnji zajem'});
       }
-      ['search','place'].forEach(function(id){$(id).addEventListener('input',render)});
+      ['search'].forEach(function(id){$(id).addEventListener('input',render)});
       ['sourceFilter','onlySaved','hideApplied','sort'].forEach(function(id){$(id).addEventListener('change',render)});
       ['region','city','sector','company','published','deadline','myStatus'].forEach(function(id){$(id).addEventListener('change',render)});
       $('clear').addEventListener('click',function(){
-        ['search','place','published','deadline','myStatus'].forEach(function(id){$(id).value=''});
+        ['search','published','deadline','myStatus'].forEach(function(id){$(id).value=''});
         multiIds.forEach(function(id){multiSelected[id]=[]});
         $('onlySaved').checked=false;$('hideApplied').checked=false;persistFilters();render()
       });
-      ['search','place'].forEach(function(id){$(id).addEventListener('input',persistFilters)});
+      ['search'].forEach(function(id){$(id).addEventListener('input',persistFilters)});
       ['published','deadline','myStatus','sort','onlySaved','hideApplied'].forEach(function(id){$(id).addEventListener('change',persistFilters)});
       $('refresh').addEventListener('click',load);
-      $('summary').addEventListener('click',function(e){if(e.target.closest('#loadMore')){visibleLimit+=500;render()}});
-      $('jobRows').addEventListener('click',function(e){var b=e.target.closest('[data-star]');if(!b)return;var id=b.dataset.star;state[id]=Object.assign({},getState(id),{saved:!getState(id).saved});save();render()});
-      $('jobRows').addEventListener('change',function(e){var b=e.target.closest('[data-status]');if(!b)return;var id=b.dataset.status;state[id]=Object.assign({},getState(id),{status:b.value});save();render()});
+      pager.addEventListener('click',function(e){var b=e.target.closest('[data-page]');if(!b||b.disabled)return;currentPage=Number(b.dataset.page);render(true);$('jobRows').scrollIntoView({behavior:'smooth',block:'start'})});
+      pager.addEventListener('change',function(e){if(e.target.id!=='pageSize')return;pageSize=Number(e.target.value);persistFilters();render()});
+      $('jobRows').addEventListener('click',function(e){var b=e.target.closest('[data-star]');if(!b)return;var id=b.dataset.star;state[id]=Object.assign({},getState(id),{saved:!getState(id).saved});save();render(true)});
+      $('jobRows').addEventListener('change',function(e){var b=e.target.closest('[data-status]');if(!b)return;var id=b.dataset.status;state[id]=Object.assign({},getState(id),{status:b.value});save();render(true)});
       function showSources(){var el=$('viri');el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'start'})}
       $('showCatalog').addEventListener('click',showSources);$('topSources').addEventListener('click',function(e){e.preventDefault();showSources()});
       $('export').addEventListener('click',function(){
