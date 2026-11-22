@@ -93,7 +93,7 @@ multiContext.clearMultiSearch({querySelector:()=>mockSearch,querySelectorAll:()=
 assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
-const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob } = await import('../source/collector.js');
+const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseSparSitemap, parseSparJob, parseKolektorListings, parseSzListings, parseSzLocation } = await import('../source/collector.js');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -177,4 +177,33 @@ assert.equal(parseLidlJob(lidlHtml,lidlLinks[0],Date.parse('2026-12-01')),null,'
 assert.equal(parseLidlJob(lidlHtml.replace('"addressCountry":"SI"','"addressCountry":"AT"'),lidlLinks[0],Date.parse('2026-11-22')),null,'Lidl: izločimo oglase izven Slovenije');
 assert.equal(parseLidlJob('<script type="application/ld+json">invalid</script>',lidlLinks[0]),null,'Lidl: neveljavni JSON-LD ne sme ustaviti zajema');
 
-console.log('OK: filtri, straničenje in parserji vseh desetih virov');
+const sparUrl='https://www.spar.si/zaposlitev/mesar-prodajalec-interspar-sup-maribor';
+const sparSitemap=`<urlset><url><loc>https://www.spar.si/zaposlitev</loc><lastmod>2026-11-20</lastmod></url><url><loc>${sparUrl}</loc><lastmod>2026-11-16T13:06:07Z</lastmod></url><url><loc>https://www.spar.si/zaposlitev/stari-oglas</loc><lastmod>2025-05-01</lastmod></url></urlset>`;
+const sparLinks=parseSparSitemap(sparSitemap,Date.parse('2026-11-22'));
+assert.equal(sparLinks.length,1,'SPAR: iz uradnega seznama uporabimo samo posodobljene strani dejanskih razpisov');
+assert.equal(sparLinks[0].id,'spar:mesar-prodajalec-interspar-sup-maribor');
+const sparHtml='<h1 class="h2 job-detail__headline">Mesar - prodajalec (m/ž)</h1><h4 class="job-detail__info-headline">Kraj zaposlitve:</h4><div class="job-detail__info-text">INTERSPAR Supernova Maribor</div><li><b>Rok za prijavo kandidatov: 16. 11. 2026 - 30. 11. 2026</b></li>';
+const spar=parseSparJob(sparHtml,sparLinks[0],Date.parse('2026-11-22'));
+assert.equal(spar.title,'Mesar - prodajalec (m/ž)');
+assert.equal(spar.location,'INTERSPAR Supernova Maribor');
+assert.equal(spar.company,'SPAR Slovenija');
+assert.equal(spar.deadline,'2026-11-30');
+assert.equal(parseSparJob(sparHtml,sparLinks[0],Date.parse('2026-12-01')),null,'SPAR: ne prikažemo že poteklih razpisov');
+assert.equal(parseSparJob('<h1 class="job-detail__headline">Brez roka</h1>',sparLinks[0]),null,'SPAR: brez navedenega roka ne domnevamo, da je oglas aktualen');
+
+const kolektorHtml='<table class="list" style="display:none"><tbody><tr class="item cat-1571"><td>Energetski transformatorji</td><td><a href="/sl/o-nas/kadri-in-izobrazevanje/elektromehanik-2024-01-11"><strong>Elektromehanik</strong></a></td><td>Ljubljana - Črnuče</td><td>30.11.2026</td></tr><tr class="item cat-1571"><td>Mobilnost</td><td><a href="/sl/o-nas/kadri-in-izobrazevanje/radnik-bih"><strong>Proizvodni delavec</strong></a></td><td>Klašnice (BIH)</td><td>30.11.2026</td></tr><tr class="item cat-1571"><td>Tehnologija</td><td><a href="/sl/o-nas/kadri-in-izobrazevanje/stari"><strong>Star oglas</strong></a></td><td>Idrija</td><td>01.10.2026</td></tr></tbody></table>';
+const kolektor=parseKolektorListings(kolektorHtml,Date.parse('2026-11-22'));
+assert.equal(kolektor.length,1,'Kolektor: vključimo le aktualne zaposlitve v Sloveniji');
+assert.equal(kolektor[0].title,'Elektromehanik');
+assert.equal(kolektor[0].location,'Ljubljana - Črnuče');
+assert.equal(kolektor[0].deadline,'2026-11-30');
+assert.equal(kolektor[0].url,'https://www.kolektor.com/sl/o-nas/kadri-in-izobrazevanje/elektromehanik-2024-01-11');
+
+const szCard=(end,title,url)=>`<article class="card postdefault post-20534 razpisi_za_delo type-razpisi_za_delo status-publish"><a class="c-shape" href="https://www.sz.si/pogoji_za_zaposlitev/${url}/"><div class="post-date">Rok za prijavo: ${end}</div><div class="post-title text-primary my-2">${title}</div></a></article>`;
+const sz=parseSzListings(szCard('26. novembra 2026','UVAJANJE V DELO VI. STOPNJA - elektro smeri','uvajanje-elektro')+szCard('1. oktobra 2026','Star razpis','staro'),Date.parse('2026-11-22'));
+assert.equal(sz.length,1,'Slovenske železnice: zajemamo samo trenutno odprte razpise');
+assert.equal(sz[0].deadline,'2026-11-26');
+assert.equal(sz[0].company,'Slovenske železnice');
+assert.equal(parseSzLocation('<p><strong>Lokacija zaposlitve</strong>: Ljubljana</p>'),'Ljubljana');
+
+console.log('OK: filtri, straničenje in parserji vseh trinajstih virov');
