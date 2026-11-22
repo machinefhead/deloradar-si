@@ -4,6 +4,7 @@ const SOURCES = [
   { id: 'optius', name: 'Optius', url: 'https://www.optius.com/iskalci/prosta-delovna-mesta/' },
   { id: 'kariera', name: 'Kariera.si', url: 'https://www.kariera.si/sl/delovna-mesta' },
   { id: 'govsi', name: 'GOV.SI', url: 'https://www.gov.si/zbirke/delovna-mesta/' },
+  { id: 'atama', name: 'Atama', url: 'https://atama.si/za-iskalce/aktualna-ponudba-dela' },
 ];
 const PLANNED = [
   { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'ZRSZ za ponovno objavo podatkov zahteva dovoljenje; do dovoljenja le povezava na iskalnik' },
@@ -12,7 +13,15 @@ const PLANNED = [
   { name: 'Nove zaposlitve', href: 'https://novezaposlitve.si/', note: 'Preverjanje strukture in pogojev uporabe' },
   { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjanje strukture in pogojev uporabe' },
   { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski portal s slovenskim trgom dela' },
-  { name: 'Zaposlitvene agencije', href: 'https://www.manpower.si/', note: 'Manpower, Adecco, Trenkwalder, Atama in drugi' },
+  { name: 'Druge zaposlitvene agencije', href: 'https://www.adecco.si/', note: 'Adecco, Trenkwalder in drugi; Manpower prepoveduje avtomatsko zbiranje podatkov' },
+];
+// Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
+// saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
+const OPTIUS_REGIONS = [
+  ['1', 'Gorenjska'], ['2', 'Goriška'], ['3', 'Jugovzhodna Slovenija'],
+  ['4', 'Koroška'], ['5', 'Primorsko-notranjska'], ['6', 'Obalno-kraška'],
+  ['7', 'Osrednjeslovenska'], ['8', 'Podravska'], ['9', 'Pomurska'],
+  ['10', 'Savinjska'], ['11', 'Posavska'], ['12', 'Zasavska'],
 ];
 let cached = null;
 let cachedAt = 0;
@@ -47,8 +56,7 @@ async function getText(url) {
   if (content.length > 3_000_000) throw Error('Response too large');
   return content;
 }
-async function getOptius() {
-  const feed = await getText('https://www.optius.com/rss/?podrocje=&regija=');
+export function parseOptiusFeed(feed) {
   if (!feed.includes('<rss')) throw Error('RSS unavailable');
   const jobs = [];
   for (const match of feed.matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
@@ -62,6 +70,29 @@ async function getOptius() {
       deadline: xml(block, 'validTill'), url });
   }
   return jobs;
+}
+async function getOptius() {
+  const jobsByUrl = new Map();
+  let successful = 0;
+  // Omejimo sočasne zahtevke, da ne obremenimo vira ob polurnem zajemu.
+  for (let start = 0; start < OPTIUS_REGIONS.length; start += 3) {
+    const batch = OPTIUS_REGIONS.slice(start, start + 3);
+    const results = await Promise.allSettled(batch.map(([id]) =>
+      getText('https://www.optius.com/rss/?podrocje=&regija=' + id).then(parseOptiusFeed)));
+    results.forEach((result, i) => {
+      if (result.status !== 'fulfilled') return;
+      successful++;
+      const region = batch[i][1];
+      for (const job of result.value) {
+        if (jobsByUrl.has(job.url)) {
+          const existing = jobsByUrl.get(job.url);
+          if (!existing.regions.includes(region)) existing.regions.push(region);
+        } else jobsByUrl.set(job.url, { ...job, regions: [region] });
+      }
+    });
+  }
+  if (!successful) throw Error('All Optius regional RSS feeds failed');
+  return [...jobsByUrl.values()];
 }
 async function getKariera() {
   const html = await getText('https://www.kariera.si/sl/delovna-mesta');
@@ -112,9 +143,26 @@ async function getGov() {
   }
   return jobs;
 }
+export function parseAtamaListings(html) {
+  const jobs = [];
+  for (const item of html.matchAll(/<div\s+class=["']pos_novica_ps_spisek["']>([\s\S]*?)<div\s+class=["']clear["']><\/div>\s*<\/div>/gi)) {
+    const title = plain(item[1].match(/<h3[^>]*>([\s\S]*?)<\/h3>/i)?.[1] || '');
+    const link = item[1].match(/<a\s+href=["'](S2210\/D\d+\/[^"']+)["'][^>]*>/i)?.[1];
+    if (!title || !link) continue;
+    const url = new URL(link, 'https://atama.si/').href;
+    jobs.push({ id: 'atama:' + url, source: 'Atama', title, company: '',
+      location: '', date: '', deadline: '', url });
+  }
+  return jobs;
+}
+async function getAtama() {
+  const jobs = parseAtamaListings(await getText('https://atama.si/S2200/Ponudba+dela.'));
+  if (!jobs.length) throw Error('Unexpected Atama listing format');
+  return jobs;
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama()]);
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));
