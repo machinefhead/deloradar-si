@@ -1,5 +1,6 @@
 import { page } from './page.js';
 import { getZrszJson, getZrszFromPublicBrowser } from './zrsz.js';
+import { getDm, getNovaPriloznost } from './next-sources.js';
 
 // Naslov poda ZRSZ in ostane v zaščiteni GitHub Actions skrivnosti.
 const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
@@ -22,6 +23,8 @@ const SOURCES = [
   { id: 'mercator', name: 'Mercator', url: 'https://www.mercatorgroup.si/sl/kariera/prosta-delovna-mesta/seznam-prostih-delovnih-mest/' },
   { id: 'iscidelo', name: 'IščiDelo', url: 'https://iscidelo.com/delovna-mesta/' },
   ...(ZRSZ_JSON_URL || ZRSZ_BROWSER_ENABLED ? [{ id: 'zrsz', name: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/' }] : []),
+  { id: 'dm', name: 'dm Slovenija', url: 'https://www.dm-jobs.si/job-listing/' },
+  { id: 'novapriloznost', name: 'Nova Priložnost', url: 'https://novapriloznost.si/prosta-delovna-mesta/' },
 ];
 const PLANNED = [
   ...(!ZRSZ_JSON_URL && !ZRSZ_BROWSER_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Dnevni JSON je preverjen; preverjamo samodejni prenos prek javnega gumba.' }] : []),
@@ -576,6 +579,7 @@ async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
   const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
   if (ZRSZ_JSON_URL || ZRSZ_BROWSER_ENABLED) collectors.push(ZRSZ_JSON_URL ? getZrszJson(ZRSZ_JSON_URL) : getZrszFromPublicBrowser());
+  collectors.push(getDm(), getNovaPriloznost());
   const results = await Promise.allSettled(collectors);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {

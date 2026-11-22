@@ -103,6 +103,7 @@ assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se
 
 const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages, parseMercatorListings, parseIscideloListings, iscideloPages } = await import('../source/collector.js');
 const { parseZrszJson } = await import('../source/zrsz.js');
+const { parseDmListings, parseNovaPriloznostSitemap, parseNovaPriloznostJob } = await import('../source/next-sources.js');
 const zrszSample = {
   DatumObjave: '2026-11-21T00:00:00', SteviloPDM: 3,
   ProstaDelovnaMesta: [
@@ -263,4 +264,51 @@ assert.equal(iscidelo[0].url,'https://iscidelo.com/delovna-mesta/elektricar-m-z'
 assert.deepEqual(iscideloPages(iscideloHtml),{page:1,total:2});
 assert.throws(()=>iscideloPages('<html>napaka</html>'),/straneh/,'Manjkajoča paginacija mora pomeniti napako');
 
-console.log('OK: filtri, straničenje, 15 aktivnih virov in ZRSZ dnevni JSON');
+const nuxtNodes = [];
+const ref = value => (nuxtNodes.push(value), nuxtNodes.length - 1);
+const dmItem = (id, title, end, address, city) => ({
+  jobId: ref(id), title: ref(title), slug: ref('prodajalec-test'),
+  postEndDate: end ? ref(end) : undefined, altAddress: ref(address),
+  addresses: city ? ref([ref({ city: ref(city) })]) : undefined,
+  jobInviteUrl: ref('https://www.dm-jobs.si/job/prodajalec-test/' + id + '/'),
+});
+const dmItems = [
+  ref(dmItem('274443', 'Prodajalec (m/ž)', '2026-12-04T22:59:59Z', 'Cesta 1 1000 Ljubljana', 'Brezovica')),
+  ref(dmItem('274442', 'Star oglas', '2026-11-01T22:59:59Z', 'Trg 2 1000 Ljubljana')),
+  ref(dmItem('274441', 'Prodajalec - samoiniciativna prijava', null, 'Cesta 3 4000 Kranj')),
+];
+const dmCount = ref(dmItems.length);
+const dmLinks = ref(dmItems);
+ref({ count: dmCount, jobs: dmLinks });
+const dmHtml = '<script id="__NUXT_DATA__" type="application/json">' + JSON.stringify(nuxtNodes) + '</script>';
+const dmJobs = parseDmListings(dmHtml, Date.parse('2026-11-22'));
+assert.equal(dmJobs.length, 1, 'dm: izločimo potekle oglase in samoiniciativne prijave');
+assert.equal(dmJobs[0].location, 'Brezovica', 'dm: uporabljamo dejanski kraj dela namesto poštnega kraja');
+assert.equal(dmJobs[0].url, 'https://www.dm-jobs.si/job/prodajalec-test/274443/');
+assert.throws(() => parseDmListings(dmHtml.replace('https://www.dm-jobs.si/job/prodajalec-test/274443/', 'https://evil.test/job/274443/'), Date.parse('2026-11-22')), /URL ali ID/, 'dm: oglas mora imeti pravi javni URL');
+assert.throws(() => parseDmListings(dmHtml.replace('"count":' + dmCount, '"count":99999')), /nepopoln/, 'dm: brez strukture ne sme prijaviti uspeha');
+assert.throws(() => parseDmListings('<html>brez podatkov</html>'), /podatkov/, 'dm: sprememba HTML mora biti zaznana');
+
+const novaJobUrl = 'https://novapriloznost.si/delovno-mesto/elektrotehnik-m-z/';
+const novaSitemap = parseNovaPriloznostSitemap('<urlset><url><loc><![CDATA[' + novaJobUrl +
+  ']]></loc></url><url><loc>' + novaJobUrl +
+  '</loc></url><url><loc>https://drugi-primer.si/delovno-mesto/test/</loc></url></urlset>');
+assert.equal(novaSitemap.length, 1, 'Nova Priložnost: samo uradni URL-ji, brez podvojitev');
+const novaPosting = {
+  '@type': 'JobPosting', title: 'Elektrotehnik (m/ž)', datePosted: '2026-11-20T12:00:00Z',
+  validThrough: '2026-12-20T23:59:59Z', description: 'Celoten opis ne sodi v DeloRadar',
+  hiringOrganization: { name: 'Podjetje d.o.o.' },
+  jobLocation: { address: 'Maribor' },
+};
+const novaHtml = '<script type="application/ld+json">' + JSON.stringify(novaPosting) + '</script>';
+const novaJob = parseNovaPriloznostJob(novaHtml, novaSitemap[0], Date.parse('2026-11-22'));
+assert.equal(novaJob.title, 'Elektrotehnik (m/ž)');
+assert.equal(novaJob.company, 'Podjetje d.o.o.');
+assert.equal(novaJob.location, 'Maribor');
+assert.equal(novaJob.deadline, '2026-12-20T23:59:59.000Z');
+assert.ok(!('description' in novaJob), 'Nova Priložnost: ne kopiramo celotnih opisov');
+assert.equal(parseNovaPriloznostJob(novaHtml, novaSitemap[0], Date.parse('2027-01-01')), null, 'Nova Priložnost: brez poteklih razpisov');
+assert.equal(parseNovaPriloznostJob(novaHtml.replace('"address":"Maribor"', '"address":{"addressLocality":"Graz","addressCountry":"AT"}'), novaSitemap[0], Date.parse('2026-11-22')), null, 'Nova Priložnost: samo Slovenija');
+assert.throws(() => parseNovaPriloznostJob('<html>brez JSON-LD</html>', novaSitemap[0]), /strukturiranih/, 'Nova Priložnost: zaznamo pokvarjene oglase');
+
+console.log('OK: filtri, straničenje, 18 virov in ZRSZ dnevni JSON');
