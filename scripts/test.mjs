@@ -2,6 +2,32 @@ import assert from 'node:assert/strict';
 import { Script, runInNewContext } from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { page } from '../source/page.js';
+import { markLikelyDuplicates } from '../source/duplicates.js';
+
+const sameVacancy=(id,source,date,extra={})=>({ id,source,date,title:'Elektrotehnik (m/ž)',company:'Primer d.o.o.',location:'Maribor',deadline:'2026-12-15',url:'https://primer.si/delo/'+id,...extra });
+const duplicateFixture=[
+  sameVacancy('mojedelo:1','MojeDelo.com','2026-11-20T23:00:00Z'),
+  sameVacancy('zaposlitevinfo:1','Zaposlitev.info','2026-11-21'),
+  sameVacancy('mojedelo:2','MojeDelo.com','2026-11-20',{location:'Ljubljana'}),
+  sameVacancy('zaposlitevinfo:2','Zaposlitev.info','2026-11-21',{location:'Ptuj'}),
+  sameVacancy('mojedelo:3','MojeDelo.com','2026-11-01',{title:'Programer'}),
+  sameVacancy('zaposlitevinfo:3','Zaposlitev.info','2026-11-21',{title:'Programer'}),
+  sameVacancy('mojedelo:4','MojeDelo.com','2026-11-20',{title:'Skladiščnik',deadline:'2026-12-01'}),
+  sameVacancy('zaposlitevinfo:4','Zaposlitev.info','2026-11-21',{title:'Skladiščnik',deadline:'2026-12-31'}),
+  sameVacancy('mojedelo:5','MojeDelo.com','2026-11-20',{title:'Varilec',location:''}),
+  sameVacancy('zaposlitevinfo:5','Zaposlitev.info','2026-11-21',{title:'Varilec',location:''}),
+];
+const marked=markLikelyDuplicates(duplicateFixture);
+assert.equal(marked[0].duplicateGroup,marked[1].duplicateGroup,'Enak naslov, podjetje, kraj in bližnja datuma lahko pomenijo isti razpis');
+assert.equal(marked[0].id,'mojedelo:1','Ohranimo izvorni ID in povezavo vsake objave');
+assert.equal(duplicateFixture[0].duplicateGroup,undefined,'Označevanje ne sme spreminjati vhodnih oglasov');
+assert.ok(marked.slice(2).every(job=>!job.duplicateGroup),'Različni kraji, predaleč oddaljeni datumi, roki ali neznani kraji se ne združijo');
+assert.equal(markLikelyDuplicates(marked.concat(sameVacancy('third','Optius','2026-11-21'))).filter(j=>j.duplicateGroup).length,0,'Trije podobni razpisi se ne združujejo samodejno');
+assert.equal(markLikelyDuplicates(marked).filter(j=>j.duplicateGroup).length,2,'Večkratni zajem mora ohraniti enake oznake dvojnikov');
+assert.equal(markLikelyDuplicates([
+  sameVacancy('zrsz:1','ZRSZ / PoiščiDelo','2026-11-20',{reference:'ABC123'}),
+  sameVacancy('mojedelo:6','MojeDelo.com','2026-11-21')
+]).filter(j=>j.duplicateGroup).length,0,'ZRSZ brez neposrednega URL-ja oglasa ostane samostojen');
 
 assert.match(page, /<html lang="sl">/);
 assert.match(page, /href="\.\/"/);
@@ -18,6 +44,10 @@ assert.match(script, /if\(clear\)\{multiSelected\[id\]=\[\];closeMulti\(host\);/
 assert.match(page, /grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/, 'Navigacija mora biti poravnana na sredino');
 assert.match(page, /\.bottom\{margin-top:14px\}/, 'Razmik pod navigacijo naj bo primerljiv razmiku nad njo');
 assert.match(page, /id="backToTop"/, 'Plavajoči gumb za vrnitev na vrh mora biti v dokumentu');
+assert.match(page, /id="groupDuplicates" checked/, 'Uporabnik lahko preklopi združevanje, privzeto je vključeno');
+assert.match(script, /values\.groupDuplicates=\$\('groupDuplicates'\)\.checked/, 'Izbrani način prikaza se mora shraniti v brskalniku');
+assert.match(page, /Objavljeno tudi na:/, 'Združeni oglas mora ohraniti povezavo do drugega vira');
+assert.match(page, /Druge izvorne povezave/, 'CSV mora vključevati tudi alternativne povezave');
 assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passive:true\}\)/, 'Gumb za vrh se mora prilagajati drsenju');
 assert.match(page, /manualLink\.textContent='↻ Osveži'/, 'Osveži mora biti povezava na ročni zajem v GitHub Actions');
 assert.match(page, /\$\('refresh'\)\.replaceWith\(manualLink\)/, 'Podvojeni gumb za branje istega posnetka ne sme ostati na javni strani');
@@ -64,6 +94,9 @@ const context = {
   ],
   multiIds: ['sourceFilter', 'region', 'city', 'sector', 'company'],
   selectedValues: id => selected[id] || [],
+  groupEnabled: () => false,
+  groupById: new Map(),
+  mergedState: () => ({}),
   regionOf: job => job.region,
   sectorOf: job => job.sector,
   $: id => ({ value: controls[id] || '', checked: false }),
@@ -82,6 +115,43 @@ selected.city = ['Maribor'];
 assert.equal(context.jobs.filter(job => context.matchesJob(job)).length, 1, 'Filtri morajo delovati skupaj');
 assert.equal(context.facetCounts('region').get('Podravska'), 1, 'Število pri regiji upošteva ostale filtre');
 assert.equal(context.facetCounts('region').get('Savinjska'), 1, 'Oglas lahko pripada več regijam, ne sme se podvajati v tabeli');
+const pairId='dupe:mojedelo:1';
+const firstAd={...marked[0],duplicateGroup:pairId,url:'https://www.mojedelo.com/iskanje-zaposlitve?jobAdIds=abc'};
+const secondAd={...marked[1],duplicateGroup:pairId,url:'https://zaposlitev.info/delo/abc'};
+const pair=[firstAd,secondAd];
+const dupeContext={
+  groupEnabled:()=>true,
+  groupById:new Map([[firstAd.id,pair],[secondAd.id,pair]]),
+  filtered:()=>pair,
+  state:{[firstAd.id]:{saved:true},[secondAd.id]:{status:'contacted'}},
+  getState(id){return this.state[id]||{}}
+};
+dupeContext.getState=id=>dupeContext.state[id]||{};
+runInNewContext(extract('function displayed(', 'var pager='),dupeContext);
+assert.equal(dupeContext.displayed().length,1,'Zanesljiv par je privzeto ena vrstica');
+assert.equal(dupeContext.displayed()[0].source,'Zaposlitev.info','Neposredna povezava do oglasa ima prednost pred iskalno');
+assert.equal(dupeContext.displayed()[0].alternatives[0].url,firstAd.url,'Drugi vir ostane dostopen pod naslovom');
+dupeContext.filtered=()=>[firstAd];
+assert.equal(dupeContext.displayed()[0].alternatives[0].url,secondAd.url,'Vir je dostopen tudi kadar filter skrije drugo objavo');
+dupeContext.groupEnabled=()=>false;
+dupeContext.filtered=()=>pair;
+assert.equal(dupeContext.displayed().length,2,'Izklop združevanja vrne oba izvorna oglasa');
+runInNewContext(extract('function memberIds(', 'function save('),dupeContext);
+dupeContext.groupEnabled=()=>true;
+assert.equal(dupeContext.mergedState(firstAd).saved,true,'Zaznamek s kateregakoli vira se prenese v združeno vrstico');
+assert.equal(dupeContext.mergedState(firstAd).status,'contacted','Predhodni status na drugem viru se ohrani');
+runInNewContext(extract('function changeMemberStates(', "$('jobRows').addEventListener('click'"),dupeContext);
+dupeContext.changeMemberStates(firstAd.id,'status','interested');
+assert.equal(dupeContext.state[secondAd.id].status,'interested','Sprememba statusa v združeni vrstici velja za obe izvorni objavi');
+dupeContext.groupEnabled=()=>false;
+dupeContext.changeMemberStates(firstAd.id,'saved',false);
+assert.equal(dupeContext.state[firstAd.id].saved,false,'Pri ločenem prikazu se spreminja samo izbrani oglas');
+assert.equal(dupeContext.state[secondAd.id].status,'interested','Ločeni prikaz ne spremeni statusov druge objave');
+const facetDupeContext={...context,jobs:pair,groupEnabled:()=>true,groupById:dupeContext.groupById,selectedValues:()=>[],mergedState:()=>({}),$:()=>({value:'',checked:false})};
+runInNewContext(extract('function normalizeTerm(', 'function configureMulti(')+'\n'+extract('function matchesJob(', 'function filtered('),facetDupeContext);
+assert.equal(facetDupeContext.facetCounts('city').get('Maribor'),1,'Števci krajev ne smejo dvakrat šteti združenega oglasa');
+assert.equal(facetDupeContext.facetCounts('sourceFilter').get('MojeDelo.com'),1,'Oba vira še vedno nastopata med izbirami portalov');
+assert.equal(facetDupeContext.facetCounts('sourceFilter').get('Zaposlitev.info'),1,'Izvorni portal ne izgine iz filtra');
 assert.match(page, /Oglasov na stran/);
 assert.doesNotMatch(page, /id="loadMore"/, 'Starega gumba za 500 zadetkov ne potrebujemo več');
 assert.doesNotMatch(page, /<label for="contract">/, 'Neaktiven filter ne sme zasedati prostora');

@@ -1,6 +1,7 @@
 import { page } from './page.js';
 import { getZrszJson, getZrszFromPublicBrowser } from './zrsz.js';
 import { getDm, getNovaPriloznost } from './next-sources.js';
+import { markLikelyDuplicates } from './duplicates.js';
 
 // Naslov poda ZRSZ in ostane v zaščiteni GitHub Actions skrivnosti.
 const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
@@ -588,7 +589,7 @@ async function collect() {
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));
-  const jobs = Array.from(new Map(results.flatMap(r => r.status === 'fulfilled' ? r.value : []).map(j => [j.id, j])).values());
+  const jobs = markLikelyDuplicates(Array.from(new Map(results.flatMap(r => r.status === 'fulfilled' ? r.value : []).map(j => [j.id, j])).values()));
   cached = { jobs, sources, planned: PLANNED, checkedAt: new Date().toISOString(), storage: 'browser-local' };
   cachedAt = Date.now() - (sources.some(s => s.status === 'error') ? CACHE_MS - 60_000 : 0);
   return cached;
