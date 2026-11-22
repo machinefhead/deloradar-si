@@ -24,9 +24,15 @@ assert.match(page, /\$\('refresh'\)\.replaceWith\(manualLink\)/, 'Podvojeni gumb
 assert.match(page, /class="refreshinfo" id="updated">Zadnji zajem oglasov: —/, 'Datum mora biti pod gumbom za osvežitev');
 assert.match(page, /class="srcfooter">Oglasi se posodabljajo približno vsakih 30 minut\./, 'Stanje povezav mora imeti samo kratko pojasnilo pogostosti zajema');
 assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približno vsakih 30 minut\./, 'Javna stran ne sme prepisati kratkega pojasnila');
-for (const source of ['ZRSZ ↗','MojeDelo ↗','Careerjet ↗','Zaposlitev.info ↗']) {
-  assert.ok(page.includes(source), `Med hitro dostopnimi iskalniki manjka ${source}`);
-}
+assert.doesNotMatch(page, /Več oglasov na velikih portalih/, 'Povezana portala se ne smeta prikazovati kot nepovezana');
+assert.doesNotMatch(page, /class="quicklinks"/, 'Podvojene hitre povezave niso več potrebne');
+assert.match(page, /id="showCatalog"[^>]*aria-controls="viri"[^>]*aria-expanded="false"/, 'Dodatni viri morajo ostati dosegljivi iz stanja povezav tudi na telefonu');
+assert.match(page, /function showSources\(\)\{var el=\$\('viri'\),open=el\.classList\.toggle\('show'\)/, 'En sam gumb mora odpreti in zapreti dodatne vire');
+assert.match(page, /<h2>Še nepovezani viri<\/h2>/, 'Seznam naj jasno razlikuje nepovezane vire od že zajetih');
+const collectorSource=readFileSync(new URL('../source/collector.js',import.meta.url),'utf8');
+const plannedBlock=collectorSource.match(/const PLANNED = \[([\s\S]*?)\n\];/)?.[1]||'';
+assert.ok(plannedBlock.includes('ZRSZ / PoiščiDelo')&&plannedBlock.includes('Careerjet'),'Dostop do dveh glavnih nepovezanih iskalnikov mora ostati');
+assert.ok(!plannedBlock.includes("name: 'MojeDelo.com'")&&!plannedBlock.includes("name: 'Zaposlitev.info'"),'Že povezanih portalov ne podvajamo med dodatnimi viri');
 assert.doesNotMatch(page, /Ob odprtju preberemo zadnji objavljeni posnetek/, 'Podvojeno pojasnilo pod tabelo je odvečno');
 const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
 assert.match(workflow, /cron: '17,47 \* \* \* \*'/, 'Osveževanje mora biti predvideno vsakih 30 minut');
