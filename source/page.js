@@ -91,6 +91,7 @@ export const page = String.raw`<!doctype html>
     .refreshbox{display:flex;flex-direction:column;align-items:flex-end;gap:9px}
     .manualrefresh{font-size:12px;color:var(--accent);text-decoration:none;font-weight:720}
     .manualrefresh:hover{text-decoration:underline}
+    .more button{margin-left:10px;padding:6px 10px;border:1px solid #665b81;border-radius:7px;background:#454053;color:#e7dcff;font-weight:750}
     @media(max-width:770px){
       .listtable tr,.listtable tbody tr:hover{background:var(--panel);border-color:var(--line)}
       .more{border-color:var(--line)}
@@ -112,7 +113,7 @@ export const page = String.raw`<!doctype html>
   <script>
     (function(){
       'use strict';
-      var jobs=[], sources=[], planned=[], checkedAt='', state={};
+      var jobs=[], sources=[], planned=[], checkedAt='', state={},visibleLimit=500;
       var key='deloradar-status-v1';
       try {state=JSON.parse(localStorage.getItem(key)||'{}')||{}}catch(e){state={}}
       var $=function(id){return document.getElementById(id)};
@@ -192,13 +193,16 @@ export const page = String.raw`<!doctype html>
         if(id==='company')return j.company||'';
         return '';
       }
+      function facetValues(j,id){
+        return id==='region'&&Array.isArray(j.regions)&&j.regions.length?j.regions:[facetValue(j,id)];
+      }
       function facetCounts(id){
         var counts=new Map();
         jobs.forEach(function(j){
           if(!matchesJob(j,id))return;
-          var value=facetValue(j,id);
-          if(!value)return;
-          counts.set(value,(counts.get(value)||0)+1);
+          facetValues(j,id).forEach(function(value){
+            if(value)counts.set(value,(counts.get(value)||0)+1);
+          });
         });
         return counts;
       }
@@ -251,7 +255,7 @@ export const page = String.raw`<!doctype html>
       // Filtre zgradimo ločeno, da je obstoječi spletni prikaz še vedno uporaben.
       $('sourceFilter').closest('.filtergroup').insertAdjacentHTML('afterend',[
         '<div class="filterheading">PODROČJE IN LOKACIJA</div>',
-        '<div class="filtergroup"><label for="region">Regija Slovenije</label><select class="field" id="region"><option value="">Vse regije</option></select><small>Če kraj ni naveden, regije ni mogoče določiti.</small></div>',
+        '<div class="filtergroup"><label for="region">Regija Slovenije</label><select class="field" id="region"><option value="">Vse regije</option></select><small>Pri nekaterih oglasih je znana regija, ne pa natančen kraj.</small></div>',
         '<div class="filtergroup"><label for="city">Kraj dela</label><select class="field" id="city"><option value="">Vsi kraji</option></select></div>',
         '<div class="filtergroup"><label for="sector">Poklicno področje</label><select class="field" id="sector"><option value="">Vsa področja</option></select><small>Približna razvrstitev na podlagi naziva oglasa.</small></div>',
         '<div class="filterheading">PODJETJE IN ČAS</div>',
@@ -318,7 +322,7 @@ export const page = String.raw`<!doctype html>
         var deadlineMatch=!deadline||(deadline==='unknown'?!Number.isFinite(due):(Number.isFinite(due)&&due>=current-day&&due<=current+(+deadline)*day));
         return (!q||normalizeTerm([j.title,j.company,j.location].join(' ')).includes(q))&&
           (!p||normalizeTerm(j.location).includes(p))&&(!only||st.saved)&&(!hide||st.status!=='contacted')&&
-          multiIds.every(function(id){var values=selectedValues(id);return id===exceptFacet||!values.length||values.includes(facetValue(j,id))})&&
+          multiIds.every(function(id){var values=selectedValues(id);return id===exceptFacet||!values.length||facetValues(j,id).some(function(v){return values.includes(v)})})&&
           statusMatch&&pubMatch&&deadlineMatch;
       }
       function filtered(){
@@ -328,9 +332,9 @@ export const page = String.raw`<!doctype html>
       function render(){
         var items=filtered();$('found').textContent='· '+items.length+' zadetkov';$('total').textContent=jobs.length.toLocaleString('sl-SI');
         drawAllMultis();
-        if(!items.length){$('jobRows').innerHTML='<tr><td colspan="6"><div class="empty"><div class="big">⌕</div><h3>Ni zadetkov</h3><p>'+(jobs.length?'Poskusi drug naziv ali počisti filtre.':'Trenutno ni mogoče prikazati oglasov. Poskusi osvežiti stran pozneje.')+'</p></div></td></tr>';return}
-        $('jobRows').innerHTML=items.slice(0,500).map(function(j){var s=getState(j.id);return '<tr><td><a target="_blank" rel="noopener noreferrer" class="jobtitle" href="'+safe(j.url)+'">'+safe(j.title)+'</a><div class="jobcompany">'+safe(j.company||'Oglej si delodajalca na portalu')+'</div></td><td class="muted">'+safe(j.location||'Ni navedeno')+'</td><td><span class="srcbadge '+(j.source==='Kariera.si'?'kariera':'')+'">'+safe(j.source)+'</span></td><td class="dead">'+dateLabel(j.date)+'</td><td><select class="state '+(s.status==='contacted'?'applied':s.status==='interested'?'saved':'')+'" data-status="'+safe(j.id)+'" aria-label="Status: '+safe(j.title)+'"><option value="" '+(!s.status?'selected':'')+'>Ni označeno</option><option value="interested" '+(s.status==='interested'?'selected':'')+'>Zanimivo</option><option value="contacted" '+(s.status==='contacted'?'selected':'')+'>Kontaktirano</option></select></td><td><div class="rowactions"><button class="star '+(s.saved?'active':'')+'" data-star="'+safe(j.id)+'" title="Shrani oglas" aria-label="Shrani oglas" type="button">'+(s.saved?'★':'☆')+'</button><a class="openjob" href="'+safe(j.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Odpri oglas">↗</a></div></td></tr>'}).join('');
-        $('summary').textContent='Prikazanih '+Math.min(items.length,500)+' od '+items.length+' zadetkov · Rok in pogoje vedno preveri na izvornem portalu.';
+        if(!items.length){$('summary').textContent='Ni zadetkov za izbrane filtre.';$('jobRows').innerHTML='<tr><td colspan="6"><div class="empty"><div class="big">⌕</div><h3>Ni zadetkov</h3><p>'+(jobs.length?'Poskusi drug naziv ali počisti filtre.':'Trenutno ni mogoče prikazati oglasov. Poskusi osvežiti stran pozneje.')+'</p></div></td></tr>';return}
+        $('jobRows').innerHTML=items.slice(0,visibleLimit).map(function(j){var s=getState(j.id);var location=j.location||(Array.isArray(j.regions)&&j.regions.length?(j.regions.length===1?j.regions[0]+' (regija)':'Več regij ('+j.regions.length+')'):'Ni navedeno');return '<tr><td><a target="_blank" rel="noopener noreferrer" class="jobtitle" href="'+safe(j.url)+'">'+safe(j.title)+'</a><div class="jobcompany">'+safe(j.company||'Oglej si delodajalca na portalu')+'</div></td><td class="muted">'+safe(location)+'</td><td><span class="srcbadge '+(j.source==='Kariera.si'?'kariera':'')+'">'+safe(j.source)+'</span></td><td class="dead">'+dateLabel(j.date)+'</td><td><select class="state '+(s.status==='contacted'?'applied':s.status==='interested'?'saved':'')+'" data-status="'+safe(j.id)+'" aria-label="Status: '+safe(j.title)+'"><option value="" '+(!s.status?'selected':'')+'>Ni označeno</option><option value="interested" '+(s.status==='interested'?'selected':'')+'>Zanimivo</option><option value="contacted" '+(s.status==='contacted'?'selected':'')+'>Kontaktirano</option></select></td><td><div class="rowactions"><button class="star '+(s.saved?'active':'')+'" data-star="'+safe(j.id)+'" title="Shrani oglas" aria-label="Shrani oglas" type="button">'+(s.saved?'★':'☆')+'</button><a class="openjob" href="'+safe(j.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Odpri oglas">↗</a></div></td></tr>'}).join('');
+        $('summary').innerHTML='Prikazanih '+Math.min(items.length,visibleLimit)+' od '+items.length+' zadetkov · Rok in pogoje preveri na izvornem portalu.'+(items.length>visibleLimit?' <button type="button" id="loadMore">Prikaži naslednjih 500</button>':'');
       }
       function noticeMessage(txt){$('notice').innerHTML='<div class="notice">'+safe(txt)+'</div>'}
       function load(){
@@ -360,6 +364,7 @@ export const page = String.raw`<!doctype html>
       ['search','place'].forEach(function(id){$(id).addEventListener('input',persistFilters)});
       ['published','deadline','myStatus','sort','onlySaved','hideApplied'].forEach(function(id){$(id).addEventListener('change',persistFilters)});
       $('refresh').addEventListener('click',load);
+      $('summary').addEventListener('click',function(e){if(e.target.closest('#loadMore')){visibleLimit+=500;render()}});
       $('jobRows').addEventListener('click',function(e){var b=e.target.closest('[data-star]');if(!b)return;var id=b.dataset.star;state[id]=Object.assign({},getState(id),{saved:!getState(id).saved});save();render()});
       $('jobRows').addEventListener('change',function(e){var b=e.target.closest('[data-status]');if(!b)return;var id=b.dataset.status;state[id]=Object.assign({},getState(id),{status:b.value});save();render()});
       function showSources(){var el=$('viri');el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'start'})}
