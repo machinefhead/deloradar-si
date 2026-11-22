@@ -17,3 +17,5 @@ jobs:
           node-version: '22'
       - name: Preveri JavaScript in parserje
         run: npm test
+      - name: Preveri dejanski zajem tudi na GitHubu
+        run: npm run build

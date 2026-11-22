@@ -407,13 +407,17 @@ async function getSpar() {
   const listings = parseSparSitemap(await getText('https://www.spar.si/index.sitemap.zaposlitev-sitemap.xml'));
   if (!listings.length) throw Error('SPAR sitemap has no recent listings');
   const jobs = [];
+  let firstFailure = '';
   for (let start = 0; start < listings.length; start += 3) {
     const results = await Promise.allSettled(listings.slice(start, start + 3).map(async listing =>
       parseSparJob(await getText(listing.url), listing)));
-    for (const result of results) if (result.status === 'fulfilled' && result.value) jobs.push(result.value);
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) jobs.push(result.value);
+      if (result.status === 'rejected' && !firstFailure) firstFailure = String(result.reason?.message || 'Network error');
+    }
     if (start + 3 < listings.length) await new Promise(resolve => setTimeout(resolve, 400));
   }
-  if (!jobs.length) throw Error('SPAR job details unavailable');
+  if (!jobs.length) throw Error('SPAR job details unavailable' + (firstFailure ? ': ' + firstFailure : ' (no valid current vacancies)'));
   return jobs;
 }
 export function parseKolektorListings(html, now = Date.now()) {
@@ -464,6 +468,13 @@ async function getSz() {
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
   const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getSpar(), getKolektor(), getSz()]);
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      const reason = result.reason;
+      console.warn('DeloRadar: vir ' + SOURCES[i].id + ' ni dosegljiv: ' +
+        String(reason?.message || reason || 'Neznana napaka') + (reason?.cause?.code ? ' [' + reason.cause.code + ']' : ''));
+    }
+  });
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));
