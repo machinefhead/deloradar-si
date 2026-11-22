@@ -104,6 +104,19 @@ assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se
 const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages, parseMercatorListings, parseIscideloListings, iscideloPages } = await import('../source/collector.js');
 const { parseZrszJson } = await import('../source/zrsz.js');
 const { parseDmListings, parseNovaPriloznostSitemap, parseNovaPriloznostJob } = await import('../source/next-sources.js');
+const { parseSzListings } = await import('../source/slovenske-zeleznice.js');
+const szCard=(id,title,deadline)=>`<article class="card postdefault post-${id} razpisi_za_delo type-razpisi_za_delo"><a href="https://www.sz.si/pogoji_za_zaposlitev/razpis-${id}/"><div class="post-date">Rok za prijavo: ${deadline}</div><div class="post-title text-primary">${title}</div></a></article>`;
+const szHtml='<div class="grid-razpisi_za_delo">'+szCard(20534,'PRIUČENI POKLICNI DELAVEC II (M/Ž)','22. novembra 2026')+
+  szCard(20551,'Elektrotehnik – vzdrževanje','1. decembra 2026')+szCard(20001,'Pretekel razpis','1. novembra 2026')+'</div>';
+const szJobs=parseSzListings(szHtml,Date.parse('2026-11-22T12:00:00Z'));
+assert.equal(szJobs.length,2,'SŽ: upoštevamo samo aktualne razpise');
+assert.equal(szJobs[0].id,'sz:20534','SŽ: stabilen WordPress ID');
+assert.equal(szJobs[0].deadline,'2026-11-22','SŽ: rok je vključno z navedenim dnem');
+assert.equal(szJobs[1].title,'Elektrotehnik – vzdrževanje');
+assert.equal(szJobs[1].url,'https://www.sz.si/pogoji_za_zaposlitev/razpis-20551/');
+assert.equal(parseSzListings(szHtml,Date.parse('2026-12-02T12:00:00Z')).length,0,'SŽ: potekli oglasi so izključeni');
+assert.throws(()=>parseSzListings('<html>druga oblika</html>'),/seznam/,'SŽ: sprememba HTML je napaka, ne prazen seznam');
+assert.ok(!plannedBlock.includes("name: 'Slovenske železnice'"),'Aktivni vir SŽ ni več med nepovezanimi viri');
 const zrszSample = {
   DatumObjave: '2026-11-21T00:00:00', SteviloPDM: 3,
   ProstaDelovnaMesta: [
@@ -311,4 +324,4 @@ assert.equal(parseNovaPriloznostJob(novaHtml, novaSitemap[0], Date.parse('2027-0
 assert.equal(parseNovaPriloznostJob(novaHtml.replace('"address":"Maribor"', '"address":{"addressLocality":"Graz","addressCountry":"AT"}'), novaSitemap[0], Date.parse('2026-11-22')), null, 'Nova Priložnost: samo Slovenija');
 assert.throws(() => parseNovaPriloznostJob('<html>brez JSON-LD</html>', novaSitemap[0]), /strukturiranih/, 'Nova Priložnost: zaznamo pokvarjene oglase');
 
-console.log('OK: filtri, straničenje, 18 virov in ZRSZ dnevni JSON');
+console.log('OK: filtri, straničenje, 19 virov in ZRSZ dnevni JSON');

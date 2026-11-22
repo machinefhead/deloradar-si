@@ -1,6 +1,7 @@
 import { page } from './page.js';
 import { getZrszJson, getZrszFromPublicBrowser } from './zrsz.js';
 import { getDm, getNovaPriloznost } from './next-sources.js';
+import { getSz } from './slovenske-zeleznice.js';
 
 // Naslov poda ZRSZ in ostane v zaščiteni GitHub Actions skrivnosti.
 const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
@@ -25,13 +26,13 @@ const SOURCES = [
   ...(ZRSZ_JSON_URL || ZRSZ_BROWSER_ENABLED ? [{ id: 'zrsz', name: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/' }] : []),
   { id: 'dm', name: 'dm Slovenija', url: 'https://www.dm-jobs.si/job-listing/' },
   { id: 'novapriloznost', name: 'Nova Priložnost', url: 'https://novapriloznost.si/prosta-delovna-mesta/' },
+  { id: 'sz', name: 'Slovenske železnice', url: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/' },
 ];
 const PLANNED = [
   ...(!ZRSZ_JSON_URL && !ZRSZ_BROWSER_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Dnevni JSON je preverjen; preverjamo samodejni prenos prek javnega gumba.' }] : []),
   { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.' },
-  { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski iskalnik; za avtomatizacijo je potreben partnerski dostop.' },
-  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev', note: 'Strežnik za zajem prejme HTTP 403; uporabi izvirni seznam.' },
-  { name: 'Slovenske železnice', href: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/', note: 'Strežnik za zajem prejme HTTP 403; uporabi izvirne razpise.' },
+  { name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?page=1&resultsPerPage=10&orderBy=BEST_MATCH&locationCodes=si&previousPageType=findJob&lang=sl', note: 'Neposreden evropski iskalnik za Slovenijo; za samodejni množični izvoz potrebujemo dostop EURES.' },
+  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev', note: 'Uradni seznam je dostopen, vendar robots.txt predpisuje čas zajema 04:00–08:45 UTC in najmanj 10 s med zahtevki. Preverjamo zanesljiv avtomatski uvoz.' },
   { name: 'Prohuman', href: 'https://www.prohuman.si/', note: 'Številni oglasi so že na MojeDelo; preverjamo neposreden seznam.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
@@ -579,7 +580,7 @@ async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
   const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
   if (ZRSZ_JSON_URL || ZRSZ_BROWSER_ENABLED) collectors.push(ZRSZ_JSON_URL ? getZrszJson(ZRSZ_JSON_URL) : getZrszFromPublicBrowser());
-  collectors.push(getDm(), getNovaPriloznost());
+  collectors.push(getDm(), getNovaPriloznost(), getSz());
   const results = await Promise.allSettled(collectors);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
