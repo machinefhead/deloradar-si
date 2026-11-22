@@ -27,6 +27,8 @@ assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približ
 assert.doesNotMatch(page, /Več oglasov na velikih portalih/, 'Povezana portala se ne smeta prikazovati kot nepovezana');
 assert.doesNotMatch(page, /class="quicklinks"/, 'Podvojene hitre povezave niso več potrebne');
 assert.match(page, /id="showCatalog"[^>]*aria-controls="viri"[^>]*aria-expanded="false"/, 'Dodatni viri morajo ostati dosegljivi iz stanja povezav tudi na telefonu');
+assert.match(page, /ZRSZ oznaka: '\+safe\(j\.reference\)/, 'ZRSZ referenca mora biti vidna, ker JSON nima neposrednih URL-jev posameznih oglasov');
+assert.match(page, /Odpri iskalnik ZRSZ/, 'Pri ZRSZ mora biti jasno, da gumb odpre iskalnik in ne posameznega oglasa');
 assert.match(page, /function showSources\(\)\{var el=\$\('viri'\),open=el\.classList\.toggle\('show'\)/, 'En sam gumb mora odpreti in zapreti dodatne vire');
 assert.match(page, /<h2>Še nepovezani viri<\/h2>/, 'Seznam naj jasno razlikuje nepovezane vire od že zajetih');
 const collectorSource=readFileSync(new URL('../source/collector.js',import.meta.url),'utf8');
@@ -99,26 +101,29 @@ multiContext.clearMultiSearch({querySelector:()=>mockSearch,querySelectorAll:()=
 assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
-const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages } = await import('../source/collector.js');
+const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages, parseMercatorListings, parseIscideloListings, iscideloPages } = await import('../source/collector.js');
 const { parseZrszJson } = await import('../source/zrsz.js');
-const zrszSample = { data: { items: [
-  { idDelovnegaMesta: 3502299, nazivDelovnegaMesta: 'Električar (m/ž)', nazivDelodajalca: 'Primer d.o.o.', krajDela: 'Maribor', drzava: 'Slovenija', datumObjave: '20. 11. 2026', rokPrijave: '30. 11. 2026' },
-  { idDelovnegaMesta: 3502299, nazivDelovnegaMesta: 'Električar (m/ž)', krajDela: 'Maribor', drzava: 'Slovenija' },
-  { idDelovnegaMesta: 3502288, nazivDelovnegaMesta: 'Delo v Gradcu', krajDela: 'Graz', drzava: 'Avstrija' },
-  { idDelovnegaMesta: 3400000, nazivDelovnegaMesta: 'Poteklo delo', rokPrijave: '1. 10. 2026' },
-] } };
-const zrsz = parseZrszJson(zrszSample, Date.parse('2026-11-22'));
-assert.equal(zrsz.length, 1, 'ZRSZ: izločimo tuje/potekle oglase in dvojnike po uradnem ID');
-assert.equal(zrsz[0].id, 'zrsz:3502299');
-assert.equal(zrsz[0].url, 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/?idp=3502299/');
-assert.equal(zrsz[0].date, '2026-11-20', 'ZRSZ: pri podvojenih zapisih ohranimo prve popolne metapodatke');
-assert.equal(zrsz[0].company, 'Primer d.o.o.');
-assert.equal(zrsz[0].deadline, '2026-11-30');
-assert.equal(zrsz[0].source, 'ZRSZ / PoiščiDelo');
-assert.throws(() => parseZrszJson({ unknown: [] }), /nepoznana oblika JSON/, 'Ne ugibamo neznanega formata JSON');
-assert.throws(() => parseZrszJson({ total: 3342, items: [{ id: 1, title: 'Primer' }] }), /straničenje/, 'Nepopoln ZRSZ izvoz ne sme veljati za poln zajem');
-assert.throws(() => parseZrszJson([{ title: 'Brez ID' }]), /nobenega veljavnega oglasa/, 'Ne objavimo neuporabnega izvoza');
-assert.equal(parseZrszJson([]).length, 0, 'Prazen seznam je veljaven, a ni potrjen delujoč vir');
+const zrszSample = {
+  DatumObjave: '2026-11-21T00:00:00', SteviloPDM: 3,
+  ProstaDelovnaMesta: [
+    { RegStPrijave: 'NY31603 ', NazivDelMesta: 'ELEKTRIČAR - M/Ž', PoslovniSubjekt: 'Primer, d.o.o., Industrijska cesta 4, 2000 MARIBOR',
+      UEPDM: 'MARIBOR', RokZaPrijavoKandidatov: '19.12.2026', DatumObjave: '19.11.2026',
+      OpisDelInNalog: 'Ne kopiraj v javno tabelo', KontaktZaKandidate: 'Osebni kontakt' },
+    { RegStPrijave: 'AB12345', NazivDelMesta: 'Stari razpis', UEPDM: 'LJUBLJANA', RokZaPrijavoKandidatov: '1.11.2026', DatumObjave: '1.11.2026' },
+    { RegStPrijave: 'NY31603 ', NazivDelMesta: 'ELEKTRIČAR - M/Ž', UEPDM: 'MARIBOR', RokZaPrijavoKandidatov: '19.12.2026', DatumObjave: '19.11.2026' },
+  ],
+};
+const zrsz = parseZrszJson(zrszSample, Date.parse('2026-11-22T12:00:00+01:00'));
+assert.equal(zrsz.length, 1, 'ZRSZ: izločimo potekle oglase in dvojnike po uradni referenci');
+assert.equal(zrsz[0].id, 'zrsz:NY31603');
+assert.equal(zrsz[0].company, 'Primer, d.o.o.');
+assert.equal(zrsz[0].location, 'UE Maribor', 'Upravne enote ne smemo prikazati kot točnega kraja');
+assert.equal(zrsz[0].date, '2026-11-19');
+assert.equal(zrsz[0].deadline, '2026-12-19');
+assert.equal(zrsz[0].url, 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/');
+assert.ok(!('OpisDelInNalog' in zrsz[0]) && !('KontaktZaKandidate' in zrsz[0]), 'ZRSZ: brez celotnih opisov in kontaktnih podatkov');
+assert.throws(() => parseZrszJson({ DatumObjave: '2026-11-21T00:00:00', SteviloPDM: 4, ProstaDelovnaMesta: zrszSample.ProstaDelovnaMesta }, Date.parse('2026-11-22')), /nepopoln/, 'Ne objavimo nepopolnega dnevnega izvoza');
+assert.throws(() => parseZrszJson(zrszSample, Date.parse('2026-12-05')), /zastarel/, 'Starega posnetka ne objavimo kot aktualne oglase');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -235,4 +240,27 @@ assert.equal(ziJobs[0].date,'2026-11-20');
 assert.equal(ziJobs[0].url,'https://zaposlitev.info/delo/elektricar-m-z/');
 assert.equal(zaposlitevInfoTotalPages(ziHtml),38,'Zajem vseh strani, ne samo prvih deset oglasov');
 
-console.log('OK: filtri, straničenje, 13 povezanih virov in pripravljeni ZRSZ JSON parser');
+const mercatorHtml = `<div class="active-job-list"><div class="active-job-row">
+ <div class="active-job-item jobposition-50 jobregion-6 jobregion-4 jobregion-2"><a href="/sl/kariera/prosta-delovna-mesta/elektricarji-11765/"><h3>ELEKTRIČARJI (m/ž)</h3></a><p>Jesenice, Kočevje, Ljubljana</p><p></p></div>
+ <div class="active-job-item jobposition-60 jobregion-14"><a href="/sl/kariera/prosta-delovna-mesta/delo-v-tujini-11766/"><h3>Delo v tujini</h3></a><p>Zagreb</p></div></div></div>`;
+const mercator = parseMercatorListings(mercatorHtml);
+assert.equal(mercator.length,1,'Mercator: izključimo izključno tuje oglase');
+assert.equal(mercator[0].id,'mercator:11765');
+assert.deepEqual(mercator[0].regions,['Osrednjeslovenska','Jugovzhodna Slovenija','Gorenjska'],'Mercator: več regij v enem oglasu');
+assert.equal(mercator[0].location,'Jesenice, Kočevje, Ljubljana');
+assert.equal(mercator[0].url,'https://www.mercatorgroup.si/sl/kariera/prosta-delovna-mesta/elektricarji-11765/');
+assert.throws(()=>parseMercatorListings('<html>brez oglasov</html>'),/Mercator/,'Sprememba HTML ne sme veljati za uspešen zajem');
+
+const iscideloCard=(id,title,company,location,deadline)=>`<article class="legacy-result-card rp-job-result" data-job-card><h2><a href="/delovna-mesta/${id}" data-card-title>${title}</a></h2><div class="legacy-result-company" data-card-company>${company}</div><span data-card-city><b>Kraj dela:</b>${location}</span><span data-card-deadline><b>Prijave odprte do:</b>${deadline}</span></article>`;
+const iscideloHtml=`<div id="job-results">${iscideloCard('elektricar-m-z','Električar (m/ž)','Test d.o.o.','Maribor','30. 11. 2026')}${iscideloCard('star-oglas','Star oglas','Test','Maribor','1. 10. 2026')}${iscideloCard('delo-v-avstriji','Delo v tujini','Test','Avstrija','30. 11. 2026')}</div><nav class="jobs-pagination" data-page="1" data-pages="2"></nav>`;
+const iscidelo = parseIscideloListings(iscideloHtml,Date.parse('2026-11-22'));
+assert.equal(iscidelo.length,1,'IščiDelo: brez poteklih in izključno tujih razpisov');
+assert.equal(iscidelo[0].title,'Električar (m/ž)');
+assert.equal(iscidelo[0].company,'Test d.o.o.');
+assert.equal(iscidelo[0].location,'Maribor');
+assert.equal(iscidelo[0].deadline,'2026-11-30');
+assert.equal(iscidelo[0].url,'https://iscidelo.com/delovna-mesta/elektricar-m-z');
+assert.deepEqual(iscideloPages(iscideloHtml),{page:1,total:2});
+assert.throws(()=>iscideloPages('<html>napaka</html>'),/straneh/,'Manjkajoča paginacija mora pomeniti napako');
+
+console.log('OK: filtri, straničenje, 15 aktivnih virov in ZRSZ dnevni JSON');
