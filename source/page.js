@@ -352,20 +352,20 @@ export const page = String.raw`<!doctype html>
       }
       var pager=document.createElement('nav');pager.id='pager';pager.className='pager';pager.setAttribute('aria-label','Strani oglasov');$('summary').after(pager);
       function pageButton(number,label,totalPages,active){
-        var disabled=number<1||number>totalPages||((label==='«'||label==='‹')&&currentPage===1)||((label==='»'||label==='›')&&currentPage===totalPages);
-        var aria=label==='«'?'Prva stran':label==='‹'?'Prejšnja stran':label==='›'?'Naslednja stran':label==='»'?'Zadnja stran':(active?'Trenutna stran ':'Stran ')+number;
+        var disabled=number<1||number>totalPages;
+        var aria=label==='‹'?'Prejšnja stran':label==='›'?'Naslednja stran':(active?'Trenutna stran ':'Stran ')+number;
         return '<button type="button" data-page="'+number+'" '+(disabled?'disabled ':'')+(active?'aria-current="page" ':'')+'aria-label="'+aria+'">'+label+'</button>';
       }
       function pageNavigation(totalPages){
         var shown=new Set([1,totalPages]);
         for(var n=currentPage-2;n<=currentPage+2;n++)if(n>=1&&n<=totalPages)shown.add(n);
         var numbers=Array.from(shown).sort(function(a,b){return a-b}),last=0;
-        var buttons=pageButton(1,'«',totalPages,false)+pageButton(currentPage-1,'‹',totalPages,false);
+        var buttons=pageButton(currentPage-1,'‹',totalPages,false);
         numbers.forEach(function(n){
           if(n-last>1)buttons+='<span class="gapdots" aria-hidden="true">…</span>';
           buttons+=pageButton(n,String(n),totalPages,n===currentPage);last=n;
         });
-        buttons+=pageButton(currentPage+1,'›',totalPages,false)+pageButton(totalPages,'»',totalPages,false);
+        buttons+=pageButton(currentPage+1,'›',totalPages,false);
         pager.innerHTML='<div class="pagebuttons">'+buttons+'</div><label class="pagesize" for="pageSize">Oglasov na stran <select id="pageSize" aria-label="Oglasov na stran"><option value="10" '+(pageSize===10?'selected':'')+'>10</option><option value="25" '+(pageSize===25?'selected':'')+'>25</option><option value="50" '+(pageSize===50?'selected':'')+'>50</option><option value="100" '+(pageSize===100?'selected':'')+'>100</option></select></label>';
       }
       function render(keepPage){

@@ -8,12 +8,13 @@ const SOURCES = [
   { id: 'trenkwalder', name: 'Trenkwalder', url: 'https://si.trenkwalder.com/jobs' },
   { id: 'agado', name: 'Agado', url: 'https://www.agado.si/iskalci/69/prosta-delovna-mesta' },
   { id: 'adecco', name: 'Adecco', url: 'https://www.adecco.com/sl-si/prosta-delovna-mesta' },
+  { id: 'rekruter', name: 'Rekruter', url: 'https://zaposlitev.rekruter.si/jobs' },
+  { id: 'nove', name: 'Nove zaposlitve', url: 'https://novezaposlitve.si/' },
 ];
 const PLANNED = [
   { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'ZRSZ za ponovno objavo podatkov zahteva dovoljenje; do dovoljenja le povezava na iskalnik' },
   { name: 'MojeDelo.com', href: 'https://www.mojedelo.com/', note: 'Povezava za podatke še ni preverjena' },
   { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Že združuje vire; preprečiti dvojnike' },
-  { name: 'Nove zaposlitve', href: 'https://novezaposlitve.si/', note: 'Preverjanje strukture in pogojev uporabe' },
   { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjanje strukture in pogojev uporabe' },
   { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski portal s slovenskim trgom dela' },
   { name: 'Druge zaposlitvene agencije', href: 'https://www.prohuman.si/', note: 'Prohuman in drugi; Manpower prepoveduje avtomatsko zbiranje podatkov' },
@@ -264,9 +265,67 @@ async function getAdecco() {
   if (!jobs.length) throw Error('Adecco details unavailable');
   return jobs;
 }
+export function parseRekruterFeed(feed) {
+  if (!/<rss\b/i.test(feed)) throw Error('Unexpected Rekruter RSS format');
+  const jobs = [];
+  for (const match of feed.matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
+    const block = match[1], url = xml(block, 'link'), title = xml(block, 'title');
+    const id = url.match(/^https:\/\/zaposlitev\.rekruter\.si\/jobs\/(\d+)-[^/?#]+\/?$/)?.[1];
+    if (!id || !title) continue;
+    const locations = Array.from(block.matchAll(/<tt:location\b[^>]*>([\s\S]*?)<\/tt:location>/gi))
+      .map(m => m[1]).filter(m => /^(SI|Slovenia|Slovenija)$/i.test(xml(m, 'tt:country')));
+    if (!locations.length) continue;
+    const city = xml(locations[0], 'tt:city') || xml(locations[0], 'tt:name');
+    const posted = Date.parse(xml(block, 'pubDate'));
+    jobs.push({ id: 'rekruter:' + id, source: 'Rekruter', title, company: '', location: city,
+      date: Number.isFinite(posted) ? new Date(posted).toISOString() : '', deadline: '', url });
+  }
+  return Array.from(new Map(jobs.map(j => [j.id, j])).values());
+}
+async function getRekruter() {
+  const jobs = parseRekruterFeed(await getText('https://zaposlitev.rekruter.si/jobs.rss'));
+  if (!jobs.length) throw Error('Rekruter RSS has no Slovenian jobs');
+  return jobs;
+}
+export function parseNoveSitemap(xmlText) {
+  if (!/<urlset\b/i.test(xmlText)) throw Error('Unexpected Nove zaposlitve sitemap');
+  const listings = [];
+  for (const match of xmlText.matchAll(/<url>([\s\S]*?)<\/url>/gi)) {
+    const url = xml(match[1], 'loc');
+    const slug = url.match(/^https:\/\/novezaposlitve\.si\/razisci\/delovna-mesta\/([a-z0-9-]+)\/?$/i)?.[1];
+    if (slug) listings.push({ id: 'nove:' + slug.toLowerCase(), url });
+  }
+  return Array.from(new Map(listings.map(item => [item.id, item])).values());
+}
+function slDate(value) {
+  const months = ['januarja','februarja','marca','aprila','maja','junija','julija','avgusta','septembra','oktobra','novembra','decembra'];
+  const m = plain(value).toLocaleLowerCase('sl').match(/(\d{1,2})\s+([a-zčšž]+),?\s+(\d{4})/i);
+  if (!m) return '';
+  const month = months.indexOf(m[2]) + 1;
+  return month ? m[3] + '-' + String(month).padStart(2,'0') + '-' + m[1].padStart(2,'0') : '';
+}
+export function parseNoveJob(html, listing, now = Date.now()) {
+  const title = plain(html.match(/<h1\b[^>]*class=["'][^"']*\bcase27-primary-text\b[^"']*["'][^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '');
+  if (!title) return null;
+  const fields = new Map(Array.from(html.matchAll(/<li>\s*<div class="item-attr">([\s\S]*?)<\/div>\s*<div class="item-property">([\s\S]*?)<\/div>\s*<\/li>/gi))
+    .map(m => [plain(m[1]), plain(m[2])]));
+  const deadline = slDate(html.match(/<div class="lmb-label">\s*Prijave do:\s*<\/div>\s*<div class="value">([\s\S]*?)<\/div>/i)?.[1] || '');
+  if (deadline && Date.parse(deadline + 'T23:59:59Z') < now) return null;
+  return { id: listing.id, source: 'Nove zaposlitve', title,
+    company: fields.get('Podjetje') || '', location: fields.get('Kraj dela') || '',
+    date: slDate(fields.get('Datum objave') || ''), deadline, url: listing.url };
+}
+async function getNove() {
+  const listings = parseNoveSitemap(await getText('https://novezaposlitve.si/wp-sitemap-posts-job_listing-1.xml'));
+  if (!listings.length) throw Error('Nove zaposlitve sitemap has no jobs');
+  const results = await Promise.allSettled(listings.map(async listing => parseNoveJob(await getText(listing.url), listing)));
+  const jobs = results.flatMap(r => r.status === 'fulfilled' && r.value ? [r.value] : []);
+  if (!results.some(r => r.status === 'fulfilled')) throw Error('Nove zaposlitve pages unavailable');
+  return jobs;
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove()]);
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));
