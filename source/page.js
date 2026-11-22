@@ -79,6 +79,11 @@ export const page = String.raw`<!doctype html>
     .sourceitem .pill{background:#434057;color:#d9caff}
     .sourceitem .pill.err{background:#594038;color:#ffd6c3}
     .srcfooter{border-color:var(--line)}
+    .sourcesummary{color:var(--muted);font-size:12px;line-height:1.5;margin:0}
+    .sourcedetails{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+    .sourcedetails summary{cursor:pointer;color:var(--accent);font-size:12px;font-weight:750;line-height:1.6}
+    .sourcedetails summary:hover{text-decoration:underline}
+    .sourcedetails .sourceitem:last-child{margin-bottom:0}
     .asidecallout,.explain{background:#35313d;border-color:#504858;color:#e5deed}
     .asidecallout h3,.asidecallout p,.explain{color:#ddd5e6}
     .sourcecard{background:var(--panel)}
@@ -123,10 +128,10 @@ export const page = String.raw`<!doctype html>
     <header class="topbar"><a class="brand" href="./"><span class="mark">⌁</span><span>Delo<span>Radar</span></span></a><div class="topright"><span class="priv">● Javni pregled</span><a class="smalllink" href="#viri" id="topSources">Viri podatkov ↗</a></div></header>
     <section class="intro"><div><div class="eyebrow">Tvoj pregled slovenskega trga dela</div><h1>Vsa zanimiva dela.<br>Na enem mestu.</h1><p>Poišči priložnosti iz trenutno povezanih virov, jih shrani in označi, kje si že stopil v stik. Prijave in klice opraviš sam, neposredno pri delodajalcu.</p></div><div class="refreshbox"><button id="refresh" class="refresh" type="button">↻ &nbsp; Osveži oglase</button><p class="refreshinfo" id="updated">Zadnji zajem oglasov: —</p></div></section>
     <section class="stats" aria-label="Statistika"><div class="stat highlight"><span class="kicker">Zajeti oglasi</span><span class="n" id="total">—</span><span class="lightdot"></span><span class="foot">v povezanih virih</span></div><div class="stat"><span class="kicker">Povezani viri</span><span class="n" id="sourcesNum">—</span><span class="foot">od 2 začetnih</span></div><div class="stat"><span class="kicker">Shranjeni</span><span class="n" id="savedNum">0</span><span class="foot">v tem brskalniku</span></div><div class="stat"><span class="kicker">Kontaktirani</span><span class="n" id="appliedNum">0</span><span class="foot">označeno ročno</span></div></section>
-    <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" type="search" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div><div class="panel"><div class="sectionlabel">Stanje povezav</div><div id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><div class="srcfooter">Oglasi se posodabljajo približno vsakih 30 minut.</div><button class="cataloglink" id="showCatalog" type="button" aria-controls="viri" aria-expanded="false">Prikaži dodatne vire ↗</button></div></aside>
+    <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" type="search" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div><div class="panel"><div class="sectionlabel">Stanje povezav</div><p id="sourceSummary" class="sourcesummary" role="status">Preverjam povezave …</p><details class="sourcedetails" id="sourceDetails"><summary>Posamezni viri</summary><div id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div></details><div class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur.</div><button class="cataloglink" id="showCatalog" type="button" aria-controls="viri" aria-expanded="false">Prikaži Careerjet in EURES ↗</button></div></aside>
     <button class="backtotop" id="backToTop" type="button" aria-label="Na vrh strani" title="Na vrh strani" hidden>↑</button>
     <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="export" type="button">↓ Izvozi CSV</button></div></div><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Oglasi so povezave na originalne objave. Preveri veljavnost pred prijavo.</div></div></main></div>
-    <section id="viri" class="sourcecatalog"><h2>Še nepovezani viri</h2><p>Ti oglasi niso v skupni tabeli. Povezave odprejo izvirne strani; samodejni zajem urejamo postopoma.</p><div class="sourcegrid" id="planned"></div></section>
+    <section id="viri" class="sourcecatalog"><h2>Še nepovezani viri</h2><p>Za ta iskalnika še nimamo samodejnega izvoza. Povezavi odpreta izvirno iskanje, kjer lahko oglase preveriš ročno.</p><div class="sourcegrid" id="planned"></div></section>
     <footer class="bottom"><span>© DeloRadar · Osebni pregled prostih delovnih mest</span><span>Podatki so informativni · Veljavnost in pogoje preveri na izvornem portalu</span></footer>
   </div>
   <script>
@@ -317,7 +322,7 @@ export const page = String.raw`<!doctype html>
         $('refresh').textContent='↻ Preberi testni posnetek';
         $('refresh').title='Lokalni ZIP se brez novega paketa ne osvežuje';
       }else{
-        document.querySelector('.srcfooter').textContent='Oglasi se posodabljajo približno vsakih 30 minut.';
+        document.querySelector('.srcfooter').textContent='Oglasi se posodabljajo približno vsakih 12 ur.';
         var manualLink=document.createElement('a');manualLink.className='refresh';
         manualLink.href='https://github.com/machinefhead/deloradar-si/actions/workflows/pages.yml';
         manualLink.target='_blank';manualLink.rel='noopener noreferrer';manualLink.textContent='↻ Osveži';
@@ -332,8 +337,10 @@ export const page = String.raw`<!doctype html>
       }
       function dateLabel(s){if(!s)return '—';var d=new Date(s);return isNaN(d.getTime())?'—':new Intl.DateTimeFormat('sl-SI',{day:'numeric',month:'short',year:'numeric'}).format(d)}
       function sourceRender(){
-        $('sourceStatus').innerHTML=sources.map(function(s){return '<div class="sourceitem"><span class="name">'+safe(s.name)+'</span><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov':'Ni odziva')+'</span></div>'}).join('');
-        $('sourcesNum').textContent=sources.filter(function(s){return s.status==='live'}).length;
+        $('sourceStatus').innerHTML=sources.slice().sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name,'sl')}).map(function(s){return '<div class="sourceitem"><span class="name">'+safe(s.name)+'</span><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov':'Ni odziva')+'</span></div>'}).join('');
+        var active=sources.filter(function(s){return s.status==='live'}).length;
+        $('sourceSummary').textContent=active+' od '+sources.length+' virov dosegljivih';
+        $('sourcesNum').textContent=active;
         document.querySelector('.stats .stat:nth-child(2) .foot').textContent='od '+sources.length+' povezanih';
         $('planned').innerHTML=planned.map(function(s){return '<div class="sourcecard"><a target="_blank" rel="noopener noreferrer" href="'+safe(s.href)+'">'+safe(s.name)+' ↗</a><p>'+safe(s.note)+'</p></div>'}).join('');
         var broken=sources.filter(function(s){return s.status!=='live'});
@@ -424,7 +431,7 @@ export const page = String.raw`<!doctype html>
       updateBackToTop();
       $('jobRows').addEventListener('click',function(e){var b=e.target.closest('[data-star]');if(!b)return;var id=b.dataset.star;state[id]=Object.assign({},getState(id),{saved:!getState(id).saved});save();render(true)});
       $('jobRows').addEventListener('change',function(e){var b=e.target.closest('[data-status]');if(!b)return;var id=b.dataset.status;state[id]=Object.assign({},getState(id),{status:b.value});save();render(true)});
-      function showSources(){var el=$('viri'),open=el.classList.toggle('show');$('showCatalog').textContent=open?'Skrij dodatne vire ↑':'Prikaži dodatne vire ↗';$('showCatalog').setAttribute('aria-expanded',String(open));if(open)el.scrollIntoView({behavior:'smooth',block:'start'})}
+      function showSources(){var el=$('viri'),open=el.classList.toggle('show');$('showCatalog').textContent=open?'Skrij Careerjet in EURES ↑':'Prikaži Careerjet in EURES ↗';$('showCatalog').setAttribute('aria-expanded',String(open));if(open)el.scrollIntoView({behavior:'smooth',block:'start'})}
       $('showCatalog').addEventListener('click',showSources);$('topSources').addEventListener('click',function(e){e.preventDefault();showSources()});
       $('export').addEventListener('click',function(){
         var quote=function(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"'};

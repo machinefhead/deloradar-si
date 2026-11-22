@@ -29,10 +29,7 @@ const SOURCES = [
 const PLANNED = [
   ...(!ZRSZ_JSON_URL && !ZRSZ_BROWSER_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Dnevni JSON je preverjen; preverjamo samodejni prenos prek javnega gumba.' }] : []),
   { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.' },
-  { name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?page=1&resultsPerPage=10&orderBy=BEST_MATCH&locationCodes=si&previousPageType=findJob&lang=sl', note: 'Odpri evropski iskalnik, že omejen na Slovenijo. Za avtomatiziran množični izvoz je potreben partnerski dostop.' },
-  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev', note: 'Neposredni zajem na GitHubu je blokiran (HTTP 403). Veliko SPAR-ovih oglasov je že vključenih prek Optius, MojeDelo, Zaposlitev.info in ZRSZ.' },
-  { name: 'Slovenske železnice', href: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/', note: 'Neposredni zajem na GitHubu je blokiran (HTTP 403). Razpisi SŽ so že delno vključeni prek MojeDelo in ZRSZ.' },
-  { name: 'Prohuman', href: 'https://www.prohuman.si/', note: 'Številni oglasi so že na MojeDelo; preverjamo neposreden seznam.' },
+  { name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?page=1&resultsPerPage=10&orderBy=BEST_MATCH&locationCodes=si&previousPageType=findJob&lang=sl', note: 'Iskanje je že omejeno na Slovenijo. Za samodejni množični izvoz še potrebujemo ustrezen partnerski dostop; številni oglasi se prekrivajo z ZRSZ.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
