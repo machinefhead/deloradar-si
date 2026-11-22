@@ -10,13 +10,15 @@ const SOURCES = [
   { id: 'adecco', name: 'Adecco', url: 'https://www.adecco.com/sl-si/prosta-delovna-mesta' },
   { id: 'rekruter', name: 'Rekruter', url: 'https://zaposlitev.rekruter.si/jobs' },
   { id: 'nove', name: 'Nove zaposlitve', url: 'https://novezaposlitve.si/' },
+  { id: 'lidl', name: 'Lidl Slovenija', url: 'https://kariera.lidl.si/' },
 ];
 const PLANNED = [
-  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'ZRSZ za ponovno objavo podatkov zahteva dovoljenje; do dovoljenja le povezava na iskalnik' },
-  { name: 'MojeDelo.com', href: 'https://www.mojedelo.com/', note: 'Povezava za podatke še ni preverjena' },
-  { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Že združuje vire; preprečiti dvojnike' },
-  { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjanje strukture in pogojev uporabe' },
-  { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski portal s slovenskim trgom dela' },
+  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Uradni iskalnik ZRSZ. Samodejni zajem in ponovna objava zahtevata dovoljenje ZRSZ.', access: 'link' },
+  { name: 'MojeDelo.com', href: 'https://www.mojedelo.com/iskanje-zaposlitve', note: 'Velik slovenski portal. Pogoji uporabe brez soglasja omejujejo samodejno zbiranje oglasov.', access: 'link' },
+  { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Iskalnik po različnih virih. Omejitve za samodejni zajem in veliko možnosti podvajanja.', access: 'link' },
+  { name: 'Zaposlitev.info', href: 'https://zaposlitev.info/', note: 'Pogoji uporabe omejujejo ponovno objavljanje vsebin brez soglasja.', access: 'link' },
+  { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjamo dostopnost, strukturo in pogoje uporabe.', access: 'review' },
+  { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski portal. Strojni dostop je namenjen pooblaščenim partnerjem.', access: 'link' },
   { name: 'Druge zaposlitvene agencije', href: 'https://www.prohuman.si/', note: 'Prohuman in drugi; Manpower prepoveduje avtomatsko zbiranje podatkov' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
@@ -323,9 +325,57 @@ async function getNove() {
   if (!results.some(r => r.status === 'fulfilled')) throw Error('Nove zaposlitve pages unavailable');
   return jobs;
 }
+export function parseLidlSitemap(xmlText) {
+  if (!/<urlset\b/i.test(xmlText)) throw Error('Unexpected Lidl jobs sitemap');
+  const listings = [];
+  for (const match of xmlText.matchAll(/<url>([\s\S]*?)<\/url>/gi)) {
+    const url = xml(match[1], 'loc');
+    const id = url.match(/^https:\/\/kariera\.lidl\.si\/jobs\/[a-z0-9-]+-(\d+)\/?$/i)?.[1];
+    if (id) listings.push({ id: 'lidl:' + id, url });
+  }
+  return Array.from(new Map(listings.map(item => [item.id, item])).values()).slice(0, 200);
+}
+export function parseLidlJob(html, listing, now = Date.now()) {
+  const blocks = Array.from(html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi));
+  let data;
+  for (const block of blocks) {
+    try {
+      const parsed = JSON.parse(block[1]);
+      const candidates = Array.isArray(parsed) ? parsed : parsed['@graph'] || [parsed];
+      data = candidates.find(item => item && (item['@type'] === 'JobPosting' || item['@type']?.includes?.('JobPosting')));
+      if (data) break;
+    } catch { /* Neveljavno strukturirano polje ignoriramo. */ }
+  }
+  if (!data) return null;
+  const address = (Array.isArray(data.jobLocation) ? data.jobLocation[0] : data.jobLocation)?.address || {};
+  const country = address.addressCountry?.name || address.addressCountry || '';
+  if (!/^(SI|Slovenia|Slovenija)$/i.test(String(country))) return null;
+  const title = plain(data.title || '');
+  if (!title) return null;
+  const expiry = Date.parse(data.validThrough || '');
+  if (Number.isFinite(expiry) && expiry < now) return null;
+  const posted = Date.parse(data.datePosted || '');
+  return { id: listing.id, source: 'Lidl Slovenija', title, company: 'Lidl Slovenija',
+    location: plain(address.addressLocality || ''),
+    date: Number.isFinite(posted) ? new Date(posted).toISOString() : '',
+    deadline: Number.isFinite(expiry) ? new Date(expiry).toISOString() : '', url: listing.url };
+}
+async function getLidl() {
+  const listings = parseLidlSitemap(await getText('https://kariera.lidl.si/sitemap-jobs.xml'));
+  if (!listings.length) throw Error('Lidl sitemap has no job listings');
+  const jobs = [];
+  for (let start = 0; start < listings.length; start += 5) {
+    const batch = await Promise.allSettled(listings.slice(start, start + 5).map(async listing =>
+      parseLidlJob(await getText(listing.url), listing)));
+    for (const result of batch) if (result.status === 'fulfilled' && result.value) jobs.push(result.value);
+    if (start + 5 < listings.length) await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  if (!jobs.length) throw Error('Lidl job details unavailable');
+  return jobs;
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl()]);
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));
