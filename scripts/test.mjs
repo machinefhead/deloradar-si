@@ -116,6 +116,7 @@ assert.equal(zrsz[0].company, 'Primer d.o.o.');
 assert.equal(zrsz[0].deadline, '2026-11-30');
 assert.equal(zrsz[0].source, 'ZRSZ / PoiščiDelo');
 assert.throws(() => parseZrszJson({ unknown: [] }), /nepoznana oblika JSON/, 'Ne ugibamo neznanega formata JSON');
+assert.throws(() => parseZrszJson({ total: 3342, items: [{ id: 1, title: 'Primer' }] }), /straničenje/, 'Nepopoln ZRSZ izvoz ne sme veljati za poln zajem');
 assert.throws(() => parseZrszJson([{ title: 'Brez ID' }]), /nobenega veljavnega oglasa/, 'Ne objavimo neuporabnega izvoza');
 assert.equal(parseZrszJson([]).length, 0, 'Prazen seznam je veljaven, a ni potrjen delujoč vir');
 const row = (status, slug) => `<tr>

@@ -43,6 +43,12 @@ function rows(payload) {
 export function parseZrszJson(payload, now = Date.now()) {
   const entries = rows(payload);
   if (entries.length > 20_000) throw Error('ZRSZ: nepričakovano veliko zapisov');
+  // Ne razglasimo samo prve strani paginiranega izvoza za popoln ZRSZ seznam.
+  const total = payload?.total ?? payload?.totalCount ?? payload?.steviloZadetkov ??
+    payload?.data?.total ?? payload?.data?.totalCount;
+  if (total !== undefined && Number.isFinite(Number(total)) && Number(total) > entries.length) {
+    throw Error('ZRSZ: JSON vsebuje le del zapisov; urediti je treba straničenje');
+  }
   const jobs = new Map();
   for (const entry of entries) {
     if (!entry || typeof entry !== 'object') continue;
