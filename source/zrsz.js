@@ -94,6 +94,30 @@ export async function getZrszFromPublicBrowser() {
     await page.goto(SEARCH_PAGE, { waitUntil: 'domcontentloaded', timeout: 35_000 });
     const button = page.getByRole('button', { name: /\.json/i });
     await button.waitFor({ state: 'visible', timeout: 45_000 });
+    // Javni iskalnik odpre pojavno izbiro piškotkov. Izberemo samo nujne,
+    // s klikom na običajen gumb v dialogu (brez prikritih API-klicev).
+    const cookieDialog = page.locator('#cookieman-modal');
+    if (await cookieDialog.isVisible()) {
+      const choices = [
+        /zavrni|reject/i,
+        /(?:samo|le|only).{0,30}(?:nujn|obvezn|necessary|essential)/i,
+        /shrani|save settings|potrdi (?:izbiro|nastavitve)/i,
+      ];
+      let dismissed = false;
+      for (const label of choices) {
+        const button = cookieDialog.getByRole('button', { name: label }).first();
+        if (await button.count() && await button.isVisible()) {
+          await button.click({ timeout: 10_000 });
+          dismissed = true;
+          break;
+        }
+      }
+      if (!dismissed) {
+        const labels = (await cookieDialog.getByRole('button').allTextContents())
+          .map(text => text.trim().replace(/\s+/g, ' ').slice(0, 80));
+        throw Error('ZRSZ: neznan dialog piškotkov (' + labels.join(', ') + ')');
+      }
+    }
     // Obe obljubi morata biti povezani: če klik odpove, ne sme ostati
     // nezaščiteno čakanje na prenos, ki bi podrlo proces pri zapiranju.
     const [download] = await Promise.all([
