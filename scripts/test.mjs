@@ -22,8 +22,12 @@ assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passi
 assert.match(page, /manualLink\.textContent='↻ Osveži'/, 'Osveži mora biti povezava na ročni zajem v GitHub Actions');
 assert.match(page, /\$\('refresh'\)\.replaceWith\(manualLink\)/, 'Podvojeni gumb za branje istega posnetka ne sme ostati na javni strani');
 assert.match(page, /class="refreshinfo" id="updated">Zadnji zajem oglasov: —/, 'Datum mora biti pod gumbom za osvežitev');
-assert.match(page, /class="srcfooter">Oglasi se posodabljajo približno vsakih 30 minut\./, 'Stanje povezav mora imeti samo kratko pojasnilo pogostosti zajema');
-assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približno vsakih 30 minut\./, 'Javna stran ne sme prepisati kratkega pojasnila');
+assert.match(page, /class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur\./, 'Stanje povezav mora kazati dvanajsturni urnik');
+assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približno vsakih 12 ur\./, 'Javna stran ne sme prepisati novega urnika');
+assert.match(page, /id="sourceSummary"/, 'Povzetek dosegljivosti virov mora biti viden brez odpiranja seznama');
+assert.match(page, /<details class="sourcedetails" id="sourceDetails">/, 'Podrobni statusi morajo biti razširljivi na telefonu in računalniku');
+assert.match(page, /Prikaži Careerjet in EURES ↗/, 'Gumb mora jasno povedati, katera nepovezana vira odpira');
+assert.match(script, /sources\.slice\(\)\.sort\(function\(a,b\)\{return b\.count-a\.count/, 'Seznam virov naj bo razvrščen po količini oglasov');
 assert.doesNotMatch(page, /Več oglasov na velikih portalih/, 'Povezana portala se ne smeta prikazovati kot nepovezana');
 assert.doesNotMatch(page, /class="quicklinks"/, 'Podvojene hitre povezave niso več potrebne');
 assert.match(page, /id="showCatalog"[^>]*aria-controls="viri"[^>]*aria-expanded="false"/, 'Dodatni viri morajo ostati dosegljivi iz stanja povezav tudi na telefonu');
@@ -36,9 +40,13 @@ const plannedBlock=collectorSource.match(/const PLANNED = \[([\s\S]*?)\n\];/)?.[
 assert.ok(plannedBlock.includes('ZRSZ / PoiščiDelo')&&plannedBlock.includes('Careerjet'),'Dostop do dveh glavnih nepovezanih iskalnikov mora ostati');
 assert.ok(!plannedBlock.includes("name: 'MojeDelo.com'")&&!plannedBlock.includes("name: 'Zaposlitev.info'"),'Že povezanih portalov ne podvajamo med dodatnimi viri');
 assert.match(plannedBlock,/EURES \(Slovenija\).*locationCodes=si/,'EURES mora odpreti iskanje, omejeno na Slovenijo');
+assert.equal((plannedBlock.match(/\{ name:/g)||[]).length,3,'V produkciji morata med nepovezanimi ostati le Careerjet in EURES (lokalno tudi ZRSZ brez aktivacije)');
+for(const name of ['SPAR Slovenija','Slovenske železnice','Prohuman']) {
+  assert.ok(!plannedBlock.includes("name: '"+name+"'"),'Že zajeti ali blokirani delodajalci ne sodijo med čakajoča iskalnika: '+name);
+}
 assert.doesNotMatch(page, /Ob odprtju preberemo zadnji objavljeni posnetek/, 'Podvojeno pojasnilo pod tabelo je odvečno');
 const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
-assert.match(workflow, /cron: '17,47 \* \* \* \*'/, 'Osveževanje mora biti predvideno vsakih 30 minut');
+assert.match(workflow, /cron: '17 5,17 \* \* \*'/, 'Samodejno osveževanje mora teči dvakrat dnevno (na 12 ur)');
 
 const extract = (start, end) => {
   const a = script.indexOf(start), b = script.indexOf(end, a);
