@@ -12,12 +12,12 @@ const SOURCES = [
   { id: 'nove', name: 'Nove zaposlitve', url: 'https://novezaposlitve.si/' },
   { id: 'lidl', name: 'Lidl Slovenija', url: 'https://kariera.lidl.si/' },
   { id: 'kolektor', name: 'Kolektor', url: 'https://www.kolektor.com/kariera' },
+  { id: 'mojedelo', name: 'MojeDelo.com', url: 'https://www.mojedelo.com/iskanje-zaposlitve' },
+  { id: 'zaposlitevinfo', name: 'Zaposlitev.info', url: 'https://zaposlitev.info/prosta-delovna-mesta/' },
 ];
 const PLANNED = [
-  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Uradni iskalnik ZRSZ. Samodejni zajem in ponovna objava zahtevata dovoljenje ZRSZ.', access: 'link' },
-  { name: 'MojeDelo.com', href: 'https://www.mojedelo.com/iskanje-zaposlitve', note: 'Velik slovenski portal. Pogoji uporabe brez soglasja omejujejo samodejno zbiranje oglasov.', access: 'link' },
-  { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Iskalnik po različnih virih. Omejitve za samodejni zajem in veliko možnosti podvajanja.', access: 'link' },
-  { name: 'Zaposlitev.info', href: 'https://zaposlitev.info/', note: 'Pogoji uporabe omejujejo ponovno objavljanje vsebin brez soglasja.', access: 'link' },
+  { name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Za povezavo še iščemo javno dostopen produkcijski izvoz JSON.', access: 'review' },
+  { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Samodejnim zahtevam se prikaže preverjanje obiskovalca; potreben je dostopen podatkovni vir.', access: 'link' },
   { name: 'IščiDelo', href: 'https://iscidelo.com/', note: 'Preverjamo dostopnost, strukturo in pogoje uporabe.', access: 'review' },
   { name: 'EURES', href: 'https://eures.europa.eu/', note: 'Evropski portal. Strojni dostop je namenjen pooblaščenim partnerjem.', access: 'link' },
   { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev', note: 'GitHubov strežnik prejme HTTP 403; oglase odpri na uradni strani.', access: 'link' },
@@ -55,10 +55,10 @@ function parseLocalDate(s) {
   const found = s.match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
   return found ? found[3] + '-' + found[2].padStart(2, '0') + '-' + found[1].padStart(2, '0') : '';
 }
-async function getText(url) {
+async function getText(url, headers = {}) {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(12500),
-    headers: { 'user-agent': 'DeloRadar/0.1 (personal job listing index)', accept: 'text/html,application/rss+xml,application/xml;q=0.9' },
+    headers: { 'user-agent': 'DeloRadar/0.1 (personal job listing index)', accept: 'text/html,application/rss+xml,application/xml;q=0.9', ...headers },
   });
   if (!response.ok) throw Error('HTTP ' + response.status);
   const content = await response.text();
@@ -400,9 +400,97 @@ async function getKolektor() {
   if (!jobs.length) throw Error('Kolektor has no active jobs in table');
   return jobs;
 }
+export function parseMojeDeloConfig(script) {
+  const match = script.match(/^\s*window\.globalsConfig\s*=\s*(\{[\s\S]*\})\s*;?\s*$/);
+  if (!match) throw Error('MojeDelo public configuration missing');
+  const config = JSON.parse(match[1]).appConfig;
+  if (!config?.tenantId || !config?.jbChannelId || !config?.defaultLanguageId) throw Error('MojeDelo configuration incomplete');
+  return { tenantId: config.tenantId, channelId: config.jbChannelId, languageId: config.defaultLanguageId };
+}
+export function parseMojeDeloJobs(response) {
+  if (!Array.isArray(response?.data?.items) || !Number.isInteger(response?.data?.total)) throw Error('MojeDelo unexpected response');
+  return response.data.items.flatMap(item => {
+    if (!item?.id || !plain(item.title) || item.country?.countryCode !== 'SI') return [];
+    const published = Date.parse(item.repostingDate || item.startDate || '');
+    const regions = (item.regions || []).map(r => plain(r.translation || r.name || '')).filter(Boolean);
+    const town = plain(item.town?.translation || item.town?.name || item.jobLocationInput || '');
+    return [{ id: 'mojedelo:' + item.id, source: 'MojeDelo.com', title: plain(item.title),
+      company: plain(item.company?.name || (item.anonymizedCompany ? 'Nerazkrito podjetje' : '')),
+      location: town, regions,
+      date: Number.isFinite(published) ? new Date(published).toISOString() : '', deadline: '',
+      // Javno iskanje podpira filter po ID; povezava odpre natanko ta oglas v iskalniku.
+      url: 'https://www.mojedelo.com/iskanje-zaposlitve?jobAdIds=' + encodeURIComponent(item.id) }];
+  });
+}
+async function getMojeDelo() {
+  const config = parseMojeDeloConfig(await getText('https://api.mojedelo.com/uploaded-files/config/www.mojedelo.com/jb.globals.js'));
+  const headers = { ...config, accept: 'application/json' };
+  const api = 'https://api.mojedelo.com/job-ads-search?';
+  const first = JSON.parse(await getText(api + 'pageSize=100&startFrom=0', headers));
+  const jobs = parseMojeDeloJobs(first);
+  const total = Math.min(first.data.total, 10_000);
+  if (total === 0 || jobs.length === 0) throw Error('MojeDelo has no Slovenian job ads');
+  const failed = [];
+  for (let start = 100; start < total; start += 400) {
+    const offsets = Array.from({ length: Math.min(4, Math.ceil((total - start) / 100)) }, (_, i) => start + i * 100);
+    const results = await Promise.allSettled(offsets.map(async offset =>
+      parseMojeDeloJobs(JSON.parse(await getText(api + `pageSize=100&startFrom=${offset}`, headers)))));
+    results.forEach((result, i) => result.status === 'fulfilled' ? jobs.push(...result.value) : failed.push(offsets[i]));
+    if (start + 400 < total) await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  if (failed.length) throw Error('MojeDelo missing pages at offsets ' + failed.join(', '));
+  return Array.from(new Map(jobs.map(job => [job.id, job])).values());
+}
+export function parseZaposlitevInfoListings(html, now = Date.now()) {
+  if (!/<div\s+class=["']wpjb-job-list\b/i.test(html)) throw Error('Zaposlitev.info job listing missing');
+  const jobs = [];
+  const months = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+  for (const match of html.matchAll(/<a\b[^>]*class=["'][^"']*\bjob-link\s+custom-wpjb-card\b[^"']*["'][^>]*href=["'](https:\/\/zaposlitev\.info\/delo\/[^"'?#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const url = match[1], body = match[2];
+    const title = plain(body.match(/<span\s+class=["']wpjb-line-major["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] || '');
+    if (!title) continue;
+    const company = plain(body.match(/<span\s+class=["']wpjb-sub\s+wpjb-sub-small["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] || '');
+    const location = plain(body.match(/<span\s+class=["']tag\s+location["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] || '');
+    const rawDate = plain(body.match(/<span\s+class=["']tag\s+date["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] || '');
+    const m = rawDate.match(/([a-z]{3}),?\s*(\d{1,2})/i);
+    let date = '';
+    if (m && months[m[1].toLowerCase()]) {
+      const current = new Date(now), month = months[m[1].toLowerCase()];
+      let year = current.getUTCFullYear();
+      if (month > current.getUTCMonth() + 2) year--;
+      date = `${year}-${String(month).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+    }
+    if (/(?:avstrija|nemčija|hrvaška|švica|italija|graz|wien|linz|münchen)/i.test(location)) continue;
+    jobs.push({ id: 'zaposlitevinfo:' + new URL(url).pathname, source: 'Zaposlitev.info', title,
+      company, location, date, deadline: '', url });
+  }
+  return Array.from(new Map(jobs.map(job => [job.id, job])).values());
+}
+export function zaposlitevInfoTotalPages(html) {
+  const pagination = html.match(/<div\s+class=["']wpjb-paginate-links["']>([\s\S]*?)<\/div>/i)?.[1] || '';
+  const pages = Array.from(pagination.matchAll(/\/prosta-delovna-mesta\/page\/(\d+)\//g), m => Number(m[1]));
+  return Math.max(1, ...pages);
+}
+async function getZaposlitevInfo() {
+  const startUrl = 'https://zaposlitev.info/prosta-delovna-mesta/';
+  const first = await getText(startUrl);
+  const jobs = parseZaposlitevInfoListings(first);
+  if (!jobs.length) throw Error('Zaposlitev.info returned no jobs');
+  const totalPages = Math.min(100, zaposlitevInfoTotalPages(first));
+  const failures = [];
+  for (let page = 2; page <= totalPages; page += 4) {
+    const pages = Array.from({ length: Math.min(4, totalPages - page + 1) }, (_, i) => page + i);
+    const results = await Promise.allSettled(pages.map(async p =>
+      parseZaposlitevInfoListings(await getText(startUrl + `page/${p}/`))));
+    results.forEach((result, i) => result.status === 'fulfilled' ? jobs.push(...result.value) : failures.push(pages[i]));
+    if (page + 4 <= totalPages) await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  if (failures.length) throw Error('Zaposlitev.info missing pages ' + failures.join(', '));
+  return Array.from(new Map(jobs.map(job => [job.id, job])).values());
+}
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor()]);
+  const results = await Promise.allSettled([getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo()]);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
       const reason = result.reason;

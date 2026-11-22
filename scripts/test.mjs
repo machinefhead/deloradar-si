@@ -93,7 +93,7 @@ multiContext.clearMultiSearch({querySelector:()=>mockSearch,querySelectorAll:()=
 assert.equal(mockSearch.value,'', 'Iskanje v filtru se mora počistiti');
 assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se morajo vrniti vse možnosti');
 
-const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings } = await import('../source/collector.js');
+const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages } = await import('../source/collector.js');
 const row = (status, slug) => `<tr>
   <td class="td-title"><a href="/zbirke/delovna-mesta/${slug}/">Referent javnega sektorja</a></td>
   <td>20. 11. 2026</td><td>4. 12. 2026</td><td>Občina Test</td>
@@ -185,4 +185,29 @@ assert.equal(kolektor[0].location,'Ljubljana - Črnuče');
 assert.equal(kolektor[0].deadline,'2026-11-30');
 assert.equal(kolektor[0].url,'https://www.kolektor.com/sl/o-nas/kadri-in-izobrazevanje/elektromehanik-2024-01-11');
 
-console.log('OK: filtri, straničenje in parserji vseh enajstih virov');
+const mdConfig=parseMojeDeloConfig('window.globalsConfig = {"appConfig":{"tenantId":"tenant-public","jbChannelId":"channel-public","defaultLanguageId":"language-public"}};');
+assert.deepEqual(mdConfig,{tenantId:'tenant-public',channelId:'channel-public',languageId:'language-public'});
+const mdSample={data:{total:2,items:[
+  {id:'abc-123',title:'Elektrotehnik',company:{name:'Primer d.o.o.'},country:{countryCode:'SI'},town:{name:'Maribor'},regions:[{translation:'Podravska'}],startDate:'2026-11-20T07:00:00Z'},
+  {id:'foreign-1',title:'Elektromonter v Avstriji',country:{countryCode:'AT'},town:{name:'Graz'}},
+]}};
+const mdJobs=parseMojeDeloJobs(mdSample);
+assert.equal(mdJobs.length,1,'MojeDelo: brez tujih oglasov');
+assert.equal(mdJobs[0].company,'Primer d.o.o.');
+assert.equal(mdJobs[0].location,'Maribor');
+assert.deepEqual(mdJobs[0].regions,['Podravska']);
+assert.equal(mdJobs[0].date,'2026-11-20T07:00:00.000Z');
+assert.equal(mdJobs[0].url,'https://www.mojedelo.com/iskanje-zaposlitve?jobAdIds=abc-123');
+assert.throws(()=>parseMojeDeloJobs({data:{items:[]}}),'Neveljavna struktura API-ja ne sme dati lažnega uspeha');
+
+const ziCard=(path,title,company,location,stamp)=>`<a rel="nofollow" class="job-link custom-wpjb-card" href="https://zaposlitev.info/delo/${path}/"><div class="wpjb-grid-row"><div class="wpjb-grid-col wpjb-col-title"><span class="wpjb-line-major">${title}</span><span class="wpjb-sub wpjb-sub-small">${company}</span></div><div class="wpjb-grid-col wpjb-col-location"><span class="tag location">${location}</span><span class="tag date">${stamp}</span></div></div></a>`;
+const ziHtml=`<div class="wpjb-job-list wpjb-grid">${ziCard('elektricar-m-z','Električar (m/ž)','Elektro, d. o. o.','Maribor','Nov, 20')}${ziCard('serviser-v-grazu','Serviser','Agencija','Graz, Avstrija','Nov, 19')}</div><div class="wpjb-paginate-links"><a href="https://zaposlitev.info/prosta-delovna-mesta/page/2/">2</a><a href="https://zaposlitev.info/prosta-delovna-mesta/page/38/">38</a></div>`;
+const ziJobs=parseZaposlitevInfoListings(ziHtml,Date.parse('2026-11-22'));
+assert.equal(ziJobs.length,1,'Zaposlitev.info: brez tujih oglasov');
+assert.equal(ziJobs[0].title,'Električar (m/ž)');
+assert.equal(ziJobs[0].company,'Elektro, d. o. o.');
+assert.equal(ziJobs[0].date,'2026-11-20');
+assert.equal(ziJobs[0].url,'https://zaposlitev.info/delo/elektricar-m-z/');
+assert.equal(zaposlitevInfoTotalPages(ziHtml),38,'Zajem vseh strani, ne samo prvih deset oglasov');
+
+console.log('OK: filtri, straničenje in parserji vseh trinajstih virov');
