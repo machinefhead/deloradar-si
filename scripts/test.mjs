@@ -68,7 +68,7 @@ assert.match(script, /sources\.slice\(\)\.sort\(function\(a,b\)\{return b\.count
 assert.doesNotMatch(page, /Več oglasov na velikih portalih/, 'Povezana portala se ne smeta prikazovati kot nepovezana');
 assert.doesNotMatch(page, /class="quicklinks"/, 'Podvojene hitre povezave niso več potrebne');
 assert.match(page, /ZRSZ oznaka: '\+safe\(j\.reference\)/, 'ZRSZ referenca mora biti vidna, ker JSON nima neposrednih URL-jev posameznih oglasov');
-assert.match(page, /Odpri iskalnik ZRSZ/, 'Pri ZRSZ mora biti jasno, da gumb odpre iskalnik in ne posameznega oglasa');
+assert.match(page, /Iskanje po delodajalcu/, 'Pri ZRSZ mora biti jasno, da povezava odpre iskanje, ne posameznega oglasa');
 assert.match(page, /<h2>Še nepovezani viri<\/h2>/, 'Seznam naj jasno razlikuje nepovezane vire od že zajetih');
 const collectorSource=readFileSync(new URL('../source/collector.js',import.meta.url),'utf8');
 const plannedBlock=collectorSource.match(/const PLANNED = \[([\s\S]*?)\n\];/)?.[1]||'';
@@ -88,6 +88,16 @@ const extract = (start, end) => {
   assert.ok(a >= 0 && b > a, `Manjka odsek ${start}`);
   return script.slice(a, b);
 };
+const linkContext = {};
+runInNewContext(extract('function slugForJob(', 'function load('), linkContext);
+const oldMojeDelo = {
+  source: 'MojeDelo.com', title: 'Operater na stroju (m/ž), Tržič',
+  url: 'https://www.mojedelo.com/iskanje-zaposlitve?jobAdIds=5cb3187e-ae51-4db9-81a7-c30c131a6e40'
+};
+assert.equal(linkContext.resolvedLink(oldMojeDelo), 'https://www.mojedelo.com/oglas/operater-na-stroju-mz-trzic/5cb3187e-ae51-4db9-81a7-c30c131a6e40', 'Tudi že objavljeni posnetek mora takoj odpirati posamezni oglas MojeDelo');
+assert.equal(linkContext.resolvedLink({source: 'ZRSZ / PoiščiDelo', reference: 'NY31603', company: 'Klinika Golnik', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/'}),
+  'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/?drzava=SI,&iskalniTekst=Klinika%20Golnik&iskalnaLokacija=', 'Stari posnetek ZRSZ mora voditi vsaj na predizpolnjeno iskanje');
+assert.equal(linkContext.resolvedLink({source:'Optius',url:'https://www.optius.com/prijava/'}), 'https://www.optius.com/prijava/', 'Povezav drugih portalov ne spreminjamo');
 const selected = { region: ['Podravska'] };
 const controls = { search: '', published: '', deadline: '', myStatus: '' };
 const context = {
@@ -205,7 +215,7 @@ assert.equal(zrsz[0].company, 'Primer, d.o.o.');
 assert.equal(zrsz[0].location, 'UE Maribor', 'Upravne enote ne smemo prikazati kot točnega kraja');
 assert.equal(zrsz[0].date, '2026-11-19');
 assert.equal(zrsz[0].deadline, '2026-12-19');
-assert.equal(zrsz[0].url, 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/');
+assert.equal(zrsz[0].url, 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/?drzava=SI,&iskalniTekst=Primer%2C%20d.o.o.&iskalnaLokacija=', 'ZRSZ: ne povezuj na prazen seznam; iskanje je predizpolnjeno z delodajalcem');
 assert.ok(!('OpisDelInNalog' in zrsz[0]) && !('KontaktZaKandidate' in zrsz[0]), 'ZRSZ: brez celotnih opisov in kontaktnih podatkov');
 assert.throws(() => parseZrszJson({ DatumObjave: '2026-11-21T00:00:00', SteviloPDM: 4, ProstaDelovnaMesta: zrszSample.ProstaDelovnaMesta }, Date.parse('2026-11-22')), /nepopoln/, 'Ne objavimo nepopolnega dnevnega izvoza');
 assert.throws(() => parseZrszJson(zrszSample, Date.parse('2026-12-05')), /zastarel/, 'Starega posnetka ne objavimo kot aktualne oglase');
@@ -303,7 +313,7 @@ assert.equal(kolektor[0].url,'https://www.kolektor.com/sl/o-nas/kadri-in-izobraz
 const mdConfig=parseMojeDeloConfig('window.globalsConfig = {"appConfig":{"tenantId":"tenant-public","jbChannelId":"channel-public","defaultLanguageId":"language-public"}};');
 assert.deepEqual(mdConfig,{tenantId:'tenant-public',channelId:'channel-public',languageId:'language-public'});
 const mdSample={data:{total:2,items:[
-  {id:'abc-123',title:'Elektrotehnik',company:{name:'Primer d.o.o.'},country:{countryCode:'SI'},town:{name:'Maribor'},regions:[{translation:'Podravska'}],startDate:'2026-11-20T07:00:00Z'},
+  {id:'5cb3187e-ae51-4db9-81a7-c30c131a6e40',title:'Operater na stroju (m/ž), Tržič',company:{name:'Primer d.o.o.'},country:{countryCode:'SI'},town:{name:'Maribor'},regions:[{translation:'Podravska'}],startDate:'2026-11-20T07:00:00Z'},
   {id:'foreign-1',title:'Elektromonter v Avstriji',country:{countryCode:'AT'},town:{name:'Graz'}},
 ]}};
 const mdJobs=parseMojeDeloJobs(mdSample);
@@ -312,7 +322,7 @@ assert.equal(mdJobs[0].company,'Primer d.o.o.');
 assert.equal(mdJobs[0].location,'Maribor');
 assert.deepEqual(mdJobs[0].regions,['Podravska']);
 assert.equal(mdJobs[0].date,'2026-11-20T07:00:00.000Z');
-assert.equal(mdJobs[0].url,'https://www.mojedelo.com/iskanje-zaposlitve?jobAdIds=abc-123');
+assert.equal(mdJobs[0].url,'https://www.mojedelo.com/oglas/operater-na-stroju-mz-trzic/5cb3187e-ae51-4db9-81a7-c30c131a6e40', 'MojeDelo: neposredna stran oglasa (preverjena v brskalniku)');
 assert.throws(()=>parseMojeDeloJobs({data:{items:[]}}),'Neveljavna struktura API-ja ne sme dati lažnega uspeha');
 
 const ziCard=(path,title,company,location,stamp)=>`<a rel="nofollow" class="job-link custom-wpjb-card" href="https://zaposlitev.info/delo/${path}/"><div class="wpjb-grid-row"><div class="wpjb-grid-col wpjb-col-title"><span class="wpjb-line-major">${title}</span><span class="wpjb-sub wpjb-sub-small">${company}</span></div><div class="wpjb-grid-col wpjb-col-location"><span class="tag location">${location}</span><span class="tag date">${stamp}</span></div></div></a>`;

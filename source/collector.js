@@ -415,6 +415,12 @@ export function parseMojeDeloConfig(script) {
   if (!config?.tenantId || !config?.jbChannelId || !config?.defaultLanguageId) throw Error('MojeDelo configuration incomplete');
   return { tenantId: config.tenantId, channelId: config.jbChannelId, languageId: config.defaultLanguageId };
 }
+function mojeDeloSlug(title) {
+  return plain(title).toLocaleLowerCase('sl').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd')
+    .replace(/\b([mz])\/([mz])\b/g, '$1$2')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
 export function parseMojeDeloJobs(response) {
   if (!Array.isArray(response?.data?.items) || !Number.isInteger(response?.data?.total)) throw Error('MojeDelo unexpected response');
   return response.data.items.flatMap(item => {
@@ -426,8 +432,8 @@ export function parseMojeDeloJobs(response) {
       company: plain(item.company?.name || (item.anonymizedCompany ? 'Nerazkrito podjetje' : '')),
       location: town, regions,
       date: Number.isFinite(published) ? new Date(published).toISOString() : '', deadline: '',
-      // Javno iskanje podpira filter po ID; povezava odpre natanko ta oglas v iskalniku.
-      url: 'https://www.mojedelo.com/iskanje-zaposlitve?jobAdIds=' + encodeURIComponent(item.id) }];
+      // Neposredna stran oglasa uporablja naslovni del in javni UUID iz seznama.
+      url: 'https://www.mojedelo.com/oglas/' + mojeDeloSlug(item.title) + '/' + encodeURIComponent(item.id) }];
   });
 }
 async function getMojeDelo() {
