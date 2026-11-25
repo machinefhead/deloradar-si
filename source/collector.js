@@ -4,6 +4,7 @@ import { getZrszOfficialHttp } from './zrsz-official-http.js';
 import { fetchCareerjetDataApi } from './careerjet-data-api.js';
 import { getDm, getNovaPriloznost } from './next-sources.js';
 import { getManpower } from './manpower.js';
+import { getWhc } from './whc.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -35,6 +36,7 @@ const SOURCES = [
   { id: 'dm', name: 'dm Slovenija', url: 'https://www.dm-jobs.si/job-listing/' },
   { id: 'novapriloznost', name: 'Nova Priložnost', url: 'https://novapriloznost.si/prosta-delovna-mesta/' },
   { id: 'manpower', name: 'Manpower Slovenija', url: 'https://www.manpower.si/sl/delovna-mesta' },
+  { id: 'whc', name: 'WHC Slovenija (Workforce in Heads)', url: 'https://whc-slovenia.com/workforce/jobs' },
   ...(CAREERJET_DATA_API_KEY ? [{ id: 'careerjet', name: 'Careerjet', url: 'https://www.careerjet.si/' }] : []),
   ...(EURES_HTTP_ENABLED ? [{ id: 'eures', name: 'EURES', url: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl' }] : []),
 ];
@@ -213,7 +215,18 @@ export function parseAtamaListings(html) {
   return jobs;
 }
 async function getAtama() {
-  const jobs = parseAtamaListings(await getText('https://atama.si/S2200/Ponudba+dela.'));
+  const url = 'https://atama.si/S2200/Ponudba+dela.';
+  let html;
+  try {
+    html = await getText(url);
+  } catch (error) {
+    // Portal občasno prekine en sam zahtevek, čeprav je javni seznam dosegljiv.
+    // En omejen ponovni poskus prepreči izgubo vira v polnem periodičnem zajemu.
+    if (!/timed?\s*out|timeout|aborted|fetch failed/i.test(String(error?.message || error))) throw error;
+    await new Promise(resolve => setTimeout(resolve, 500));
+    html = await getText(url);
+  }
+  const jobs = parseAtamaListings(html);
   if (!jobs.length) throw Error('Unexpected Atama listing format');
   return jobs;
 }
@@ -265,7 +278,18 @@ export function parseAgadoListings(html) {
   return Array.from(new Map(jobs.map(j => [j.id, j])).values());
 }
 async function getAgado() {
-  const jobs = parseAgadoListings(await getText('https://www.agado.si/iskalci/69/prosta-delovna-mesta'));
+  const url = 'https://www.agado.si/iskalci/69/prosta-delovna-mesta';
+  let html;
+  try {
+    html = await getText(url);
+  } catch (error) {
+    // HTTP 500 je prehodna napaka izvornega strežnika. Brez obhajanja blokad
+    // ponovimo le en zahtevek; če znova odpove, objavo ustavi nadzor virov.
+    if (!/^(?:HTTP 5\d\d|.*(?:timeout|aborted|fetch failed))$/i.test(String(error?.message || error))) throw error;
+    await new Promise(resolve => setTimeout(resolve, 500));
+    html = await getText(url);
+  }
+  const jobs = parseAgadoListings(html);
   if (!jobs.length) throw Error('Unexpected Agado listing format');
   return jobs;
 }
@@ -681,6 +705,8 @@ async function collect() {
     })) : getZrszJson(ZRSZ_JSON_URL));
   collectors.push(getDm(), getNovaPriloznost(), previousJobs().then(oldJobs => getManpower({
     previous: oldJobs, maxDetails: detailLimit('DETAIL_MANPOWER_LIMIT', 20),
+  })), previousJobs().then(oldJobs => getWhc({
+    previous: oldJobs, maxDetails: detailLimit('DETAIL_WHC_LIMIT', 24),
   })));
   if (CAREERJET_DATA_API_KEY) collectors.push(previousJobs().then(async oldJobs => {
     const result = await fetchCareerjetDataApi({ apiKey: CAREERJET_DATA_API_KEY,

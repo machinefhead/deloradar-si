@@ -2,13 +2,14 @@
 
 Osebni pregled slovenskih zaposlitvenih oglasov: [odpri DeloRadar na GitHub Pages](https://machinefhead.github.io/deloradar-si/). Podatki se posodobijo po uspešnem zajemu in objavi v GitHub Actions; sam obisk strani ne sproži novih poizvedb na zaposlitvene portale.
 
-## Zadnje preverjeno stanje (25. november 2026)
+## Zadnje preverjeno stanje (26. november 2026)
 
-- Preverjena objava GitHub Pages (25. november 2026, 21:21 UTC): **8.869 oglasov iz 19 dosegljivih virov** z vključenim EURES. Osnovnih 18 virov je v prejšnjem lokalnem zajemu pripravilo 8.841 oglasov v 41 sekundah; celoten prvi EURES-ov zajem porabi približno dve dodatni minuti. Naslednji 12-urni zagon lahko uporabi svež EURES-ov predpomnilnik.
-- **ZRSZ: 4.152 aktualnih oglasov**, vsi z opisom del in nalog iz uradnega dnevnega JSON-a. Pri **3.899 oglasih** je referenca preverjena s številčnim `idp` prek uradnega HTTP-odgovora za posamezen oglas; povezava vodi neposredno na isti oglas. V trenutnem posnetku ima 255 referenc predpono `IE`; le 2 imata ustrezni `idp` tudi v uradnem iskalniku, **253 pa nimajo preverljivega ujemanja**. Ne ugibamo ID-ja: za te oglase prikazujemo celoten opis na DeloRadarju, deljivo povezavo `?oglas=zrsz%3AIE...` in ločeno iskanje pri ZRSZ. Razmerje neposrednih povezav je v »Stanju povezav«.
-- **Adecco: 161 oglasov** v zadnjem zajemu; 143 veljavnih zapisov iz predpomnilnika in 18 novo preverjenih. Del osvežitev poteka postopoma, da ponavljajoči zajem ne pošilja vseh zahtevkov znova.
+- Zadnja preverjena javna objava (25. november 2026, 23:06 UTC): **8.367 oglasov iz 20 dosegljivih virov**. Lokalni popolni zajem z novim WHC (26. november) je vrnil **8.523 oglasov iz 21 dosegljivih virov**; nova različica postane javna šele po preverbi in uspešnem GitHubovem postopku objave.
+- **ZRSZ: 3.725 aktualnih oglasov**, z besedilom del in nalog iz uradnega dnevnega JSON-a. Pri **3.539 oglasih** je referenca povezana s preverjenim številčnim `idp` in neposrednim oglasom; pri preostalih **186** natančnega `idp` ni potrjenega. Zato za njih ohranimo celoten opis na DeloRadarju, deljivo povezavo `?oglas=zrsz%3AIE...` pri referencah `IE` in ločeno izvorno iskanje, ne izmišljene neposredne povezave. Delež neposrednih povezav je v »Stanju povezav«.
+- **Adecco: 161 oglasov** v zadnjem lokalnem zajemu; dopolnilne podrobnosti se obnovijo postopno, da ponavljajoči zajem ne pošilja vseh zahtevkov znova.
 - **EURES: 25 dodatnih oglasov**, od tega 2 z navedenim krajem in 23 z državo Slovenijo, vendar brez potrjenega kraja. Vseh 25 vsebuje opis, pri 13 je objavljen tudi rok prijave. EURES je vključen v urnik; Careerjet kot agregator za zdaj ni prednostna naloga.
-- **Manpower Slovenija:** nov neposreden HTTP-uvoz z več strani izvirnega seznama, celotnimi opisi podrobnosti in omejitvijo **20 novih HTTP-opisov na zagon** ter 14-dnevnim predpomnilnikom. V času priprave smo na javnem seznamu našli približno 102 razpisa. Vključen bo ob naslednji preverjeni produkcijski objavi.
+- **Manpower Slovenija:** neposreden HTTP-uvoz z več strani izvirnega seznama, postopnimi polnimi opisi podrobnosti in omejitvijo **20 novih HTTP-opisov na zagon** ter 14-dnevnim predpomnilnikom. Zadnji preverjeni seznam: **102 razpisa**.
+- **WHC Slovenija (nekdanji Workforce):** povezani sta obe izvirni kategoriji **Workforce** in **Heads**. Izvirni aplikacijski HTTP vrne straničeni HTML (97 + 31 kartic na dan preverjanja); splošne prijave v bazo kandidatov in izrecno tuje lokacije izločimo. Posamezne oglase programsko dopolnimo z uradnim `JobPosting` in podatki o nalogah, ponudbi in pričakovanjih. Največ **24 podrobnih HTTP zahtevkov na gradnjo**, do trije sočasno, s 14-dnevnim predpomnilnikom. Brez brskalniškega odpiranja kartic.
 - `dist/` vsebuje le `index.html` in `jobs.json`; zgodovinskih predogledov ZRSZ ne pakiramo več za objavo.
 
 ## Načelo pridobivanja podatkov
@@ -24,7 +25,7 @@ ZRSZ (`source/zrsz-official-http.js`):
 5. Pri spremembi identifikatorja ali dvoumnem ujemanju pustimo iskalno povezavo, namesto da bi prikazali napačen oglas.
 6. Ob vsakem načrtovanem zajemu uporabimo potrjene povezave iz prejšnjega objavljenega `jobs.json` in **samodejno preverimo največ 60 novih številčnih kandidatov** (do trije sočasni zahtevki s premorom). Registrska številka v odgovoru mora ustrezati današnjemu oglasu. Napačnih ujemanj ne preverjamo znova, začasne napake pa ostanejo ponovljive. Za spremembo dnevne omejitve je na voljo `ZRSZ_VERIFY_NEW_LIMIT`.
 
-Neposredno preverjanje s seznama ni dovolj za zapise `IE`: v primerjavi s 3.983 rezultati uradnega iskalnika se je enolično ujemalo le 2 od 255 takšnih referenc. Zato pri manjkajočih ne prikazujemo izmišljene povezave na ZRSZ, ampak omogočamo odpiranje točnega polnega opisa na DeloRadarju in ločeno predizpolnjeno iskanje izvornega portala. Povezava DeloRadar deluje, dokler je oglas v aktualnem JSON-posnetku.
+Neposredno preverjanje s seznama ni dovolj za zapise `IE`: v predhodnem primerjalnem preizkusu s 3.983 rezultati uradnega iskalnika se je enolično ujemalo le 2 od 255 takšnih referenc. Zato pri manjkajočih ne prikazujemo izmišljene povezave na ZRSZ, ampak omogočamo odpiranje točnega polnega opisa na DeloRadarju in ločeno predizpolnjeno iskanje izvornega portala. Povezava DeloRadar deluje, dokler je oglas v aktualnem JSON-posnetku.
 
 Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `ZRSZ_JSON_URL` je podprt kot rezervna možnost. V uporabi ni nobenega zagona Chroma ali Playwrighta za ZRSZ.
 
@@ -46,6 +47,7 @@ Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `
 | Mercator, IščiDelo | Javni seznami s straničenjem, kjer je na voljo |
 | dm Slovenija, Nova Priložnost | Javni HTML oziroma sitemap in `JobPosting` |
 | Manpower Slovenija | Straničeni javni HTML in omejene neposredne HTTP podrobnosti s predpomnilnikom |
+| WHC Slovenija (Workforce in Heads) | Izvirni aplikacijski HTTP seznam obeh kategorij; omejene podrobnosti `JobPosting` |
 
 Vsi viri so preverjani ločeno. Če vir trenutno odpove, je označen z napako; en neuspešen vir ne izbriše oglasov drugih portalov. EURES je dodatni HTTP-uvoz z ločevanjem oglasov ZRSZ, preverjanjem lokacij in roka prijave. `EURES_HTTP_ENABLED=1` ga vključi v zbiralnik. Ker polni EURES-ov seznam zahteva več zahtevkov, si dva zaporedna 12-urna zagona lahko delita največ 20 ur star uspešen rezultat; potekle oglase izločimo.
 
