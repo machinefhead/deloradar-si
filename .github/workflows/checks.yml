@@ -22,6 +22,12 @@ jobs:
       - name: Preveri dejanski zajem tudi na GitHubu
         env:
           ZRSZ_OFFICIAL_HTTP_ENABLED: '1'
+          EURES_HTTP_ENABLED: '1'
+          DELORADAR_REQUIRE_ALL_SOURCES: '1'
+          ZRSZ_VERIFY_NEW_LIMIT: '10'
+          DETAIL_MOJEDELO_LIMIT: '30'
+          DETAIL_WHC_LIMIT: '4'
+          DETAIL_MANPOWER_LIMIT: '4'
         run: npm run build
       - name: Preveri podrobnosti oglasov v brskalniku in na telefonu
         run: node scripts/test-browser.mjs
