@@ -3,6 +3,7 @@ import { Script, runInNewContext } from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { page } from '../source/page.js';
 import { markLikelyDuplicates } from '../source/duplicates.js';
+import { mergeZrszDirectLinks } from '../source/zrsz-links.js';
 import {
   parseZrszPilotCard, parseZrszPilotDetail, zrszDirectUrl,
   parseEuresPilotSummary, parseEuresPilotDetail, careerjetProbeStatus,
@@ -423,6 +424,15 @@ const pilotZrsz = parseZrszPilotDetail(pilotZrszCard, {
 });
 assert.equal(pilotZrsz.id, 'zrsz:RH54049', 'Pilot ZRSZ ohrani registrsko številko kot ID');
 assert.equal(pilotZrsz.url, zrszDirectUrl('3503870'), 'Pilot ZRSZ vrne URL točno določenega oglasa');
+const zrszOriginal = [
+  sameVacancy('zrsz:RH54049', 'ZRSZ / PoiščiDelo', '2026-11-11', { reference: 'RH54049', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/?iskalniTekst=PANVITA' }),
+  sameVacancy('zrsz:RH99999', 'ZRSZ / PoiščiDelo', '2026-11-11', { reference: 'RH99999' }),
+];
+const zrszEnriched = mergeZrszDirectLinks(zrszOriginal, [pilotZrsz]);
+assert.equal(zrszEnriched[0].url, zrszDirectUrl('3503870'), 'Neposredni URL popravimo samo ob ujemanju registrske oznake');
+assert.equal(zrszEnriched[1].url, zrszOriginal[1].url, 'Nepreverjeni ZRSZ oglasi ohranijo iskalni URL');
+assert.equal(zrszEnriched[0].id, zrszOriginal[0].id, 'ZRSZ ohrani isti ID in uporabnikove statuse');
+assert.equal(zrszOriginal[0].url.includes('?idp='), false, 'Vhodnih oglasov ne spreminjamo');
 assert.throws(() => parseZrszPilotDetail(pilotZrszCard, {
   url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/', reference: 'RH54049',
 }), /neposredna/, 'Pilot mora zavrniti povezavo, ki odpira samo iskalnik');

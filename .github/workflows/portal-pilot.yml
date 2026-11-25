@@ -24,5 +24,5 @@ jobs:
       - run: npm ci
       - name: Preveri razčlenjevanje
         run: npm test
-      - name: Največ 60 posameznih oglasov ZRSZ, brez objave
-        run: npm run probe:portals -- --sources=zrsz --limit=60
+      - name: Preizkus naslednjega svežnja oglasov ZRSZ (31), brez objave
+        run: npm run probe:portals -- --sources=zrsz --limit=31

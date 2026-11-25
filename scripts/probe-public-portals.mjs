@@ -1,9 +1,10 @@
 // Ročno sprožen pilot: največ 100 oglasov ZRSZ oziroma pet pri ostalih virih.
 // Ne spreminja jobs.json, ne objavlja ničesar in ne obhaja preverjanj obiskovalcev.
 import {
-  ZRSZ_SEARCH_URL, EURES_SLOVENIA_URL, parseZrszPilotCard, parseZrszPilotDetail,
+  ZRSZ_SEARCH_URL, EURES_SLOVENIA_URL,
   parseEuresPilotSummary, parseEuresPilotDetail, zrszDirectUrl, careerjetProbeStatus,
 } from '../source/portal-probe.js';
+import { readZrszPublicDetails } from '../source/zrsz-links.js';
 
 const parameter = name => process.argv.find(item => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const count = Number(parameter('limit') || 3);
@@ -52,47 +53,7 @@ async function zrszSample(browser) {
     await page.goto(ZRSZ_SEARCH_URL, { waitUntil: 'domcontentloaded', timeout: 40_000 });
     await page.locator('#vacancy-0').waitFor({ state: 'visible', timeout: 55_000 });
     await dismissCookieChoices(page, 'zrsz');
-    // Naložimo samo toliko dodatnih strani, kot jih potrebuje omejen pilot.
-    // Ob vsakem kliku mora na javnem seznamu dejansko pribiti nova kartica.
-    for (let batch = 0; batch < 4; batch++) {
-      const have = await page.locator('a[id^="vacancy-"]').count();
-      if (have >= count) break;
-      const next = page.getByText(/Prikaži več/i).last();
-      if (!await next.count()) throw Error(`ZRSZ: prikazanih ${have} oglasov, gumb »Prikaži več« ni na voljo`);
-      await next.dispatchEvent('click', { timeout: 15_000 });
-      await page.waitForFunction(previous => document.querySelectorAll('a[id^="vacancy-"]').length > previous,
-        have, { timeout: 30_000 });
-      await page.waitForTimeout(450);
-    }
-    const cards = (await page.locator('a[id^="vacancy-"]').evaluateAll(items => items.slice(0, 100).map(item => ({
-      title: item.querySelector('h5.list-item-title')?.textContent,
-      companyLocation: item.querySelector('p.list-item-text')?.textContent,
-      metadata: item.querySelector('p.list-item-text.small')?.textContent,
-    })))).slice(0, count);
-    const results = [];
-    for (let index = 0; index < cards.length; index++) {
-      const card = parseZrszPilotCard(cards[index]);
-      const currentTitle = await page.locator(`#vacancy-${index} h5`).innerText();
-      if (currentTitle.replace(/\s+/g, ' ').trim() !== card.title) {
-        throw Error('ZRSZ: vrsten red oglasov se je med zajemom spremenil');
-      }
-      // Seznam ima lepljive elemente, ki v brezglavem Chromu lahko prestrežejo
-      // koordinatni klik. Sprožimo običajen DOM dogodek na vidnem javnem oglasu;
-      // neposreden URL in registrsko številko nato preverimo posebej.
-      await page.locator(`#vacancy-${index}`).dispatchEvent('click', { timeout: 15_000 });
-      await page.waitForURL(/\?idp=\d+\/#\/pdm\/\d+/, { timeout: 20_000 });
-      await page.locator('b').filter({ hasText: 'Registrska št.:' }).first().waitFor({ state: 'visible', timeout: 30_000 });
-      results.push(parseZrszPilotDetail(card, { url: page.url(), reference: await registrationFromZrsz(page) }));
-      // Zapremo samo javni modal oglasa. Seznam ostane naložen in se ne zahteva znova.
-      if (index + 1 < cards.length) {
-        // ZRSZ prikazuje dva elementa z aria-label="Close" (mobilni »Nazaj«
-        // ter gumb v glavi). Izberemo izrecno gumb v glavi modala.
-        await page.locator('.modal-detail div.set-pointer[aria-label="Close"]').click({ timeout: 15_000 });
-        await page.locator('.modal-detail').waitFor({ state: 'hidden', timeout: 20_000 });
-        await page.waitForURL(url => !url.searchParams.has('idp'), { timeout: 20_000 });
-        await page.waitForTimeout(400);
-      }
-    }
+    const results = await readZrszPublicDetails(page, count);
     const elapsedMs = Date.now() - startedAt;
     return { status: results.length === count ? 'ok' : 'partial', tested: results.length,
       elapsedMs, averageMsPerJob: Math.round(elapsedMs / Math.max(1, results.length)), records: results };
