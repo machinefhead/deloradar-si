@@ -46,6 +46,11 @@ if (process.env.DELORADAR_REQUIRE_ALL_SOURCES === '1') {
   assert.equal(unavailable.length, 0, 'Objava preklicana: nedosegljivi viri: ' +
     unavailable.map(source => source.name).join(', '));
 }
+if (process.env.DELORADAR_REQUIRE_WHC === '1') {
+  const whc = data.sources.find(source => source.id === 'whc');
+  assert.ok(whc?.status === 'live' && whc.count > 0,
+    'Razvojni preizkus prekinjen: novi vir WHC ni uspešno vrnil oglasov');
+}
 if (process.env.ZRSZ_OFFICIAL_HTTP_ENABLED === '1') {
   const zrsz = data.sources.find(s => s.id === 'zrsz');
   assert.ok(zrsz?.status === 'live' && zrsz.count > 0, 'Samodejni ZRSZ HTTP uvoz ni uspel');

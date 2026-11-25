@@ -23,7 +23,7 @@ jobs:
         env:
           ZRSZ_OFFICIAL_HTTP_ENABLED: '1'
           EURES_HTTP_ENABLED: '1'
-          DELORADAR_REQUIRE_ALL_SOURCES: '1'
+          DELORADAR_REQUIRE_WHC: '1'
           ZRSZ_VERIFY_NEW_LIMIT: '10'
           DETAIL_MOJEDELO_LIMIT: '30'
           DETAIL_WHC_LIMIT: '4'
