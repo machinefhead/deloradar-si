@@ -403,7 +403,7 @@ export const page = String.raw`<!doctype html>
         $('sourceStatus').innerHTML=sources.slice().sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name,'sl')}).map(function(s){
           var zrszQuality=s.id==='zrsz'&&s.status==='live'&&zrszJobs.length;
           return '<div class="sourceitem'+(zrszQuality?' has-quality':'')+'"><span class="name">'+safe(s.name)+'</span><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov':'Ni odziva')+'</span>'+
-            (zrszQuality?'<span class="sourcequality">Neposredne povezave: '+zrszDirect+' / '+zrszJobs.length+' · preostali oglasi vodijo na iskanje</span>':'')+'</div>'; }).join('');
+            (zrszQuality?'<span class="sourcequality">Neposredne povezave ZRSZ: '+zrszDirect+' / '+zrszJobs.length+' · ostali: opis v DeloRadarju in iskanje ZRSZ</span>':'')+'</div>'; }).join('');
         var active=sources.filter(function(s){return s.status==='live'}).length;
         $('sourceSummary').textContent=active+' od '+sources.length+' virov dosegljivih';
         $('sourcesNum').textContent=active;
@@ -461,6 +461,12 @@ export const page = String.raw`<!doctype html>
         });
         buttons+=pageButton(currentPage+1,'›',totalPages,false);
         pager.innerHTML='<div class="pagebuttons">'+buttons+'</div><label class="pagesize" for="pageSize">Oglasov na stran <select id="pageSize" aria-label="Oglasov na stran"><option value="10" '+(pageSize===10?'selected':'')+'>10</option><option value="25" '+(pageSize===25?'selected':'')+'>25</option><option value="50" '+(pageSize===50?'selected':'')+'>50</option><option value="100" '+(pageSize===100?'selected':'')+'>100</option></select></label>';
+      }
+      function jobPermalink(id){
+        var link=new URL(window.location.href);
+        link.searchParams.set('oglas',id);
+        link.hash='';
+        return link.href;
       }
       function detailValue(value){
         if(value===null||value===undefined)return '';
@@ -563,6 +569,7 @@ export const page = String.raw`<!doctype html>
         ]);
         var zrszSearch=j.source==='ZRSZ / PoiščiDelo'&&j.reference&&String(j.url||'').startsWith('https://www.ess.gov.si/')&&String(j.url||'').indexOf('?idp=')<0;
         var url=String(j.url||'');var external=/^https:\/\/[^\s<>"']+$/i.test(url)?'<a class="detailprimary" href="'+safe(url)+'" target="_blank" rel="noopener noreferrer">'+(zrszSearch?'Poišči razpis na ZRSZ':'Odpri izvorni oglas')+' ↗</a>':'';
+        external+=' <a href="'+safe(jobPermalink(j.id))+'" target="_blank" rel="noopener noreferrer" title="Povezava do tega oglasa v DeloRadarju">Povezava do opisa v DeloRadarju ↗</a>';
         var euresCandidate=String(j.euresDetailUrlCandidate||'');
         if(/^https:\/\/europa\.eu\/eures\/portal\/jv-se\/jv-details\/[A-Za-z0-9_-]+\?lang=sl$/.test(euresCandidate)){
           external+=' <a href="'+safe(euresCandidate)+'" target="_blank" rel="noopener noreferrer" title="EURES hrani povezano objavo, vendar njen rok prijave morda ni več aktualen">Povezana objava EURES (preveri rok) ↗</a>';
@@ -585,9 +592,10 @@ export const page = String.raw`<!doctype html>
         return true;
       }
       function openJobDetail(id){
-        if(!showJobDetail(id))return;
+        if(!showJobDetail(id))return false;
         detailReturnFocus=document.activeElement;
         if(!jobDialog.open)jobDialog.showModal();
+        return true;
       }
       $('closeJobDialog').addEventListener('click',function(){jobDialog.close()});
       jobDialog.addEventListener('click',function(e){
@@ -609,7 +617,8 @@ export const page = String.raw`<!doctype html>
           var location=j.location||(Array.isArray(j.regions)&&j.regions.length?(j.regions.length===1?j.regions[0]+' (regija)':'Več regij ('+j.regions.length+')'):'Ni navedeno');
           var alternatives=j.alternatives&&j.alternatives.length?'<div class="jobalternatives">Objavljeno tudi na: '+j.alternatives.map(function(other){return '<a href="'+safe(other.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Odpri isti razpis na '+safe(other.source)+'">'+safe(other.source)+' ↗</a>'}).join(' · ')+'</div>':'';
           var zrszDirect=j.source==='ZRSZ / PoiščiDelo'&&String(j.url||'').startsWith('https://www.ess.gov.si/')&&String(j.url).indexOf('?idp=')>=0;
-          return '<tr><td><button class="jobtitle" type="button" data-detail-id="'+safe(j.id)+'" aria-haspopup="dialog" aria-label="Podrobnosti: '+safe(j.title)+'">'+safe(j.title)+'</button><div class="jobcompany">'+safe(j.company||'Oglej si delodajalca na portalu')+'</div>'+(j.reference?'<div class="jobcompany">ZRSZ oznaka: '+safe(j.reference)+' · '+(zrszDirect?'Neposreden oglas':'Iskanje po delodajalcu')+'</div>':'')+alternatives+'</td><td class="muted">'+safe(location)+'</td><td><span class="srcbadge '+(j.source==='Kariera.si'?'kariera':'')+'">'+safe(j.source)+'</span></td><td class="dead">'+dateLabel(j.date)+'</td><td><select class="state '+(s.status==='contacted'?'applied':s.status==='interested'?'saved':'')+'" data-status="'+safe(j.id)+'" aria-label="Status: '+safe(j.title)+'"><option value="" '+(!s.status?'selected':'')+'>Ni označeno</option><option value="interested" '+(s.status==='interested'?'selected':'')+'>Zanimivo</option><option value="contacted" '+(s.status==='contacted'?'selected':'')+'>Kontaktirano</option></select></td><td><div class="rowactions"><button class="star '+(s.saved?'active':'')+'" data-star="'+safe(j.id)+'" title="Shrani oglas" aria-label="Shrani oglas" type="button">'+(s.saved?'★':'☆')+'</button><a class="openjob" href="'+safe(j.url)+'" target="_blank" rel="noopener noreferrer" aria-label="'+(j.reference&&!zrszDirect?'Odpri iskanje ZRSZ po delodajalcu':'Odpri oglas')+'">↗</a></div></td></tr>';
+          var localDetail=j.source==='ZRSZ / PoiščiDelo'&&!zrszDirect?'<a class="openjob" href="'+safe(jobPermalink(j.id))+'" target="_blank" rel="noopener noreferrer" title="Celoten opis v DeloRadarju" aria-label="Odpri natančen opis oglasa v DeloRadarju">▣</a>':'';
+          return '<tr><td><button class="jobtitle" type="button" data-detail-id="'+safe(j.id)+'" aria-haspopup="dialog" aria-label="Podrobnosti: '+safe(j.title)+'">'+safe(j.title)+'</button><div class="jobcompany">'+safe(j.company||'Oglej si delodajalca na portalu')+'</div>'+(j.reference?'<div class="jobcompany">ZRSZ oznaka: '+safe(j.reference)+' · '+(zrszDirect?'Neposreden oglas':'Opis v DeloRadarju · Iskanje po delodajalcu')+'</div>':'')+alternatives+'</td><td class="muted">'+safe(location)+'</td><td><span class="srcbadge '+(j.source==='Kariera.si'?'kariera':'')+'">'+safe(j.source)+'</span></td><td class="dead">'+dateLabel(j.date)+'</td><td><select class="state '+(s.status==='contacted'?'applied':s.status==='interested'?'saved':'')+'" data-status="'+safe(j.id)+'" aria-label="Status: '+safe(j.title)+'"><option value="" '+(!s.status?'selected':'')+'>Ni označeno</option><option value="interested" '+(s.status==='interested'?'selected':'')+'>Zanimivo</option><option value="contacted" '+(s.status==='contacted'?'selected':'')+'>Kontaktirano</option></select></td><td><div class="rowactions"><button class="star '+(s.saved?'active':'')+'" data-star="'+safe(j.id)+'" title="Shrani oglas" aria-label="Shrani oglas" type="button">'+(s.saved?'★':'☆')+'</button>'+localDetail+'<a class="openjob" href="'+safe(j.url)+'" target="_blank" rel="noopener noreferrer" aria-label="'+(j.reference&&!zrszDirect?'Odpri iskanje ZRSZ po delodajalcu':'Odpri oglas')+'">↗</a></div></td></tr>';
         }).join('');
         $('summary').textContent='Prikazanih '+(start+1)+'–'+end+' od '+items.length+' razpisov · Stran '+currentPage+' od '+totalPages+' · Rok in pogoje preveri na izvornem portalu.';
         pageNavigation(totalPages);
@@ -643,6 +652,8 @@ export const page = String.raw`<!doctype html>
           configureMulti('city',Array.from(new Set(jobs.map(function(j){return j.location}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'sl')}),'Vsi kraji');
           configureMulti('company',Array.from(new Set(jobs.map(function(j){return j.company}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'sl')}),'Vsi delodajalci');
           sourceRender();render();
+          var linkedJob=new URLSearchParams(window.location.search).get('oglas');
+          if(linkedJob&&!openJobDetail(linkedJob))noticeMessage('Oglas s te povezave ni več v aktualnem zajemu. Poišči ga po nazivu ali pri izvornem portalu.');
           if(offline){
             noticeMessage('LOKALNI PREIZKUS: Posnetek resničnih oglasov. Ni samodejnega osveževanja; za aktualne oglase preveri povezave pri izvornih portalih.');
             $('updated').textContent='Posnetek zbran: '+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+'. Kategorije so ocenjene iz nazivov; neznane regije so označene.';

@@ -35,12 +35,16 @@ jobs:
           ZRSZ_OFFICIAL_HTTP_ENABLED: '1'
           ZRSZ_VERIFY_NEW_LIMIT: '60'
           EURES_HTTP_ENABLED: '1'
+          DELORADAR_REQUIRE_ALL_SOURCES: '1'
           CAREERJET_DATA_API_KEY: ${{ secrets.CAREERJET_DATA_API_KEY }}
           DETAIL_OPTIUS_LIMIT: '8'
           DETAIL_KARIERA_LIMIT: '20'
           DETAIL_MOJEDELO_LIMIT: '100'
           DETAIL_ZAPOSLITEV_LIMIT: '20'
+          DETAIL_MANPOWER_LIMIT: '20'
         run: npm run build
+      - name: Preveri dejansko stran in deljive povezave
+        run: node scripts/test-browser.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact

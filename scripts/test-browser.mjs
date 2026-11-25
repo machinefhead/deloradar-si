@@ -69,6 +69,22 @@ try {
     assert.ok(bounds.scrollWidth <= bounds.width + 2, 'Dialog ne sme zahtevati vodoravnega drsenja');
     await page.locator('#closeJobDialog').click();
     assert.equal(await page.locator('#jobDialog').evaluate(element => element.open), false);
+    if (viewport.width === 1440) {
+      const missingZrsz = snapshot.jobs.find(job => job.source === 'ZRSZ / PoiščiDelo' &&
+        /^IE\d+$/.test(String(job.reference)) && !String(job.url).includes('?idp='));
+      if (missingZrsz) {
+        await page.goto('http://127.0.0.1:' + server.address().port + '/?oglas=' + encodeURIComponent(missingZrsz.id));
+        await page.locator('#jobDialog[open]').waitFor({ timeout: 20000 });
+        assert.equal(await page.locator('#jobDetailBody #detailTitle').innerText(), missingZrsz.title,
+          'Deljiva povezava do IE oglasa mora odpreti pravilen in ne poljuben opis');
+        assert.match(await page.locator('#jobDetailBody').innerText(), new RegExp(missingZrsz.reference),
+          'Pri deljivem opisu mora ostati registrska številka ZRSZ');
+        assert.match(await page.locator('#jobDetailBody .detailprimary').innerText(), /Poišči razpis na ZRSZ/,
+          'Iskanje ZRSZ mora ostati pošteno označeno, ne kot preverjena neposredna povezava');
+        assert.match(await page.locator('#jobDetailBody .detailactions a').last().getAttribute('href'),
+          /[?&]oglas=zrsz%3AIE\d+/, 'Iz odprtega oglasa je mogoče kopirati njegovo deljivo povezavo');
+      }
+    }
     assert.deepEqual(errors, [], 'Brskalniška skripta ne sme povzročiti napake');
     await page.close();
   }

@@ -100,6 +100,8 @@ assert.match(page, /id="exportAll"[^>]*>↓ Izvozi vse \(JSON\)/, 'Na voljo mora
 assert.match(page, /<dialog id="jobDialog" class="jobdialog"/, 'Podrobnosti oglasa morajo biti na voljo na isti strani');
 assert.match(page, /data-detail-id=/, 'Klik na naziv oglasa mora odpreti podrobnosti');
 assert.match(page, /jobDialog\.showModal\(\)/, 'Podrobnosti se odprejo v dostopnem dialogu');
+assert.match(script, /new URLSearchParams\(window\.location\.search\)\.get\('oglas'\)/, 'Povezava do konkretnega oglasa mora odpreti njegov opis');
+assert.match(script, /if\(linkedJob&&!openJobDetail\(linkedJob\)\)/, 'Neveljavne ali potekle povezave ne smejo prikazati drugega oglasa');
 assert.match(page, /Opis preverjen/, 'Pri opisu mora biti razviden datum preverjanja podrobnosti');
 assert.doesNotMatch(page, /Izvozi CSV|text\/csv|\.csv'/, 'CSV izvoz je v celoti zamenjan z JSON');
 assert.match(script, /scope==='filtered'\?displayed\(\):jobs/, 'Filtrirani JSON mora izvoziti vse filtrirane strani, celoten pa vsa izvorna dela');
@@ -165,7 +167,8 @@ runInNewContext(extract('function sourceRender(', 'function matchesJob('), sourc
 sourceContext.sourceRender();
 assert.equal(sourceElements.get('sourceSummary').textContent, '3 od 3 virov dosegljivih');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /ZRSZ \/ PoiščiDelo/);
-assert.match(sourceElements.get('sourceStatus').innerHTML, /Neposredne povezave: 1 \/ 2/, 'Stanje povezav mora razlikovati preverjeni idp in iskanje');
+assert.match(sourceElements.get('sourceStatus').innerHTML, /Neposredne povezave ZRSZ: 1 \/ 2/, 'Stanje povezav mora razlikovati preverjeni idp in iskanje');
+assert.match(sourceElements.get('sourceStatus').innerHTML, /opis v DeloRadarju in iskanje ZRSZ/, 'Manjkajoči uradni ID dobi pošteno označen način dostopa');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /EURES/);
 assert.match(sourceElements.get('planned').innerHTML, /Careerjet/);
 assert.doesNotMatch(sourceElements.get('planned').innerHTML, /EURES/, 'Povezanega EURES ne smemo prikazati kot nepovezan vir');
@@ -332,8 +335,12 @@ assert.match(navContext.pager.innerHTML, /<option value="25"/);
 const detailContext={
   safe:value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])),
   dateLabel:value=>value||'—',checkedAt:'2026-11-25T11:14:23Z',Intl,
+  URL,window:{location:{href:'https://machinefhead.github.io/deloradar-si/?filter=severno#staro'}},
 };
-runInNewContext(extract('function detailValue(', 'var jobDialog='),detailContext);
+runInNewContext(extract('function jobPermalink(', 'var jobDialog='),detailContext);
+assert.equal(detailContext.jobPermalink('zrsz:IE18067'),
+  'https://machinefhead.github.io/deloradar-si/?filter=severno&oglas=zrsz%3AIE18067',
+  'Točen oglas ima deljivo, pravilno kodirano povezavo in ne prenaša starega URL fragmenta');
 const detailHtml=detailContext.detailMarkup({id:'zrsz:77',source:'ZRSZ / PoiščiDelo',title:'Električar <test>',company:'Primer d.o.o.',
   location:'UE Maribor',description:'Vzdrževanje naprav.\nPozor: <img src=x onerror=alert(1)>',
   employmentType:'FULL_TIME',contractDuration:'Nedoločen čas',workHours:'40 ur tedensko',
@@ -351,6 +358,8 @@ assert.match(formatted,/<ul><li>Vzdrževanje<\/li><li>Organizacija<\/li><\/ul>/,
 assert.doesNotMatch(formatted,/&lt;p&gt;|&lt;ul&gt;|&lt;li&gt;/,'V dialogu ne smejo ostati surove oznake');
 assert.match(detailContext.detailReadable('&amp;lt;p&amp;gt;Delo&amp;lt;/p&amp;gt;'),/Delo/,'Dvakrat HTML-kodirano besedilo se razbere');
 assert.match(detailHtml,/Poišči razpis na ZRSZ/, 'Iskalna povezava ni predstavljena kot neposredni oglas');
+assert.match(detailHtml,/Povezava do opisa v DeloRadarju/, 'Vsak oglas omogoča deljenje natančno svojega opisa');
+assert.match(detailHtml,/oglas=zrsz%3A77/, 'Povezava do opisa vsebuje identifikator oglasa, ne nepreverjenega idp');
 const noDescription=detailContext.detailMarkup({id:'a',title:'Operater',source:'Optius',url:'https://www.optius.com/delo/1',summary:'Kratek povzetek.'},[]);
 assert.match(noDescription,/Kratek povzetek\./, 'Povzetek je viden, tudi če ni celotnega opisa');
 const noDetails=detailContext.detailMarkup({id:'a',title:'Operater',source:'Optius',url:'https://www.optius.com/delo/1'},[]);
@@ -737,4 +746,4 @@ assert.throws(() => parseEuresPilotSummary({ ...pilotEuresSummary, url: 'https:/
 assert.equal(careerjetProbeStatus('<html><h1>Zahtevano je preverjanje</h1></html>').status, 'blocked',
   'Careerjetovih zaščit ne zaobidemo');
 
-console.log('OK: filtri, straničenje, 18 virov, ZRSZ JSON in pilotski parserji');
+console.log('OK: filtri, straničenje, dodatni Manpower, ZRSZ JSON in pilotski parserji');

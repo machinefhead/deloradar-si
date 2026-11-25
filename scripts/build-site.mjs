@@ -41,6 +41,11 @@ assert.ok(Array.isArray(data.jobs), 'Manjka jobs');
 assert.ok(Array.isArray(data.sources), 'Manjka sources');
 assert.ok(Array.isArray(data.planned), 'Manjka planned');
 assert.ok(data.checkedAt && !Number.isNaN(Date.parse(data.checkedAt)), 'Manjka checkedAt');
+if (process.env.DELORADAR_REQUIRE_ALL_SOURCES === '1') {
+  const unavailable = data.sources.filter(source => source.status !== 'live');
+  assert.equal(unavailable.length, 0, 'Objava preklicana: nedosegljivi viri: ' +
+    unavailable.map(source => source.name).join(', '));
+}
 if (process.env.ZRSZ_OFFICIAL_HTTP_ENABLED === '1') {
   const zrsz = data.sources.find(s => s.id === 'zrsz');
   assert.ok(zrsz?.status === 'live' && zrsz.count > 0, 'Samodejni ZRSZ HTTP uvoz ni uspel');
