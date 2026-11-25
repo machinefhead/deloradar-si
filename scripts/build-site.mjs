@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { page } from '../source/page.js';
+import { zrszPreviewPage } from '../source/zrsz-preview.js';
 import collector from '../source/collector.js';
 
 async function fetchJobs() {
@@ -41,5 +42,13 @@ await mkdir('dist', { recursive: true });
 await Promise.all([
   writeFile('dist/index.html', page, 'utf8'),
   writeFile('dist/jobs.json', JSON.stringify(data), 'utf8'),
+  writeFile('dist/zrsz-preview.html', zrszPreviewPage, 'utf8'),
+  copyFile('data/zrsz-preview.json', 'dist/zrsz-preview.json'),
 ]);
+const manifest = JSON.parse(await readFile('data/zrsz-preview.json', 'utf8'));
+assert.ok(manifest.kind === 'historical-zrsz-preview' && Array.isArray(manifest.shards));
+await Promise.all(manifest.shards.map(file => {
+  assert.match(file, /^zrsz-preview-\d+\.json$/);
+  return copyFile(`data/${file}`, `dist/${file}`);
+}));
 console.log(`Pripravljena stran: ${data.jobs.length} oglasov, ${data.sources.filter(s => s.status === 'live').length} aktivnih virov.`);
