@@ -143,6 +143,19 @@ export async function getZrszFromPublicBrowser() {
       const verified = await readZrszPublicDetails(page, linkLimit);
       const linked = mergeZrszDirectLinks(jobs, verified);
       const updated = linked.filter((job, index) => job.url !== jobs[index].url).length;
+      if (process.env.ZRSZ_LINKS_REQUIRED === '1') {
+        const keys = new Set(jobs.map(job => job.reference));
+        const mismatch = verified.filter(item => !keys.has(item.reference));
+        const prefixCounts = values => Object.entries(values.reduce((acc, value) => {
+          const prefix = value.reference?.slice(0, 2) || '?';
+          acc[prefix] = (acc[prefix] || 0) + 1;
+          return acc;
+        }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        console.log('ZRSZ: primerjava registrov, dnevni=' + JSON.stringify(prefixCounts(jobs)) +
+          ', prikaz=' + JSON.stringify(prefixCounts(verified)) +
+          ', neusklajeni primeri=' + JSON.stringify(mismatch.slice(0, 5).map(item => item.reference)) +
+          ', JSON primeri=' + JSON.stringify(jobs.slice(0, 5).map(item => item.reference)));
+      }
       console.log(`ZRSZ: neposredne povezave ${updated}/${verified.length} (${Date.now() - startedAt} ms); ` +
         `ostali oglasi ohranijo iskanje po delodajalcu`);
       if (process.env.ZRSZ_LINKS_REQUIRED === '1' && updated === 0) {

@@ -23,5 +23,5 @@ jobs:
         run: npm run build
         env:
           ZRSZ_BROWSER_ENABLED: '1'
-          ZRSZ_DIRECT_LINK_LIMIT: '60'
+          ZRSZ_DIRECT_LINK_LIMIT: '5'
           ZRSZ_LINKS_REQUIRED: '1'
