@@ -4,12 +4,32 @@ import { readFileSync } from 'node:fs';
 import { page } from '../source/page.js';
 import { markLikelyDuplicates } from '../source/duplicates.js';
 import { mergeZrszDirectLinks, supplementZrszPublicDetails } from '../source/zrsz-links.js';
+import { planZrszDetails } from '../source/zrsz-incremental.js';
 import {
   parseZrszPilotCard, parseZrszPilotDetail, zrszDirectUrl,
   parseEuresPilotSummary, parseEuresPilotDetail, careerjetProbeStatus,
 } from '../source/portal-probe.js';
 
 const sameVacancy=(id,source,date,extra={})=>({ id,source,date,title:'Elektrotehnik (m/ž)',company:'Primer d.o.o.',location:'Maribor',deadline:'2026-12-15',url:'https://primer.si/delo/'+id,...extra });
+const planNow=Date.parse('2026-11-25T12:00:00Z');
+const zrszPlanJob=(reference,extra={})=>({id:'zrsz:'+reference,reference,source:'ZRSZ / PoiščiDelo',title:'Električar',company:'Primer d.o.o.',date:'2026-11-20',deadline:'2026-12-15',url:'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/',...extra});
+const oldZrsz=[
+  zrszPlanJob('A',{skills:'Varjenje',detailsFetchedAt:'2026-11-24T12:00:00Z',detailsCheckedAt:'2026-11-24T12:00:00Z',url:'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/?idp=3503870/#/pdm/3503870'}),
+  zrszPlanJob('B',{detailsFetchedAt:'2026-10-30T12:00:00Z',detailsCheckedAt:'2026-11-20T12:00:00Z'}),
+  zrszPlanJob('REMOVED'),
+];
+const zrszPlan=planZrszDetails([zrszPlanJob('A'),zrszPlanJob('B'),zrszPlanJob('C'),zrszPlanJob('D',{title:'Nov naziv'})],oldZrsz,{now:planNow,maxRequests:2});
+assert.deepEqual(zrszPlan.requests,['zrsz:C','zrsz:D'],'ZRSZ: najprej nova oglasa, brez ponovnega branja nespremenjenih');
+assert.equal(zrszPlan.stats.deferred,1,'ZRSZ: odložimo poznejše osveževanje prek omejitve');
+assert.equal(zrszPlan.stats.removed,1,'ZRSZ: zaznamo izginule oglase');
+assert.equal(zrszPlan.jobs[0].skills,'Varjenje','ZRSZ: ponovno uporabimo preverjene podrobnosti');
+assert.match(zrszPlan.jobs[0].url,/\?idp=3503870/,'ZRSZ: ohranimo samo neposredno preverjeno povezavo');
+assert.deepEqual(planZrszDetails([zrszPlanJob('A')],oldZrsz,{now:planNow,maxRequests:0}).requests,[],'ZRSZ: limit 0 zagotavlja nič zahtevkov');
+assert.deepEqual(planZrszDetails([zrszPlanJob('A',{title:'Spremenjeno'})],oldZrsz,{now:planNow}).requests,['zrsz:A'],'ZRSZ: ob spremenjenem nazivu znova preverimo oglas');
+assert.throws(()=>planZrszDetails([zrszPlanJob('A')],oldZrsz,{maxRequests:501}),/neveljavne/,'ZRSZ: zavrnemo pretirano omejitev');
+const largeZrszPlan=planZrszDetails(Array.from({length:3500},(_,index)=>zrszPlanJob('R'+index)),[],{now:planNow,maxRequests:60});
+assert.equal(largeZrszPlan.stats.queued,3500,'ZRSZ: načrtujemo tudi celoten prvi dnevni seznam');
+assert.equal(largeZrszPlan.requests.length,60,'ZRSZ: en zagon nikoli ne preseže dovoljenega števila podrobnosti');
 const duplicateFixture=[
   sameVacancy('mojedelo:1','MojeDelo.com','2026-11-20T23:00:00Z'),
   sameVacancy('zaposlitevinfo:1','Zaposlitev.info','2026-11-21'),
