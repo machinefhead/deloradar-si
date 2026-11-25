@@ -1,4 +1,4 @@
-// Ročno sprožen pilot: največ pet posameznih oglasov na portal.
+// Ročno sprožen pilot: največ 20 oglasov ZRSZ oziroma pet pri ostalih virih.
 // Ne spreminja jobs.json, ne objavlja ničesar in ne obhaja preverjanj obiskovalcev.
 import {
   ZRSZ_SEARCH_URL, EURES_SLOVENIA_URL, parseZrszPilotCard, parseZrszPilotDetail,
@@ -7,10 +7,13 @@ import {
 
 const parameter = name => process.argv.find(item => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const count = Number(parameter('limit') || 3);
-if (!Number.isInteger(count) || count < 1 || count > 5) throw Error('Pilot podpira samo --limit=1..5');
 const requested = (parameter('sources') || 'zrsz,eures,careerjet').split(',').map(x => x.trim());
 if (!requested.length || requested.some(x => !['zrsz', 'eures', 'careerjet'].includes(x))) {
   throw Error('Dovoljeni viri: zrsz,eures,careerjet');
+}
+const maxCount = requested.every(x => x === 'zrsz') ? 20 : 5;
+if (!Number.isInteger(count) || count < 1 || count > maxCount) {
+  throw Error(`Pilot za izbrane vire podpira samo --limit=1..${maxCount}`);
 }
 const output = { type: 'DeloRadar portal pilot', countPerSource: count, capturedAt: new Date().toISOString(), sources: {} };
 
@@ -44,21 +47,18 @@ async function dismissCookieChoices(page, portal) {
 async function zrszSample(browser) {
   const context = await browser.newContext({ locale: 'sl-SI' });
   const page = await context.newPage();
+  const startedAt = Date.now();
   try {
     await page.goto(ZRSZ_SEARCH_URL, { waitUntil: 'domcontentloaded', timeout: 40_000 });
     await page.locator('#vacancy-0').waitFor({ state: 'visible', timeout: 55_000 });
     await dismissCookieChoices(page, 'zrsz');
-    const cards = (await page.locator('a[id^="vacancy-"]').evaluateAll(items => items.slice(0, 5).map(item => ({
+    const cards = (await page.locator('a[id^="vacancy-"]').evaluateAll(items => items.slice(0, 30).map(item => ({
       title: item.querySelector('h5.list-item-title')?.textContent,
       companyLocation: item.querySelector('p.list-item-text')?.textContent,
       metadata: item.querySelector('p.list-item-text.small')?.textContent,
     })))).slice(0, count);
     const results = [];
     for (let index = 0; index < cards.length; index++) {
-      if (index) {
-        await page.goto(ZRSZ_SEARCH_URL, { waitUntil: 'domcontentloaded', timeout: 40_000 });
-        await page.locator('#vacancy-0').waitFor({ state: 'visible', timeout: 55_000 });
-      }
       const card = parseZrszPilotCard(cards[index]);
       const currentTitle = await page.locator(`#vacancy-${index} h5`).innerText();
       if (currentTitle.replace(/\s+/g, ' ').trim() !== card.title) {
@@ -68,8 +68,17 @@ async function zrszSample(browser) {
       await page.waitForURL(/\?idp=\d+\/#\/pdm\/\d+/, { timeout: 20_000 });
       await page.locator('b').filter({ hasText: 'Registrska št.:' }).first().waitFor({ state: 'visible', timeout: 30_000 });
       results.push(parseZrszPilotDetail(card, { url: page.url(), reference: await registrationFromZrsz(page) }));
+      // Zapremo samo javni modal oglasa. Seznam ostane naložen in se ne zahteva znova.
+      if (index + 1 < cards.length) {
+        await page.locator('.modal-detail [aria-label="Close"]').click({ timeout: 15_000 });
+        await page.locator('.modal-detail').waitFor({ state: 'hidden', timeout: 20_000 });
+        await page.waitForURL(url => !url.searchParams.has('idp'), { timeout: 20_000 });
+        await page.waitForTimeout(400);
+      }
     }
-    return { status: results.length === count ? 'ok' : 'partial', tested: results.length, records: results };
+    const elapsedMs = Date.now() - startedAt;
+    return { status: results.length === count ? 'ok' : 'partial', tested: results.length,
+      elapsedMs, averageMsPerJob: Math.round(elapsedMs / Math.max(1, results.length)), records: results };
   } finally { await context.close(); }
 }
 

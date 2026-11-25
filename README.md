@@ -47,9 +47,9 @@ Javni gumb `.json` datoteko prenese prek ZRSZ-jevega javnega iskalnika. **Enak u
 
 ### Pilot branja posameznih oglasov (ločeno od produkcije)
 
-`npm run probe:portals -- --limit=3` izvede največ tri ročno sprožene preizkuse za vsak vir. Za posamezen vir uporabi `--sources=zrsz`, `--sources=eures` ali `--sources=careerjet`. ZRSZ in EURES uporabljata običajni brskalnik Chrome (Playwright), ki prek javnega uporabniškega prikaza odpre posamezne oglase. `DELORADAR_CHROME_PATH` lahko kaže na lokalni izvršljivi Chrome, če Chrome ni nameščen na običajnem mestu.
+`npm run probe:portals -- --limit=3` izvede tri ročno sprožene preizkuse na vir. Za posamezen vir uporabi `--sources=zrsz`, `--sources=eures` ali `--sources=careerjet`. Samo za ZRSZ je na voljo razširjeni preizkus `--sources=zrsz --limit=20`, ki podrobnosti odpira in zapira v istem naloženem seznamu ter meri hitrost. ZRSZ in EURES uporabljata običajni brskalnik Chrome (Playwright), ki prek javnega uporabniškega prikaza odpre posamezne oglase. Chrome teče na GitHub Actions runnerju; uporabnikov osebni brskalnik ni potreben. `DELORADAR_CHROME_PATH` je rezervna možnost za ločen lokalni razvojni test.
 
-- **ZRSZ:** prebere vidne kartice, odpre do tri posamezne oglase in potrdi povezave `?idp=.../#/pdm/...` ter registrske oznake.
+- **ZRSZ:** prebere vidne kartice, odpre do 20 posameznih oglasov in potrdi povezave `?idp=.../#/pdm/...` ter registrske oznake. Ponovno uporablja seznam in vmes vstavi kratek premor.
 - **EURES:** samo za ročni pilot prebere nekaj javnih oglasov za Slovenijo in preveri možne povezave z ZRSZ *na samem ZRSZ*. Številčni ID, izluščen iz EURES povezave, je zgolj kandidat, dokler se ne ujema tudi registrska oznaka. Ne uporablja notranjih API-jev. Morebitna širša avtomatizacija EURES zahteva urejene pravice do avtomatiziranega zajema.
 - **Careerjet:** če vrne interaktivno preverjanje, izpiše `blocked` in se ustavi; preverjanja ne rešuje samodejno.
 
