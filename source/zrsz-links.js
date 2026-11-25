@@ -16,6 +16,20 @@ export async function readZrszPublicDetails(page, count) {
   for (let batch = 0; batch < 4; batch++) {
     const have = await page.locator(vacancySelector).count();
     if (have >= count) break;
+    const choices = await page.getByText(/Prikaži več/i).evaluateAll(elements => elements.slice(0, 12).map((element, i) => ({
+      index: i, tag: element.tagName, text: element.textContent?.trim().slice(0, 90),
+      parent: element.parentElement?.outerHTML.slice(0, 300),
+    })));
+    const aroundLastCard = await page.locator('#vacancy-29').evaluate(element => {
+      const result = []; let node = element;
+      for (let i = 0; i < 5 && node; i++, node = node.parentElement) {
+        result.push({ tag: node.tagName, className: node.className, childCount: node.children.length,
+          htmlTail: node.outerHTML.slice(-260) });
+      }
+      return result;
+    });
+    console.log('ZRSZ: možnosti »Prikaži več«=' + JSON.stringify(choices));
+    console.log('ZRSZ: predniki zadnjega oglasa=' + JSON.stringify(aroundLastCard));
     const next = page.getByText(/Prikaži več/i).last();
     if (!await next.count()) throw Error(`ZRSZ: prikazanih ${have} oglasov, gumb »Prikaži več« ni na voljo`);
     const target = await next.evaluate(element => ({
