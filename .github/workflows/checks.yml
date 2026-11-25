@@ -25,3 +25,5 @@ jobs:
           ZRSZ_BROWSER_ENABLED: '1'
           ZRSZ_DIRECT_LINK_LIMIT: '60'
           ZRSZ_LINKS_REQUIRED: '1'
+      - name: Preveri podrobnosti oglasov v brskalniku in na telefonu
+        run: node scripts/test-browser.mjs

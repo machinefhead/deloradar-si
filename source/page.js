@@ -115,6 +115,33 @@ export const page = String.raw`<!doctype html>
     @media(max-width:770px){.pager{display:flex;flex-direction:column;align-items:center;gap:14px}.pager .pagesize{justify-self:auto}.pager .pagebuttons{justify-content:center}.backtotop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom))}}
     .actions{flex-wrap:wrap}.actions .outline{white-space:nowrap}.exporthint{color:var(--muted);font-size:12px;line-height:1.5;margin:-4px 0 14px}
     @media(max-width:770px){.actions{justify-content:flex-start;gap:8px}.actions .sortselect{flex:1 1 100%;min-width:0}.actions .outline{flex:1 1 auto;white-space:normal}.exporthint{margin-top:0}}
+    /* Podrobnosti so dostopne neposredno iz seznama, brez obiska zunanjega portala. */
+    button.jobtitle{padding:0;border:0;background:transparent;text-align:left;cursor:pointer;width:100%;font:inherit;font-size:13px;font-weight:800;line-height:1.5;color:#f5f5f5}
+    button.jobtitle:hover{text-decoration:underline;color:var(--accent)}
+    .jobdialog{width:min(940px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 50px);padding:0;border:1px solid #625b72;border-radius:17px;background:#292929;color:#f4f4f4;box-shadow:0 28px 90px #000b;overflow:auto}
+    .jobdialog::backdrop{background:#080808c9;backdrop-filter:blur(3px)}
+    .detailclose{position:sticky;top:12px;float:right;z-index:2;margin:12px 13px -50px 0;width:37px;height:37px;background:#414141;color:#fff;border:1px solid #696969;border-radius:10px;font-size:23px;line-height:1}
+    .detailclose:hover{background:#555}.detailheader{padding:32px 37px 26px;background:#303030;border-bottom:1px solid var(--line)}
+    .detaileyebrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-right:40px;color:#c0b8cf;font-size:12px}
+    .detailheader h2{font-size:clamp(22px,3vw,30px);letter-spacing:-.6px;line-height:1.3;margin:16px 35px 8px 0}
+    .detailcompany{color:#c4c4c4;font-size:15px;margin:0 0 18px}
+    .detailactions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .detailprimary{display:inline-block;padding:11px 16px;border-radius:9px;background:#655589;color:#fff;text-decoration:none;font-size:13px;font-weight:800}
+    .detailprimary:hover{background:#8170a7}.detailhint{font-size:12px;line-height:1.65;color:#b8b8b8}
+    .detailbody{padding:27px 37px 36px;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(225px,1fr);gap:22px;align-items:start}
+    .detailmain,.detailside{min-width:0;display:flex;flex-direction:column;gap:16px}
+    .detailbox{min-width:0;background:#333;border:1px solid #484848;border-radius:12px;padding:20px 22px}
+    .detailbox h3{font-size:15px;margin:0 0 14px;color:#eee}.detailbox h4{font-size:13px;margin:18px 0 6px;color:#d6c6ff}
+    .detailtext{font-size:14px;line-height:1.7;color:#dfdfdf;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+    .detailfields{display:grid;grid-template-columns:1fr;gap:15px;margin:0}.detailfields div{min-width:0}
+    .detailfields dt{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:750;color:#aeaeae;margin-bottom:5px}
+    .detailfields dd{margin:0;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;color:#f0f0f0}
+    .detailmissing{color:#bcbcbc;line-height:1.6;font-size:13px;margin:0}
+    .detailother{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:16px}
+    .detailother button{border:1px solid #625777;background:#42394f;color:#f4ebff;border-radius:7px;padding:7px 10px;font-size:12px;font-weight:700}
+    .detailother button[aria-pressed="true"]{border-color:#c4b5fd;background:#655589}
+    .detailfoot{font-size:11px;color:#b1b1b1;line-height:1.6;margin:0;padding:0 37px 28px}
+    @media(max-width:770px){button.jobtitle{font-size:14px}.jobdialog{width:100vw;max-height:100dvh;height:100dvh;border-radius:0;border:0}.detailheader{padding:24px 20px 22px}.detailheader h2{margin-right:28px}.detailbody{padding:19px 15px;grid-template-columns:1fr;gap:16px}.detailbox{padding:17px}.detailfoot{padding:0 17px 30px}.detailclose{top:9px;margin:9px 10px -45px 0}}
     @media(max-width:770px){
       .listtable tr,.listtable tbody tr:hover{background:var(--panel);border-color:var(--line)}
       .more{border-color:var(--line)}
@@ -130,7 +157,8 @@ export const page = String.raw`<!doctype html>
     <section class="stats" aria-label="Statistika"><div class="stat highlight"><span class="kicker">Zajeti oglasi</span><span class="n" id="total">—</span><span class="lightdot"></span><span class="foot">v povezanih virih</span></div><div class="stat"><span class="kicker">Povezani viri</span><span class="n" id="sourcesNum">—</span><span class="foot">od 2 začetnih</span></div><div class="stat"><span class="kicker">Shranjeni</span><span class="n" id="savedNum">0</span><span class="foot">v tem brskalniku</span></div><div class="stat"><span class="kicker">Kontaktirani</span><span class="n" id="appliedNum">0</span><span class="foot">označeno ročno</span></div></section>
     <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" type="search" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div><div class="panel"><div class="sectionlabel">Stanje povezav</div><p id="sourceSummary" class="sourcesummary" role="status">Preverjam povezave …</p><div class="sourceslist" id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><div class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur.</div></div></aside>
     <button class="backtotop" id="backToTop" type="button" aria-label="Na vrh strani" title="Na vrh strani" hidden>↑</button>
-    <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="exportFiltered" type="button" title="Prenesi vse zadetke trenutnih filtrov in izbranega združevanja dvojnikov">↓ Izvozi filtrirane (JSON)</button><button class="outline" id="exportAll" type="button" title="Prenesi vse izvorne oglase iz trenutnega posnetka, ne glede na filtre">↓ Izvozi vse (JSON)</button></div></div><p class="exporthint">Filtrirani JSON upošteva filtre in združevanje dvojnikov (vse strani zadetkov). Celoten JSON vsebuje vse izvorne oglase, tudi podvojene objave. Oba ohranita tvoje oznake in statuse.</p><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Oglasi so povezave na originalne objave. Preveri veljavnost pred prijavo.</div></div></main></div>
+    <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="exportFiltered" type="button" title="Prenesi vse zadetke trenutnih filtrov in izbranega združevanja dvojnikov">↓ Izvozi filtrirane (JSON)</button><button class="outline" id="exportAll" type="button" title="Prenesi vse izvorne oglase iz trenutnega posnetka, ne glede na filtre">↓ Izvozi vse (JSON)</button></div></div><p class="exporthint">Klikni naziv oglasa za podrobnosti; puščica ↗ odpre izvirni portal. Filtrirani JSON upošteva filtre in združevanje dvojnikov (vse strani zadetkov). Celoten JSON vsebuje vse izvorne oglase, tudi podvojene objave. Oba ohranita tvoje oznake in statuse.</p><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Klikni naziv za podrobnosti ali ↗ za izvorno objavo.</div></div></main></div>
+    <dialog id="jobDialog" class="jobdialog" aria-labelledby="detailTitle"><button id="closeJobDialog" class="detailclose" type="button" aria-label="Zapri podrobnosti">×</button><div id="jobDetailBody"></div></dialog>
     <section id="viri" class="sourcecatalog"><h2>Še nepovezani viri</h2><p>Za ta iskalnika še nimamo samodejnega izvoza. Povezavi odpreta izvirno iskanje, kjer lahko oglase preveriš ročno.</p><div class="sourcegrid" id="planned"><div class="sourcecard"><a href="https://www.careerjet.si/" target="_blank" rel="noopener noreferrer">Careerjet ↗</a><p>Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.</p></div><div class="sourcecard"><a href="https://europa.eu/eures/portal/jv-se/search?page=1&amp;resultsPerPage=10&amp;orderBy=BEST_MATCH&amp;locationCodes=si&amp;previousPageType=findJob&amp;lang=sl" target="_blank" rel="noopener noreferrer">EURES (Slovenija) ↗</a><p>Iskanje je omejeno na Slovenijo. Za množični izvoz potrebujemo ustrezen partnerski dostop; nekateri oglasi se prekrivajo z ZRSZ.</p></div></div></section>
     <footer class="bottom"><span>© DeloRadar · Osebni pregled prostih delovnih mest</span><span>Podatki so informativni · Veljavnost in pogoje preveri na izvornem portalu</span></footer>
   </div>
@@ -423,6 +451,92 @@ export const page = String.raw`<!doctype html>
         buttons+=pageButton(currentPage+1,'›',totalPages,false);
         pager.innerHTML='<div class="pagebuttons">'+buttons+'</div><label class="pagesize" for="pageSize">Oglasov na stran <select id="pageSize" aria-label="Oglasov na stran"><option value="10" '+(pageSize===10?'selected':'')+'>10</option><option value="25" '+(pageSize===25?'selected':'')+'>25</option><option value="50" '+(pageSize===50?'selected':'')+'>50</option><option value="100" '+(pageSize===100?'selected':'')+'>100</option></select></label>';
       }
+      function detailValue(value){
+        if(value===null||value===undefined)return '';
+        if(Array.isArray(value))return value.map(detailValue).filter(Boolean).join('\n');
+        if(typeof value==='object')return '';
+        return String(value).trim();
+      }
+      function detailSalary(value){
+        if(!value||typeof value!=='object')return detailValue(value);
+        var money=function(amount){
+          return Number.isFinite(Number(amount))&&amount!==null&&amount!==''
+            ?Number(amount).toLocaleString('sl-SI',{maximumFractionDigits:2})+' '+(value.currency||'').trim():'';
+        };
+        var range=[money(value.minValue),money(value.maxValue)].filter(Boolean);
+        var amount=range.length?range.join('–'):money(value.value);
+        var unit={MONTH:'na mesec',YEAR:'na leto',HOUR:'na uro',WEEK:'na teden',DAY:'na dan'};
+        return amount+(amount&&value.unit?' · '+(unit[String(value.unit).toUpperCase()]||value.unit):'');
+      }
+      function detailEmployment(value){
+        var names={FULL_TIME:'Polni delovni čas',PART_TIME:'Skrajšani delovni čas',CONTRACTOR:'Pogodbeno delo',TEMPORARY:'Začasno delo',INTERN:'Pripravništvo',VOLUNTEER:'Prostovoljno delo',PER_DIEM:'Delo po potrebi'};
+        return detailValue(value).split('\n').map(function(type){return names[type.trim()]||type.trim()}).filter(Boolean).join(', ');
+      }
+      function detailDate(value){return value?dateLabel(value)!=='—'?dateLabel(value):detailValue(value):''}
+      function detailRows(rows){
+        return rows.filter(function(row){return detailValue(row[1])}).map(function(row){
+          return '<div><dt>'+safe(row[0])+'</dt><dd>'+safe(detailValue(row[1]))+'</dd></div>';
+        }).join('');
+      }
+      function detailSection(title,rows){
+        var content=detailRows(rows);return content?'<section class="detailbox"><h3>'+safe(title)+'</h3><dl class="detailfields">'+content+'</dl></section>':'';
+      }
+      function detailDescription(title,value){
+        return detailValue(value)?'<section class="detailbox"><h3>'+safe(title)+'</h3><p class="detailtext">'+safe(detailValue(value))+'</p></section>':'';
+      }
+      function detailMarkup(j,members){
+        var fullText=detailValue(j.description),summary=detailValue(j.summary);
+        var sections=[detailDescription('Opis delovnega mesta',fullText)];
+        if(summary&&summary!==fullText)sections.push(detailDescription('Povzetek oglasa',summary));
+        var conditions=detailSection('Naloge, pogoji in ugodnosti',[
+          ['Delovne naloge',j.responsibilities],['Zahteve in pogoji',j.requirements],
+          ['Zahtevana izobrazba',j.education],['Delovne izkušnje',j.experience],
+          ['Znanja in veščine',j.skills],['Nudimo',j.benefits],['Dodatna plačila in ugodnosti',j.incentives]
+        ]);
+        if(conditions)sections.push(conditions);
+        if(!sections.filter(Boolean).length)sections.push('<section class="detailbox"><h3>Opis dela</h3><p class="detailmissing">Ta vir v trenutnem zajemu še ne ponuja celotnega opisa. Spodaj so prikazani vsi drugi razpoložljivi podatki; za preostale podrobnosti odpri izvorni oglas.</p></section>');
+        var employment=detailSection('Zaposlitev in plačilo',[
+          ['Vrsta zaposlitve',detailEmployment(j.employmentType)],['Vrsta pogodbe',j.contractType],
+          ['Trajanje zaposlitve',j.contractDuration],['Delovni čas',j.workHours],
+          ['Način opravljanja dela',j.workplaceType],['Plača',detailSalary(j.salary)],
+          ['Področje dela',j.jobCategory]
+        ]);
+        var whereAndWhen=detailSection('Kje, kdaj in pri kom',[
+          ['Kraj dela',j.location],['Dodatne lokacije',j.locations&&j.locations.length?j.locations.join(', '):''],
+          ['Regije',Array.isArray(j.regions)?j.regions.join(', '):''],
+          ['Naslov dela',j.workplaceAddress],['Datum objave',detailDate(j.date)],
+          ['Rok za prijavo',detailDate(j.deadline)],['Oznaka razpisa',j.reference],['ID oglasa',j.id]
+        ]);
+        var zrszSearch=j.source==='ZRSZ / PoiščiDelo'&&j.reference&&String(j.url||'').indexOf('?idp=')<0;
+        var url=String(j.url||'');var external=/^https:\/\/[^\s<>"']+$/i.test(url)?'<a class="detailprimary" href="'+safe(url)+'" target="_blank" rel="noopener noreferrer">'+(zrszSearch?'Poišči razpis na ZRSZ':'Odpri izvorni oglas')+' ↗</a>':'';
+        var variations=members.length>1?'<div class="detailother"><span class="detailhint">Isti razpis je objavljen tudi drugje. Podrobnosti po virih:</span>'+members.map(function(other){
+          return '<button type="button" data-detail-source="'+safe(other.id)+'" aria-pressed="'+(other.id===j.id?'true':'false')+'">'+safe(other.source)+'</button>';
+        }).join('')+'</div>':'';
+        return '<header class="detailheader"><div class="detaileyebrow"><span class="srcbadge">'+safe(j.source)+'</span><span>Podrobnosti razpisa · Zajeti podatki</span></div>'+
+          '<h2 id="detailTitle">'+safe(j.title||'Delovno mesto')+'</h2><p class="detailcompany">'+safe(j.company||'Delodajalec ni naveden')+'</p><div class="detailactions">'+external+'</div>'+variations+'</header>'+
+          '<div class="detailbody"><div class="detailmain">'+sections.filter(Boolean).join('')+'</div><aside class="detailside">'+employment+whereAndWhen+'</aside></div>'+
+          '<p class="detailfoot">Podatki so iz zajema '+safe(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'brez znanega datuma')+'. Datum zajema ni datum zaprtja razpisa. Manjkajoča polja niso bila objavljena v podatkih, ki jih trenutno zajemamo.</p>';
+      }
+      var jobDialog=$('jobDialog'),detailReturnFocus=null,activeDetailMembers=[];
+      function showJobDetail(id){
+        var job=jobs.find(function(item){return item.id===id});if(!job)return false;
+        var group=groupEnabled()&&groupById.get(id);
+        activeDetailMembers=group||[job];
+        $('jobDetailBody').innerHTML=detailMarkup(job,activeDetailMembers);
+        jobDialog.scrollTop=0;
+        return true;
+      }
+      function openJobDetail(id){
+        if(!showJobDetail(id))return;
+        detailReturnFocus=document.activeElement;
+        if(!jobDialog.open)jobDialog.showModal();
+      }
+      $('closeJobDialog').addEventListener('click',function(){jobDialog.close()});
+      jobDialog.addEventListener('click',function(e){
+        if(e.target===jobDialog)jobDialog.close();
+        var b=e.target.closest('[data-detail-source]');if(b)showJobDetail(b.dataset.detailSource);
+      });
+      jobDialog.addEventListener('close',function(){if(detailReturnFocus&&detailReturnFocus.isConnected)detailReturnFocus.focus()});
       function render(keepPage){
         var raw=filtered(),items=displayed(raw),joined=raw.length-items.length;
         $('found').textContent='· '+items.length+' razpisov'+(joined?' · '+joined+' združenih objav':'');
@@ -437,7 +551,7 @@ export const page = String.raw`<!doctype html>
           var location=j.location||(Array.isArray(j.regions)&&j.regions.length?(j.regions.length===1?j.regions[0]+' (regija)':'Več regij ('+j.regions.length+')'):'Ni navedeno');
           var alternatives=j.alternatives&&j.alternatives.length?'<div class="jobalternatives">Objavljeno tudi na: '+j.alternatives.map(function(other){return '<a href="'+safe(other.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Odpri isti razpis na '+safe(other.source)+'">'+safe(other.source)+' ↗</a>'}).join(' · ')+'</div>':'';
           var zrszDirect=j.source==='ZRSZ / PoiščiDelo'&&String(j.url||'').startsWith('https://www.ess.gov.si/')&&String(j.url).indexOf('?idp=')>=0;
-          return '<tr><td><a target="_blank" rel="noopener noreferrer" class="jobtitle" href="'+safe(j.url)+'">'+safe(j.title)+'</a><div class="jobcompany">'+safe(j.company||'Oglej si delodajalca na portalu')+'</div>'+(j.reference?'<div class="jobcompany">ZRSZ oznaka: '+safe(j.reference)+' · '+(zrszDirect?'Neposreden oglas':'Iskanje po delodajalcu')+'</div>':'')+alternatives+'</td><td class="muted">'+safe(location)+'</td><td><span class="srcbadge '+(j.source==='Kariera.si'?'kariera':'')+'">'+safe(j.source)+'</span></td><td class="dead">'+dateLabel(j.date)+'</td><td><select class="state '+(s.status==='contacted'?'applied':s.status==='interested'?'saved':'')+'" data-status="'+safe(j.id)+'" aria-label="Status: '+safe(j.title)+'"><option value="" '+(!s.status?'selected':'')+'>Ni označeno</option><option value="interested" '+(s.status==='interested'?'selected':'')+'>Zanimivo</option><option value="contacted" '+(s.status==='contacted'?'selected':'')+'>Kontaktirano</option></select></td><td><div class="rowactions"><button class="star '+(s.saved?'active':'')+'" data-star="'+safe(j.id)+'" title="Shrani oglas" aria-label="Shrani oglas" type="button">'+(s.saved?'★':'☆')+'</button><a class="openjob" href="'+safe(j.url)+'" target="_blank" rel="noopener noreferrer" aria-label="'+(j.reference&&!zrszDirect?'Odpri iskanje ZRSZ po delodajalcu':'Odpri oglas')+'">↗</a></div></td></tr>';
+          return '<tr><td><button class="jobtitle" type="button" data-detail-id="'+safe(j.id)+'" aria-haspopup="dialog" aria-label="Podrobnosti: '+safe(j.title)+'">'+safe(j.title)+'</button><div class="jobcompany">'+safe(j.company||'Oglej si delodajalca na portalu')+'</div>'+(j.reference?'<div class="jobcompany">ZRSZ oznaka: '+safe(j.reference)+' · '+(zrszDirect?'Neposreden oglas':'Iskanje po delodajalcu')+'</div>':'')+alternatives+'</td><td class="muted">'+safe(location)+'</td><td><span class="srcbadge '+(j.source==='Kariera.si'?'kariera':'')+'">'+safe(j.source)+'</span></td><td class="dead">'+dateLabel(j.date)+'</td><td><select class="state '+(s.status==='contacted'?'applied':s.status==='interested'?'saved':'')+'" data-status="'+safe(j.id)+'" aria-label="Status: '+safe(j.title)+'"><option value="" '+(!s.status?'selected':'')+'>Ni označeno</option><option value="interested" '+(s.status==='interested'?'selected':'')+'>Zanimivo</option><option value="contacted" '+(s.status==='contacted'?'selected':'')+'>Kontaktirano</option></select></td><td><div class="rowactions"><button class="star '+(s.saved?'active':'')+'" data-star="'+safe(j.id)+'" title="Shrani oglas" aria-label="Shrani oglas" type="button">'+(s.saved?'★':'☆')+'</button><a class="openjob" href="'+safe(j.url)+'" target="_blank" rel="noopener noreferrer" aria-label="'+(j.reference&&!zrszDirect?'Odpri iskanje ZRSZ po delodajalcu':'Odpri oglas')+'">↗</a></div></td></tr>';
         }).join('');
         $('summary').textContent='Prikazanih '+(start+1)+'–'+end+' od '+items.length+' razpisov · Stran '+currentPage+' od '+totalPages+' · Rok in pogoje preveri na izvornem portalu.';
         pageNavigation(totalPages);
@@ -503,6 +617,7 @@ export const page = String.raw`<!doctype html>
         ids.forEach(function(member){state[member]=Object.assign({},getState(member),{[field]:value})});
       }
       $('jobRows').addEventListener('click',function(e){var b=e.target.closest('[data-star]');if(!b)return;var id=b.dataset.star;changeMemberStates(id,'saved',!mergedState({id:id}).saved);save();render(true)});
+      $('jobRows').addEventListener('click',function(e){var b=e.target.closest('[data-detail-id]');if(b)openJobDetail(b.dataset.detailId)});
       $('jobRows').addEventListener('change',function(e){var b=e.target.closest('[data-status]');if(!b)return;changeMemberStates(b.dataset.status,'status',b.value);save();render(true)});
       function jsonExportData(scope,items,exportedAt){
         var filteredScope=scope==='filtered',filters=null;

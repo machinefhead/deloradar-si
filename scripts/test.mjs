@@ -54,6 +54,9 @@ assert.match(script, /values\.groupDuplicates=\$\('groupDuplicates'\)\.checked/,
 assert.match(page, /Objavljeno tudi na:/, 'Združeni oglas mora ohraniti povezavo do drugega vira');
 assert.match(page, /id="exportFiltered"[^>]*>↓ Izvozi filtrirane \(JSON\)/, 'Obstoječi izvoz mora biti filtrirani JSON');
 assert.match(page, /id="exportAll"[^>]*>↓ Izvozi vse \(JSON\)/, 'Na voljo mora biti izvoz vseh izvornih oglasov');
+assert.match(page, /<dialog id="jobDialog" class="jobdialog"/, 'Podrobnosti oglasa morajo biti na voljo na isti strani');
+assert.match(page, /data-detail-id=/, 'Klik na naziv oglasa mora odpreti podrobnosti');
+assert.match(page, /jobDialog\.showModal\(\)/, 'Podrobnosti se odprejo v dostopnem dialogu');
 assert.doesNotMatch(page, /Izvozi CSV|text\/csv|\.csv'/, 'CSV izvoz je v celoti zamenjan z JSON');
 assert.match(script, /scope==='filtered'\?displayed\(\):jobs/, 'Filtrirani JSON mora izvoziti vse filtrirane strani, celoten pa vsa izvorna dela');
 assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passive:true\}\)/, 'Gumb za vrh se mora prilagajati drsenju');
@@ -235,7 +238,7 @@ assert.match(page, /Oglasov na stran/);
 assert.doesNotMatch(page, /id="loadMore"/, 'Starega gumba za 500 zadetkov ne potrebujemo več');
 assert.doesNotMatch(page, /<label for="contract">/, 'Neaktiven filter ne sme zasedati prostora');
 const navContext = { pager: { innerHTML: '' }, pageSize: 50, currentPage: 2 };
-runInNewContext(extract('function pageButton(', 'function render('), navContext);
+runInNewContext(extract('function pageButton(', 'function detailValue('), navContext);
 navContext.pageNavigation(12);
 assert.match(navContext.pager.innerHTML, /data-page="1"/);
 assert.match(navContext.pager.innerHTML, /data-page="12"/);
@@ -250,6 +253,29 @@ navContext.currentPage=12;navContext.pageNavigation(12);
 assert.match(navContext.pager.innerHTML, /data-page="13" disabled aria-label="Naslednja stran"/, 'Naslednja stran mora biti onemogočena na koncu');
 assert.match(navContext.pager.innerHTML, /<option value="10"/);
 assert.match(navContext.pager.innerHTML, /<option value="25"/);
+const detailContext={
+  safe:value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])),
+  dateLabel:value=>value||'—',checkedAt:'2026-11-25T11:14:23Z',Intl,
+};
+runInNewContext(extract('function detailValue(', 'var jobDialog='),detailContext);
+const detailHtml=detailContext.detailMarkup({id:'zrsz:77',source:'ZRSZ / PoiščiDelo',title:'Električar <test>',company:'Primer d.o.o.',
+  location:'UE Maribor',description:'Vzdrževanje naprav.\nPozor: <img src=x onerror=alert(1)>',
+  employmentType:'FULL_TIME',contractDuration:'Nedoločen čas',workHours:'40 ur tedensko',
+  date:'2026-11-20',deadline:'2026-12-15',url:'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/?iskalniTekst=Primer',reference:'77'},[]);
+assert.match(detailHtml,/Opis delovnega mesta/, 'Prikaz vključuje opis, če ga vir ponuja');
+assert.match(detailHtml,/Nedoločen čas/, 'Trajanje zaposlitve je vidno');
+assert.match(detailHtml,/Polni delovni čas/, 'Vrsta zaposlitve ima razumljivo oznako');
+assert.match(detailHtml,/Rok za prijavo/, 'Rok prijave je v podrobnostih');
+assert.match(detailHtml,/&lt;img src=x onerror=alert\(1\)&gt;/, 'Opis se izpiše kot besedilo');
+assert.doesNotMatch(detailHtml,/<img src=x/, 'Opis oglasa ne sme vstavljati HTML v DOM');
+assert.match(detailHtml,/Poišči razpis na ZRSZ/, 'Iskalna povezava ni predstavljena kot neposredni oglas');
+const noDescription=detailContext.detailMarkup({id:'a',title:'Operater',source:'Optius',url:'https://www.optius.com/delo/1',summary:'Kratek povzetek.'},[]);
+assert.match(noDescription,/Kratek povzetek\./, 'Povzetek je viden, tudi če ni celotnega opisa');
+const noDetails=detailContext.detailMarkup({id:'a',title:'Operater',source:'Optius',url:'https://www.optius.com/delo/1'},[]);
+assert.match(noDetails,/ne ponuja celotnega opisa/, 'Manjkajoči opis je pojasnjen, ne izmišljen');
+const alternative=detailContext.detailMarkup({id:'a',title:'Operater',source:'Optius',url:'https://www.optius.com/delo/1'},
+  [{id:'a',source:'Optius'},{id:'b',source:'GOV.SI'}]);
+assert.match(alternative,/data-detail-source="b"/, 'Pri označenih dvojnikih so na voljo podrobnosti drugega vira');
 assert.match(navContext.pager.innerHTML, /<option value="50"/);
 assert.match(navContext.pager.innerHTML, /<option value="100"/);
 const multiContext = {};
