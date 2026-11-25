@@ -141,10 +141,82 @@ export function attachZrszOfficialVerifiedLinks(jobs, verifiedRecords) {
   return { jobs: updated, stats: { attached, conflicts: conflicts.size } };
 }
 
+// Prejšnji objavljeni podatki so predpomnilnik *preverjenih* ID-jev, ne vir za
+// ugibanje. Nove neposredne povezave dobimo samo po ujemanju registrske številke
+// v uradnem HTTP odgovoru za posamezno številčno delovno mesto.
+export async function verifyZrszFreshLinks(jobs, {
+  client, previous = [], maxNewDetails = 60, delayMs = 150,
+} = {}) {
+  if (!Array.isArray(jobs) || !Array.isArray(previous) || !client || typeof client.detail !== 'function' ||
+      !Number.isInteger(maxNewDetails) || maxNewDetails < 0 || maxNewDetails > 250 ||
+      !Number.isInteger(delayMs) || delayMs < 0 || delayMs > 2000) {
+    throw Error('ZRSZ: neveljaven načrt samodejnega preverjanja ID-jev');
+  }
+  const confirmed = [], rejected = new Map();
+  for (const old of previous) {
+    if (old?.source !== 'ZRSZ / PoiščiDelo' || old.id !== 'zrsz:' + old.reference) continue;
+    const ref = String(old.reference || '').toUpperCase();
+    if (old.zrszIdStatus === 'confirmed-detail') {
+      const match = String(old.url || '').match(/^https:\/\/www\.ess\.gov\.si\/iskalci-zaposlitve\/iskanje-zaposlitve\/iskanje-dela\/\?idp=(\d{6,10})\/#\/pdm\/\1$/);
+      if (match) confirmed.push({ reference: ref, idp: match[1] });
+    } else if (old.zrszIdStatus === 'mismatch-detail' && /^\d{6,10}$/.test(String(old.zrszIdCandidate))) {
+      rejected.set(ref, String(old.zrszIdCandidate));
+    }
+  }
+  const reused = attachZrszOfficialVerifiedLinks(jobs, confirmed);
+  const updated = reused.jobs;
+  const pending = updated.filter(job => job.source === 'ZRSZ / PoiščiDelo' &&
+    job.zrszIdStatus !== 'confirmed-detail' && job.zrszIdCandidateSource === 'ZRSZ listing' &&
+    /^\d{6,10}$/.test(String(job.zrszIdCandidate)) &&
+    rejected.get(job.reference) !== String(job.zrszIdCandidate))
+    .slice(0, maxNewDetails);
+  let position = 0, attempted = 0, matched = 0, mismatched = 0, errors = 0, stop = false;
+  const failures = [];
+  const verifiedNow = [];
+  const mismatchedRefs = new Set(updated.filter(job => job.zrszIdStatus !== 'confirmed-detail' &&
+    rejected.get(job.reference) === String(job.zrszIdCandidate)).map(job => job.reference));
+  async function worker() {
+    while (!stop && position < pending.length) {
+      const job = pending[position++];
+      let failed = false;
+      try {
+        const detail = await client.detail(job.zrszIdCandidate);
+        const ref = String(detail?.registerskaStevilka || '').trim().toUpperCase();
+        if (ref === job.reference) {
+          verifiedNow.push({ reference: ref, idp: String(job.zrszIdCandidate) });
+          matched++;
+        } else {
+          mismatchedRefs.add(job.reference);
+          mismatched++;
+        }
+      } catch {
+        errors++;
+        failed = true;
+      }
+      attempted++;
+      failures.push(failed);
+      if (failures.length > 20) failures.shift();
+      if (failures.length >= 20 && failures.filter(Boolean).length >= 8) stop = true;
+      if (delayMs && !stop) await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(3, pending.length) }, worker));
+  const withNewLinks = attachZrszOfficialVerifiedLinks(updated, verifiedNow);
+  return { jobs: withNewLinks.jobs.map(job => mismatchedRefs.has(job.reference)
+    ? { ...job, zrszIdStatus: 'mismatch-detail' } : job),
+  stats: { cached: reused.stats.attached, candidates: pending.length, attempted, verified: matched,
+    mismatched, errors, stoppedForErrors: stop } };
+}
+
 export async function getZrszOfficialHttp(options = {}) {
   const client = await discoverZrszPublicClient(options);
   const [daily, listings] = await Promise.all([client.daily(), client.listings()]);
   const joined = matchZrszListingIds(daily.jobs, listings.jobs);
   console.log(`ZRSZ HTTP: JSON ${daily.jobs.length}, iskalnik ${listings.total}, enoličnih ID kandidatov ${joined.stats.matched}`);
-  return joined.jobs;
+  const verified = await verifyZrszFreshLinks(joined.jobs, { client,
+    previous: options.previous || [], maxNewDetails: options.maxNewDetails ?? 0 });
+  console.log(`ZRSZ HTTP: ${verified.stats.cached} neposrednih povezav iz predpomnilnika, ` +
+    `${verified.stats.verified} novih preverjenih, ${verified.stats.mismatched} neskladij, ` +
+    `${verified.stats.errors} napak (${verified.stats.attempted}/${verified.stats.candidates} zahtevkov).`);
+  return verified.jobs;
 }

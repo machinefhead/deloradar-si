@@ -33,6 +33,7 @@ jobs:
       - name: Pridobi oglase in zgradi stran
         env:
           ZRSZ_OFFICIAL_HTTP_ENABLED: '1'
+          ZRSZ_VERIFY_NEW_LIMIT: '60'
           EURES_HTTP_ENABLED: '1'
           CAREERJET_DATA_API_KEY: ${{ secrets.CAREERJET_DATA_API_KEY }}
           DETAIL_OPTIUS_LIMIT: '8'

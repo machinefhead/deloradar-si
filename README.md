@@ -21,6 +21,7 @@ ZRSZ (`source/zrsz-official-http.js`):
 3. Preberemo straničeni uradni seznam oglasov, iz katerega dobimo kandidate za numerični `idp`.
 4. Za dejansko povezavo združimo referenco in `idp` šele po preverjanju registrske številke z neposrednim HTTP-odgovorom za podrobnosti. Preverjeno preslikavo hranimo v `data/zrsz-idp-verified.json`.
 5. Pri spremembi identifikatorja ali dvoumnem ujemanju pustimo iskalno povezavo, namesto da bi prikazali napačen oglas.
+6. Ob vsakem načrtovanem zajemu uporabimo potrjene povezave iz prejšnjega objavljenega `jobs.json` in **samodejno preverimo največ 60 novih številčnih kandidatov** (do trije sočasni zahtevki s premorom). Registrska številka v odgovoru mora ustrezati današnjemu oglasu. Napačnih ujemanj ne preverjamo znova, začasne napake pa ostanejo ponovljive. Za spremembo dnevne omejitve je na voljo `ZRSZ_VERIFY_NEW_LIMIT`.
 
 Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `ZRSZ_JSON_URL` je podprt kot rezervna možnost. V uporabi ni nobenega zagona Chroma ali Playwrighta za ZRSZ.
 
@@ -44,7 +45,14 @@ Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `
 
 Vsi viri so preverjani ločeno. Če vir trenutno odpove, je označen z napako; en neuspešen vir ne izbriše oglasov drugih portalov. EURES je dodatni HTTP-uvoz z ločevanjem oglasov ZRSZ, preverjanjem lokacij in roka prijave. `EURES_HTTP_ENABLED=1` ga vključi v zbiralnik. Ker polni EURES-ov seznam zahteva več zahtevkov, si dva zaporedna 12-urna zagona lahko delita največ 20 ur star uspešen rezultat; potekle oglase izločimo.
 
-Careerjet: njihov javni seznam pri programskem HTTP-zahtevku vrne preverjanje prometa, uradni [Jobs Data API](https://www.careerjet.si/recruiter/jobs-data-api/documentation) pa zahteva ločen API ključ. Pripravljen in z nadomestnimi odzivi preizkušen je `source/careerjet-data-api.js`: po dodatku ključa kot GitHub Actions skrivnosti `CAREERJET_DATA_API_KEY` ga zbiralnik samodejno uporabi. Na zagon je omejen na **eno stran (do 100 zadnjih oglasov) in največ 10 dodatnih HTTP-podrobnosti**, že preverjene daljše opise ponovno uporabi iz prejšnjega posnetka. Kadar API ne vrne neposredne povezave, je URL izrecno označen kot iskanje po naslovu; neposrednih povezav ne izmišljamo. Dokler ključ ni nastavljen in pravi odzivi niso preverjeni, Careerjet pravilno ostaja med nepovezanimi viri.
+Careerjet: njihov javni seznam pri programskem HTTP-zahtevku vrne preverjanje prometa, običajna pot `/rss` ne obstaja, uradni `robots.txt` pa izključuje iskalni RSS-vmesnik. Uradni [Jobs Data API](https://www.careerjet.si/recruiter/jobs-data-api/documentation) zahteva ločen ključ in ima obračun glede na porabo. Pripravljen in z nadomestnimi odzivi preizkušen je `source/careerjet-data-api.js`: po dodatku ključa kot GitHub Actions skrivnosti `CAREERJET_DATA_API_KEY` ga zbiralnik samodejno uporabi. Na zagon je omejen na **eno stran (do 100 zadnjih oglasov) in največ 10 dodatnih HTTP-podrobnosti**, že preverjene daljše opise ponovno uporabi iz prejšnjega posnetka. Kadar API ne vrne neposredne povezave, je URL izrecno označen kot iskanje po naslovu; neposrednih povezav ne izmišljamo. Dokler ključ ni nastavljen in pravi odzivi niso preverjeni, Careerjet pravilno ostaja med nepovezanimi viri.
+
+## Naslednji možni viri (še ne uvažamo)
+
+- **Bolha Zaposlitve:** javni seznam trenutno vrne objave s stabilnimi ID-ji in straničenjem. Pred vključitvijo preveriti vse strani, roke in podvajanje z ZRSZ; ni dovolj samo prva stran.
+- **Delaj.si:** javni `/oglasi/feed/` vrača RSS z naslovi, datumi in povezavami, vendar meša slovenska in tuja delovna mesta. Potreben je zanesljiv filter lokacije in preverjanje, ali RSS zajema vse aktivne objave.
+- **Zaposlitev.net:** naveden med portali v EURES-ovem pregledu slovenskega trga dela, toda ob preverjanju je HTTP vrnil 503. Za zdaj ga ne prištevamo med delujoče vire.
+- **Careerjet:** brez podatkovnega ključa ali posredovanega izvoznega vira ni potrjenega samodejnega zajema. Izvorne oglase, ki jih že vračajo drugi povezani portali, DeloRadar prikazuje pri njihovem dejanskem izdajatelju.
 
 ## Podatki in prikaz
 

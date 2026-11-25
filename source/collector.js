@@ -674,7 +674,9 @@ async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
   const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
   if (ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED) collectors.push(
-    ZRSZ_OFFICIAL_HTTP_ENABLED ? getZrszOfficialHttp() : getZrszJson(ZRSZ_JSON_URL));
+    ZRSZ_OFFICIAL_HTTP_ENABLED ? previousJobs().then(oldJobs => getZrszOfficialHttp({
+      previous: oldJobs, maxNewDetails: Math.min(250, detailLimit('ZRSZ_VERIFY_NEW_LIMIT', 60)),
+    })) : getZrszJson(ZRSZ_JSON_URL));
   collectors.push(getDm(), getNovaPriloznost());
   if (CAREERJET_DATA_API_KEY) collectors.push(previousJobs().then(async oldJobs => {
     const result = await fetchCareerjetDataApi({ apiKey: CAREERJET_DATA_API_KEY,
