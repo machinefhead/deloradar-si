@@ -52,7 +52,10 @@ assert.match(page, /id="backToTop"/, 'Plavajoči gumb za vrnitev na vrh mora bit
 assert.match(page, /id="groupDuplicates" checked/, 'Uporabnik lahko preklopi združevanje, privzeto je vključeno');
 assert.match(script, /values\.groupDuplicates=\$\('groupDuplicates'\)\.checked/, 'Izbrani način prikaza se mora shraniti v brskalniku');
 assert.match(page, /Objavljeno tudi na:/, 'Združeni oglas mora ohraniti povezavo do drugega vira');
-assert.match(page, /Druge izvorne povezave/, 'CSV mora vključevati tudi alternativne povezave');
+assert.match(page, /id="exportFiltered"[^>]*>↓ Izvozi filtrirane \(JSON\)/, 'Obstoječi izvoz mora biti filtrirani JSON');
+assert.match(page, /id="exportAll"[^>]*>↓ Izvozi vse \(JSON\)/, 'Na voljo mora biti izvoz vseh izvornih oglasov');
+assert.doesNotMatch(page, /Izvozi CSV|text\/csv|\.csv'/, 'CSV izvoz je v celoti zamenjan z JSON');
+assert.match(script, /scope==='filtered'\?displayed\(\):jobs/, 'Filtrirani JSON mora izvoziti vse filtrirane strani, celoten pa vsa izvorna dela');
 assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passive:true\}\)/, 'Gumb za vrh se mora prilagajati drsenju');
 assert.match(page, /manualLink\.textContent='↻ Osveži'/, 'Osveži mora biti povezava na ročni zajem v GitHub Actions');
 assert.match(page, /\$\('refresh'\)\.replaceWith\(manualLink\)/, 'Podvojeni gumb za branje istega posnetka ne sme ostati na javni strani');
@@ -95,6 +98,55 @@ const extract = (start, end) => {
 };
 const linkContext = {};
 runInNewContext(extract('function slugForJob(', 'function load('), linkContext);
+const fixtureExportJobs = [
+  { id:'a',title:'Električar',source:'Optius',url:'https://primer.si/1',duplicateGroup:'pair1' },
+  { id:'b',title:'Električar',source:'Kariera.si',url:'https://primer.si/2',duplicateGroup:'pair1' },
+];
+const exportControls = {
+  search: {value:'električar'},published: {value:''},deadline: {value:'7'},myStatus: {value:''},
+  onlySaved:{checked:true},hideApplied:{checked:false},sort:{value:'new'},
+};
+const exportContext = {
+  multiIds:['sourceFilter','region'],selectedValues:id=>id==='region'?['Podravska']:[],
+  $:id=>exportControls[id],checkedAt:'2026-11-25T11:14:23Z',sources:[{id:'optius',status:'live',count:2}],
+  groupEnabled:()=>true,mergedState:()=>({saved:true,status:'contacted'}),
+  getState:id=>id==='a'?{saved:true,status:'interested'}:{},
+};
+runInNewContext(extract('function jsonExportData(', 'function downloadJson('),exportContext);
+const exportFiltered=exportContext.jsonExportData('filtered',[fixtureExportJobs[0]],'2026-11-25T12:00:00Z');
+assert.equal(exportFiltered.scope,'filtered');
+assert.equal(exportFiltered.total,1);
+assert.equal(exportFiltered.duplicateMode,'merged');
+assert.equal(exportFiltered.jobs[0].status,'contacted','Filtrirani izvoz ohrani združen uporabnikov status');
+assert.equal(exportFiltered.jobs[0].saved,true);
+assert.equal(exportFiltered.filters.facets.region[0],'Podravska','Filtrirani JSON vsebuje tudi uporabljene filtre');
+assert.equal(exportFiltered.capturedAt,'2026-11-25T11:14:23Z');
+const exportAll=exportContext.jsonExportData('all',fixtureExportJobs,'2026-11-25T12:00:00Z');
+assert.equal(exportAll.scope,'all');
+assert.equal(exportAll.total,2);
+assert.equal(exportAll.duplicateMode,'original','Celoten izvoz ohrani vse izvore tudi pri združenem prikazu');
+assert.equal(exportAll.filters,null,'V celoten izvoz ne prenašamo aktivnih filtrov');
+assert.equal(exportAll.jobs[0].status,'interested','Celoten izvoz shrani ločene osebne oznake po izvornih ID-jih');
+assert.equal(exportAll.jobs[1].status,'');
+assert.equal(fixtureExportJobs[0].status,undefined,'Izvoz ne sme spreminjati originalnih podatkov');
+const downloaded=[];
+let exportedContent='';
+Object.assign(exportContext,{
+  jobs:fixtureExportJobs,
+  displayed:()=>[fixtureExportJobs[0]],
+  noticeMessage:message=>{throw Error('Nepričakovano opozorilo: '+message)},
+  Blob:class {constructor(parts,options){this.parts=parts;this.options=options}},
+  URL:{createObjectURL(blob){exportedContent=blob.parts.join('');return 'blob:test-export'},revokeObjectURL(){}},
+  document:{createElement(){return {href:'',download:'',click(){downloaded.push(this.download)},remove(){}}},body:{appendChild(){}}},
+  setTimeout() {},
+});
+runInNewContext(extract('function downloadJson(', "$('exportFiltered').addEventListener"),exportContext);
+exportContext.downloadJson('filtered');
+assert.match(downloaded[0],/^deloradar-filtrirani-\d{4}-\d{2}-\d{2}\.json$/);
+assert.equal(JSON.parse(exportedContent).jobs.length,1,'Klik na filtrirani izvoz vrne samo filtrirane zadetke');
+exportContext.downloadJson('all');
+assert.match(downloaded[1],/^deloradar-vsi-oglasi-\d{4}-\d{2}-\d{2}\.json$/);
+assert.equal(JSON.parse(exportedContent).jobs.length,2,'Klik na celotni izvoz ne sme uporabiti filtriranega seznama');
 const oldMojeDelo = {
   source: 'MojeDelo.com', title: 'Operater na stroju (m/ž), Tržič',
   url: 'https://www.mojedelo.com/iskanje-zaposlitve?jobAdIds=5cb3187e-ae51-4db9-81a7-c30c131a6e40'

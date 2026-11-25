@@ -113,6 +113,8 @@ export const page = String.raw`<!doctype html>
     .pager .gapdots{padding:0 4px;color:var(--muted)}
     .backtotop{position:fixed;right:24px;bottom:24px;z-index:50;width:46px;height:46px;border:1px solid #8173ad;border-radius:50%;background:#4a405f;color:#f6f0ff;font-size:23px;font-weight:750;box-shadow:0 7px 25px #0009;display:grid;place-items:center}.backtotop:hover{background:#62547e}.backtotop[hidden]{display:none}
     @media(max-width:770px){.pager{display:flex;flex-direction:column;align-items:center;gap:14px}.pager .pagesize{justify-self:auto}.pager .pagebuttons{justify-content:center}.backtotop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom))}}
+    .actions{flex-wrap:wrap}.actions .outline{white-space:nowrap}.exporthint{color:var(--muted);font-size:12px;line-height:1.5;margin:-4px 0 14px}
+    @media(max-width:770px){.actions{justify-content:flex-start;gap:8px}.actions .sortselect{flex:1 1 100%;min-width:0}.actions .outline{flex:1 1 auto;white-space:normal}.exporthint{margin-top:0}}
     @media(max-width:770px){
       .listtable tr,.listtable tbody tr:hover{background:var(--panel);border-color:var(--line)}
       .more{border-color:var(--line)}
@@ -128,7 +130,7 @@ export const page = String.raw`<!doctype html>
     <section class="stats" aria-label="Statistika"><div class="stat highlight"><span class="kicker">Zajeti oglasi</span><span class="n" id="total">—</span><span class="lightdot"></span><span class="foot">v povezanih virih</span></div><div class="stat"><span class="kicker">Povezani viri</span><span class="n" id="sourcesNum">—</span><span class="foot">od 2 začetnih</span></div><div class="stat"><span class="kicker">Shranjeni</span><span class="n" id="savedNum">0</span><span class="foot">v tem brskalniku</span></div><div class="stat"><span class="kicker">Kontaktirani</span><span class="n" id="appliedNum">0</span><span class="foot">označeno ročno</span></div></section>
     <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" type="search" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div><div class="panel"><div class="sectionlabel">Stanje povezav</div><p id="sourceSummary" class="sourcesummary" role="status">Preverjam povezave …</p><div class="sourceslist" id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><div class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur.</div></div></aside>
     <button class="backtotop" id="backToTop" type="button" aria-label="Na vrh strani" title="Na vrh strani" hidden>↑</button>
-    <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="export" type="button">↓ Izvozi CSV</button></div></div><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Oglasi so povezave na originalne objave. Preveri veljavnost pred prijavo.</div></div></main></div>
+    <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="exportFiltered" type="button" title="Prenesi vse zadetke trenutnih filtrov in izbranega združevanja dvojnikov">↓ Izvozi filtrirane (JSON)</button><button class="outline" id="exportAll" type="button" title="Prenesi vse izvorne oglase iz trenutnega posnetka, ne glede na filtre">↓ Izvozi vse (JSON)</button></div></div><p class="exporthint">Filtrirani JSON upošteva filtre in združevanje dvojnikov (vse strani zadetkov). Celoten JSON vsebuje vse izvorne oglase, tudi podvojene objave. Oba ohranita tvoje oznake in statuse.</p><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Oglasi so povezave na originalne objave. Preveri veljavnost pred prijavo.</div></div></main></div>
     <section id="viri" class="sourcecatalog"><h2>Še nepovezani viri</h2><p>Za ta iskalnika še nimamo samodejnega izvoza. Povezavi odpreta izvirno iskanje, kjer lahko oglase preveriš ročno.</p><div class="sourcegrid" id="planned"><div class="sourcecard"><a href="https://www.careerjet.si/" target="_blank" rel="noopener noreferrer">Careerjet ↗</a><p>Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.</p></div><div class="sourcecard"><a href="https://europa.eu/eures/portal/jv-se/search?page=1&amp;resultsPerPage=10&amp;orderBy=BEST_MATCH&amp;locationCodes=si&amp;previousPageType=findJob&amp;lang=sl" target="_blank" rel="noopener noreferrer">EURES (Slovenija) ↗</a><p>Iskanje je omejeno na Slovenijo. Za množični izvoz potrebujemo ustrezen partnerski dostop; nekateri oglasi se prekrivajo z ZRSZ.</p></div></div></section>
     <footer class="bottom"><span>© DeloRadar · Osebni pregled prostih delovnih mest</span><span>Podatki so informativni · Veljavnost in pogoje preveri na izvornem portalu</span></footer>
   </div>
@@ -502,12 +504,36 @@ export const page = String.raw`<!doctype html>
       }
       $('jobRows').addEventListener('click',function(e){var b=e.target.closest('[data-star]');if(!b)return;var id=b.dataset.star;changeMemberStates(id,'saved',!mergedState({id:id}).saved);save();render(true)});
       $('jobRows').addEventListener('change',function(e){var b=e.target.closest('[data-status]');if(!b)return;changeMemberStates(b.dataset.status,'status',b.value);save();render(true)});
-      $('export').addEventListener('click',function(){
-        var quote=function(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"'};
-        var rows=[['Naziv','Podjetje','Kraj','Portal','Objava','Povezava','Druge izvorne povezave','Status','Shranjeno']].concat(displayed().map(function(j){var s=mergedState(j);return [j.title,j.company,j.location,j.source,j.date,j.url,(j.alternatives||[]).map(function(x){return x.source+': '+x.url}).join(' | '),s.status||'',s.saved?'Da':'Ne']}));
-        var csv='\uFEFF'+rows.map(function(r){return r.map(quote).join(';')}).join('\r\n');
-        var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='deloradar-oglasi.csv';a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
-      });
+      function jsonExportData(scope,items,exportedAt){
+        var filteredScope=scope==='filtered',filters=null;
+        if(filteredScope){
+          var facets={};multiIds.forEach(function(id){facets[id]=selectedValues(id)});
+          filters={text:$('search').value,facets:facets,published:$('published').value,
+            deadline:$('deadline').value,myStatus:$('myStatus').value,
+            onlySaved:$('onlySaved').checked,hideApplied:$('hideApplied').checked,
+            sort:$('sort').value,groupDuplicates:groupEnabled()};
+        }
+        return {format:'DeloRadar-jobs',version:1,exportedAt:exportedAt,
+          capturedAt:checkedAt||null,scope:scope,total:items.length,
+          duplicateMode:filteredScope&&groupEnabled()?'merged':'original',
+          filters:filters,sources:sources.slice(),jobs:items.map(function(j){
+            var mark=filteredScope?mergedState(j):getState(j.id);
+            return Object.assign({},j,{status:mark.status||'',saved:!!mark.saved});
+          })};
+      }
+      function downloadJson(scope){
+        if(!jobs.length){noticeMessage('Podatki se še nalagajo ali niso na voljo za izvoz.');return}
+        var selected=scope==='filtered'?displayed():jobs;
+        if(!selected.length){noticeMessage('Trenutni filtri nimajo zadetkov za izvoz.');return}
+        var content=JSON.stringify(jsonExportData(scope,selected,new Date().toISOString()));
+        var address=URL.createObjectURL(new Blob([content],{type:'application/json;charset=utf-8'}));
+        var a=document.createElement('a');a.href=address;
+        a.download='deloradar-'+(scope==='filtered'?'filtrirani':'vsi-oglasi')+'-'+new Date().toISOString().slice(0,10)+'.json';
+        document.body.appendChild(a);a.click();a.remove();
+        setTimeout(function(){URL.revokeObjectURL(address)},5000);
+      }
+      $('exportFiltered').addEventListener('click',function(){downloadJson('filtered')});
+      $('exportAll').addEventListener('click',function(){downloadJson('all')});
       var mobileToggle=document.createElement('button');
       mobileToggle.type='button';mobileToggle.className='mobilefilters';mobileToggle.setAttribute('aria-expanded','false');
       mobileToggle.textContent='☷  Prikaži filtre';
