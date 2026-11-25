@@ -1,5 +1,6 @@
-// Dodatni javni seznami delodajalcev in portalov. Ohranimo samo metapodatke;
-// opisov dela, plačnih podrobnosti in kontaktov iz strukturiranih podatkov ne kopiramo.
+// Dodatni javni seznami delodajalcev in portalov.
+// Razpoložljive podatke JobPosting dopolnimo brez dodatnih obiskov strani.
+import { jobPostingDetails } from './job-details.js';
 
 const DM_LIST = 'https://www.dm-jobs.si/job-listing/';
 const NOVA_SITEMAP = 'https://novapriloznost.si/job_listing-sitemap.xml';
@@ -113,6 +114,7 @@ export function parseNovaPriloznostJob(html, listing, now = Date.now()) {
     location: tidy(location),
     date: Number.isFinite(posted) ? new Date(posted).toISOString() : '',
     deadline: new Date(until).toISOString(), url: listing.url,
+    ...jobPostingDetails(data),
   };
 }
 
