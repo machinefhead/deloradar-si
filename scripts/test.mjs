@@ -267,8 +267,14 @@ assert.match(detailHtml,/Opis delovnega mesta/, 'Prikaz vključuje opis, če ga 
 assert.match(detailHtml,/Nedoločen čas/, 'Trajanje zaposlitve je vidno');
 assert.match(detailHtml,/Polni delovni čas/, 'Vrsta zaposlitve ima razumljivo oznako');
 assert.match(detailHtml,/Rok za prijavo/, 'Rok prijave je v podrobnostih');
-assert.match(detailHtml,/&lt;img src=x onerror=alert\(1\)&gt;/, 'Opis se izpiše kot besedilo');
-assert.doesNotMatch(detailHtml,/<img src=x/, 'Opis oglasa ne sme vstavljati HTML v DOM');
+assert.doesNotMatch(detailHtml,/<img|onerror=|&lt;img/, 'Nevarne oznake iz opisa se ne prikazujejo in ne izvajajo');
+const nestedDescription='<p><p>Uvod o delu.</p><p><br></p><p><strong>Vaše naloge:</strong></p><ul><li>Vzdrževanje</li><li>Organizacija</li></ul></p>';
+const formatted=detailContext.detailMarkup({id:'adecco:1',source:'Adecco',title:'Vodja kakovosti',description:nestedDescription},[]);
+assert.match(formatted,/<p>Uvod o delu\.<\/p>/,'Adecco: ločeni odstavki so berljivi');
+assert.match(formatted,/<p><strong>Vaše naloge:<\/strong><\/p>/,'Adecco: naslov razdelka je poudarjen');
+assert.match(formatted,/<ul><li>Vzdrževanje<\/li><li>Organizacija<\/li><\/ul>/,'Adecco: alineje so pravi HTML seznam');
+assert.doesNotMatch(formatted,/&lt;p&gt;|&lt;ul&gt;|&lt;li&gt;/,'V dialogu ne smejo ostati surove oznake');
+assert.match(detailContext.detailReadable('&amp;lt;p&amp;gt;Delo&amp;lt;/p&amp;gt;'),/Delo/,'Dvakrat HTML-kodirano besedilo se razbere');
 assert.match(detailHtml,/Poišči razpis na ZRSZ/, 'Iskalna povezava ni predstavljena kot neposredni oglas');
 const noDescription=detailContext.detailMarkup({id:'a',title:'Operater',source:'Optius',url:'https://www.optius.com/delo/1',summary:'Kratek povzetek.'},[]);
 assert.match(noDescription,/Kratek povzetek\./, 'Povzetek je viden, tudi če ni celotnega opisa');
@@ -289,7 +295,23 @@ assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se
 const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages, parseMercatorListings, parseIscideloListings, iscideloPages } = await import('../source/collector.js');
 const { parseZrszJson } = await import('../source/zrsz.js');
 const { parseDmListings, parseNovaPriloznostSitemap, parseNovaPriloznostJob } = await import('../source/next-sources.js');
-const { parseMojeDeloDetails, parseZaposlitevInfoDetails, reuseJobDetails, enrichJobsProgressively } = await import('../source/job-enrichment.js');
+const { parseMojeDeloDetails, parseZaposlitevInfoDetails, parseKarieraDetails, parseOptiusDetails, reuseJobDetails, enrichJobsProgressively } = await import('../source/job-enrichment.js');
+const karieraJob={source:'Kariera.si',title:'Izmenski vzdrževalec – elektrotehnik m/ž/d',url:'https://www.kariera.si/sl/delovno-mesto/kari123abc'};
+const karieraHTML='<h1>Izmenski vzdrževalec – elektrotehnik m/ž/d</h1><div class="details-post-data"><div class="post-block"><p>Stabilna proizvodnja.</p></div><div class="post-block"><h4 class="block-title">Glavne naloge:</h4><div><ul><li>Vzdrževanje opreme</li></ul></div></div><div class="post-block"><h4 class="block-title">Od kandidatov pričakujemo:</h4><div><ul><li>Izkušnje z elektroniko</li></ul></div></div><div class="post-block"><h4 class="block-title">Nudimo:</h4><div><ul><li>Redna zaposlitev</li></ul></div></div><a href="/sl/oddaj-prijavo/kari123abc">Prijava</a></div>';
+const kd=parseKarieraDetails(karieraHTML,karieraJob);
+assert.equal(kd.description,'Stabilna proizvodnja.');
+assert.match(kd.responsibilities,/• Vzdrževanje opreme/);
+assert.match(kd.requirements,/• Izkušnje z elektroniko/);
+assert.match(kd.benefits,/• Redna zaposlitev/);
+assert.equal(parseKarieraDetails(karieraHTML,{...karieraJob,title:'Drugo delo'}),null,'Ne povezujemo napačnega oglasa');
+assert.equal(parseKarieraDetails(karieraHTML.replace('kari123abc','kari000abc'),karieraJob),null,'Ne prenašamo podrobnosti sorodnih oglasov');
+const optiusJob={source:'Optius',title:'Elektrotehnik (m/ž)',url:'https://www.optius.com/iskalci/prosta-delovna-mesta/elektrotehnik-1/'};
+const optiusHTML='<link rel="canonical" href="https://www.optius.com/iskalci/prosta-delovna-mesta/elektrotehnik-1/"><h1>Elektrotehnik (m/ž)</h1><div class="info-wrapper"><div class="info-cols"><div class="col-left"><h3 class="section-title">Opis delovnega mesta</h3></div><div class="col-right"><ul><li>Popravila strojev</li></ul></div></div></div><div class="info-wrapper"><div class="info-cols"><div class="col-left"><h3 class="section-title">Pričakujemo</h3></div><div class="col-right"><p>Poznavanje vezij</p></div></div></div><div class="info-wrapper"><div class="info-cols"><div class="col-left"><h3 class="section-title">Ponujamo</h3></div><div class="col-right"><p>Fleksibilno delo</p></div></div></div>';
+const od=parseOptiusDetails(optiusHTML,optiusJob);
+assert.match(od.description,/• Popravila strojev/);
+assert.equal(od.requirements,'Poznavanje vezij');
+assert.equal(od.benefits,'Fleksibilno delo');
+assert.equal(parseOptiusDetails(optiusHTML,{...optiusJob,url:'https://www.optius.com/iskalci/prosta-delovna-mesta/drug/'}),null,'Optius: preverimo kanonično povezavo');
 const mdDetailFixture={data:{id:'5cb3187e-ae51-4db9-81a7-c30c131a6e40',
   jobAdTranslations:[{title:'Operater na stroju',jobDescription:'<p>Menjava orodij.</p>',weOffer:'<p>Stabilna zaposlitev.</p>'}],
   weExpect:'<ul><li>Natančnost</li></ul>',employmentTypes:[{translation:'Redno, določen d. č.'}],
@@ -338,6 +360,8 @@ assert.equal(limitedRequests,5,'Zadnja sočasna skupina ne sme preseči omejitve
 const { readableJobText, jobPostingDetails } = await import('../source/job-details.js');
 assert.equal(readableJobText('<p>Prijava &amp; delo</p><ul><li>Vodenje</li><li>Organizacija</li></ul>'),
   'Prijava & delo\n• Vodenje\n• Organizacija','HTML opis ohrani odstavke in alineje');
+assert.equal(readableJobText('&amp;lt;p&amp;gt;Strokovno delo&amp;lt;/p&amp;gt;'),'Strokovno delo','HTML, kodiran dvakrat, se očisti pred izpisom');
+assert.equal(readableJobText(nestedDescription),'Uvod o delu.\n\nVaše naloge:\n• Vzdrževanje\n• Organizacija','Adecco: tudi gnezdeni odstavki in seznami se pravilno pretvorijo');
 assert.deepEqual(jobPostingDetails({employmentType:['FULL_TIME','PART_TIME'],baseSalary:{currency:'EUR',value:{minValue:1800,maxValue:2300,unitText:'MONTH'}}}).salary,
   {currency:'EUR',minValue:1800,maxValue:2300,unit:'MONTH'},'Objavljena plača ohrani zneske in obdobje');
 const zrszSample = {

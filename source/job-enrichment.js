@@ -77,6 +77,58 @@ export function parseZaposlitevInfoDetails(html, job, now = Date.now()) {
   return details;
 }
 
+function sameJobTitle(htmlTitle, jobTitle) {
+  const normalized = value => text(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/gi, ' ').trim().toLowerCase();
+  return normalized(htmlTitle) === normalized(jobTitle);
+}
+
+export function parseKarieraDetails(html, job) {
+  const title = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+  if (!title || !sameJobTitle(title, job?.title)) return null;
+  const key = String(job?.url || '').match(/\/sl\/delovno-mesto\/(kari[a-f0-9]+)/i)?.[1];
+  const start = html.indexOf('details-post-data');
+  if (!key || start < 0) return null;
+  const end = html.indexOf('/sl/oddaj-prijavo/' + key, start);
+  if (end <= start || end - start > 70000) return null;
+  const body = html.slice(start, end);
+  const sections = body.split(/(?=<div\b[^>]*class=["'][^"']*\bpost-block\b)/i).slice(1);
+  const details = {};
+  for (const block of sections) {
+    const heading = block.match(/<h4\b[^>]*class=["'][^"']*\bblock-title\b[^"']*["'][^>]*>([\s\S]*?)<\/h4>/i)?.[1];
+    if (!heading) {
+      const intro = text(block);
+      if (intro && !details.description) details.description = intro;
+      continue;
+    }
+    const content = text(block.slice(block.indexOf('</h4>') + 5));
+    if (!content) continue;
+    const name = text(heading).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (/nudimo|ponujamo|ugodnost/.test(name)) details.benefits = content;
+    else if (/nalog|odgovornost|delo bo/.test(name)) details.responsibilities = content;
+    else if (/pricakujemo|zahtev|pogoj/.test(name)) details.requirements = content;
+  }
+  return Object.keys(details).length ? details : null;
+}
+
+export function parseOptiusDetails(html, job) {
+  const canonical = html.match(/<link\b[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i)?.[1];
+  if (!canonical || canonical.replace(/\/$/, '') !== String(job?.url || '').replace(/\/$/, '')) return null;
+  const title = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+  if (!title || !sameJobTitle(title, job?.title)) return null;
+  const section = /<h3\b[^>]*class=["'][^"']*\bsection-title\b[^"']*["'][^>]*>([\s\S]*?)<\/h3>\s*<\/div>\s*<div\b[^>]*class=["']col-right["'][^>]*>([\s\S]*?)<\/div>/gi;
+  const details = {};
+  for (const match of html.matchAll(section)) {
+    const heading = text(match[1]).toLocaleLowerCase('sl');
+    const content = text(match[2]);
+    if (!content) continue;
+    if (heading.includes('opis delovnega mesta')) details.description = content;
+    else if (heading.includes('pričakujemo') || heading.includes('zahtevamo')) details.requirements = content;
+    else if (heading.includes('ponujamo') || heading.includes('nudimo')) details.benefits = content;
+  }
+  return details.description ? details : null;
+}
+
 export function reuseJobDetails(job, previous, now = Date.now()) {
   if (!previous || previous.source !== job.source || previous.title !== job.title ||
       (previous.date && job.date && previous.date !== job.date) ||

@@ -3,7 +3,7 @@ import { getZrszJson, getZrszFromPublicBrowser } from './zrsz.js';
 import { getDm, getNovaPriloznost } from './next-sources.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
-import { enrichJobsProgressively, parseMojeDeloDetails, parseZaposlitevInfoDetails } from './job-enrichment.js';
+import { enrichJobsProgressively, parseMojeDeloDetails, parseZaposlitevInfoDetails, parseKarieraDetails, parseOptiusDetails } from './job-enrichment.js';
 
 // Naslov poda ZRSZ in ostane v zaščiteni GitHub Actions skrivnosti.
 const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
@@ -132,7 +132,10 @@ async function getOptius() {
     });
   }
   if (!successful) throw Error('All Optius regional RSS feeds failed');
-  return [...jobsByUrl.values()];
+  return enrichJobsProgressively([...jobsByUrl.values()], await previousJobs(), {
+    name: 'Optius', limit: detailLimit('DETAIL_OPTIUS_LIMIT', 100), concurrency: 2,
+    getDetails: job => getText(job.url), parseDetails: parseOptiusDetails,
+  });
 }
 async function getKariera() {
   const html = await getText('https://www.kariera.si/sl/delovna-mesta');
@@ -150,7 +153,10 @@ async function getKariera() {
       deadline: parseLocalDate(deadline?.[1] || ''), url: 'https://www.kariera.si' + match[1] });
   }
   if (!jobs.length) throw Error('Unexpected listing format');
-  return jobs;
+  return enrichJobsProgressively(jobs, await previousJobs(), {
+    name: 'Kariera.si', limit: detailLimit('DETAIL_KARIERA_LIMIT', 75), concurrency: 3,
+    getDetails: job => getText(job.url), parseDetails: parseKarieraDetails,
+  });
 }
 export function parseGovListings(html) {
   // GOV.SI v HTML-ju zapira <tbody> po vsaki vrstici; zato razčlenimo celotno tabelo.
