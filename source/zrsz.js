@@ -1,6 +1,6 @@
 // ZRSZ: dnevni JSON. Javnega gumba se dotaknemo prek običajnega
 // brskalnika; aplikacijskega dostopnega ključa ne beremo niti ne kopiramo.
-import { readZrszPublicDetails, mergeZrszDirectLinks } from './zrsz-links.js';
+import { readZrszPublicDetails, supplementZrszPublicDetails } from './zrsz-links.js';
 const SEARCH_PAGE = 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/';
 const MAX_BYTES = 15_000_000;
 
@@ -141,25 +141,13 @@ export async function getZrszFromPublicBrowser() {
     const startedAt = Date.now();
     try {
       const verified = await readZrszPublicDetails(page, linkLimit);
-      const linked = mergeZrszDirectLinks(jobs, verified);
-      const updated = linked.filter((job, index) => job.url !== jobs[index].url).length;
-      if (process.env.ZRSZ_LINKS_REQUIRED === '1') {
-        const keys = new Set(jobs.map(job => job.reference));
-        const mismatch = verified.filter(item => !keys.has(item.reference));
-        const prefixCounts = values => Object.entries(values.reduce((acc, value) => {
-          const prefix = value.reference?.slice(0, 2) || '?';
-          acc[prefix] = (acc[prefix] || 0) + 1;
-          return acc;
-        }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6);
-        console.log('ZRSZ: primerjava registrov, dnevni=' + JSON.stringify(prefixCounts(jobs)) +
-          ', prikaz=' + JSON.stringify(prefixCounts(verified)) +
-          ', neusklajeni primeri=' + JSON.stringify(mismatch.slice(0, 5).map(item => item.reference)) +
-          ', JSON primeri=' + JSON.stringify(jobs.slice(0, 5).map(item => item.reference)));
-      }
-      console.log(`ZRSZ: neposredne povezave ${updated}/${verified.length} (${Date.now() - startedAt} ms); ` +
-        `ostali oglasi ohranijo iskanje po delodajalcu`);
-      if (process.env.ZRSZ_LINKS_REQUIRED === '1' && updated === 0) {
-        throw Error('ZRSZ: nobena neposredna povezava se ne ujema z dnevnim JSON-om');
+      const linked = supplementZrszPublicDetails(jobs, verified);
+      const updated = linked.slice(0, jobs.length).filter((job, index) => job.url !== jobs[index].url).length;
+      const added = linked.length - jobs.length;
+      console.log(`ZRSZ: ${updated} popravljenih povezav, ${added} novih preverjenih oglasov ` +
+        `(${verified.length} pregledanih, ${Date.now() - startedAt} ms); preostali ohranijo iskanje`);
+      if (process.env.ZRSZ_LINKS_REQUIRED === '1' && updated + added < Math.min(2, linkLimit)) {
+        throw Error('ZRSZ: premajhen delež preverjenih povezav ali dodatnih oglasov');
       }
       return linked;
     } catch (error) {

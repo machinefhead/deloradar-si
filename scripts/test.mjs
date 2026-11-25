@@ -3,7 +3,7 @@ import { Script, runInNewContext } from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { page } from '../source/page.js';
 import { markLikelyDuplicates } from '../source/duplicates.js';
-import { mergeZrszDirectLinks } from '../source/zrsz-links.js';
+import { mergeZrszDirectLinks, supplementZrszPublicDetails } from '../source/zrsz-links.js';
 import {
   parseZrszPilotCard, parseZrszPilotDetail, zrszDirectUrl,
   parseEuresPilotSummary, parseEuresPilotDetail, careerjetProbeStatus,
@@ -433,6 +433,15 @@ assert.equal(zrszEnriched[0].url, zrszDirectUrl('3503870'), 'Neposredni URL popr
 assert.equal(zrszEnriched[1].url, zrszOriginal[1].url, 'Nepreverjeni ZRSZ oglasi ohranijo iskalni URL');
 assert.equal(zrszEnriched[0].id, zrszOriginal[0].id, 'ZRSZ ohrani isti ID in uporabnikove statuse');
 assert.equal(zrszOriginal[0].url.includes('?idp='), false, 'Vhodnih oglasov ne spreminjamo');
+const newZrszRecord = { ...pilotZrsz, reference: 'RH97509', id: 'zrsz:RH97509', idp: '3509816', url: zrszDirectUrl('3509816') };
+const zrszCombined = supplementZrszPublicDetails(zrszOriginal, [pilotZrsz, newZrszRecord, newZrszRecord]);
+assert.equal(zrszCombined.length, 3, 'Manjkajoči preverjeni oglas dodamo samo enkrat');
+assert.equal(zrszCombined[2].id, 'zrsz:RH97509', 'Živi ZRSZ oglas ohrani preverjeno registrsko številko');
+assert.equal(zrszCombined[2].source, 'ZRSZ / PoiščiDelo', 'Nov oglas je isti vir, ne nov portal');
+assert.equal(zrszCombined[2].deadline, '', 'Ne ugibamo prijavnega roka iz javne kartice');
+assert.equal(zrszCombined[0].id, zrszOriginal[0].id, 'Z obogatitvijo ne spremenimo obstoječega ID-ja');
+assert.equal(supplementZrszPublicDetails(zrszOriginal, [{ ...newZrszRecord, url: 'https://example.org/oglas' }]).length,
+  2, 'Oglas z nepreverjenim URL-jem zavrnemo');
 assert.throws(() => parseZrszPilotDetail(pilotZrszCard, {
   url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/', reference: 'RH54049',
 }), /neposredna/, 'Pilot mora zavrniti povezavo, ki odpira samo iskalnik');
