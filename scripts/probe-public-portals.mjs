@@ -70,7 +70,9 @@ async function zrszSample(browser) {
       results.push(parseZrszPilotDetail(card, { url: page.url(), reference: await registrationFromZrsz(page) }));
       // Zapremo samo javni modal oglasa. Seznam ostane naložen in se ne zahteva znova.
       if (index + 1 < cards.length) {
-        await page.locator('.modal-detail [aria-label="Close"]').click({ timeout: 15_000 });
+        // ZRSZ prikazuje dva elementa z aria-label="Close" (mobilni »Nazaj«
+        // ter gumb v glavi). Izberemo izrecno gumb v glavi modala.
+        await page.locator('.modal-detail div.set-pointer[aria-label="Close"]').click({ timeout: 15_000 });
         await page.locator('.modal-detail').waitFor({ state: 'hidden', timeout: 20_000 });
         await page.waitForURL(url => !url.searchParams.has('idp'), { timeout: 20_000 });
         await page.waitForTimeout(400);
