@@ -57,6 +57,7 @@ assert.match(page, /id="exportAll"[^>]*>↓ Izvozi vse \(JSON\)/, 'Na voljo mora
 assert.match(page, /<dialog id="jobDialog" class="jobdialog"/, 'Podrobnosti oglasa morajo biti na voljo na isti strani');
 assert.match(page, /data-detail-id=/, 'Klik na naziv oglasa mora odpreti podrobnosti');
 assert.match(page, /jobDialog\.showModal\(\)/, 'Podrobnosti se odprejo v dostopnem dialogu');
+assert.match(page, /Opis preverjen/, 'Pri opisu mora biti razviden datum preverjanja podrobnosti');
 assert.doesNotMatch(page, /Izvozi CSV|text\/csv|\.csv'/, 'CSV izvoz je v celoti zamenjan z JSON');
 assert.match(script, /scope==='filtered'\?displayed\(\):jobs/, 'Filtrirani JSON mora izvoziti vse filtrirane strani, celoten pa vsa izvorna dela');
 assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passive:true\}\)/, 'Gumb za vrh se mora prilagajati drsenju');
@@ -288,6 +289,52 @@ assert.ok(mockRows.every(row=>row.hidden===false), 'Po izbrisu iskalnega niza se
 const { parseGovListings, parseAtamaListings, parseOptiusFeed, parseTrenkwalderListings, parseAgadoListings, parseAdeccoSitemap, parseAdeccoJobPreview, parseRekruterFeed, parseNoveSitemap, parseNoveJob, parseLidlSitemap, parseLidlJob, parseKolektorListings, parseMojeDeloConfig, parseMojeDeloJobs, parseZaposlitevInfoListings, zaposlitevInfoTotalPages, parseMercatorListings, parseIscideloListings, iscideloPages } = await import('../source/collector.js');
 const { parseZrszJson } = await import('../source/zrsz.js');
 const { parseDmListings, parseNovaPriloznostSitemap, parseNovaPriloznostJob } = await import('../source/next-sources.js');
+const { parseMojeDeloDetails, parseZaposlitevInfoDetails, reuseJobDetails, enrichJobsProgressively } = await import('../source/job-enrichment.js');
+const mdDetailFixture={data:{id:'5cb3187e-ae51-4db9-81a7-c30c131a6e40',
+  jobAdTranslations:[{title:'Operater na stroju',jobDescription:'<p>Menjava orodij.</p>',weOffer:'<p>Stabilna zaposlitev.</p>'}],
+  weExpect:'<ul><li>Natančnost</li></ul>',employmentTypes:[{translation:'Redno, določen d. č.'}],
+  workTime:{translation:'Polni delovni čas'},educationLevels:[{translation:'Poklicna šola'}],
+  endDate:'2026-12-10T22:59:59.000Z',
+  applicationRecipientEmails:['kontakt@example.com'],waysToApply:'Kontaktna oseba: zasebni telefon'}};
+const mdDetail=parseMojeDeloDetails(mdDetailFixture,{id:'mojedelo:5cb3187e-ae51-4db9-81a7-c30c131a6e40',title:'Operater na stroju'});
+assert.equal(mdDetail.description,'Menjava orodij.','MojeDelo: opis se normalizira v navadno besedilo');
+assert.equal(mdDetail.benefits,'Stabilna zaposlitev.');
+assert.equal(mdDetail.employmentType,'Redno, določen d. č.');
+assert.equal(mdDetail.deadline,'2026-12-10');
+assert.ok(!JSON.stringify(mdDetail).includes('kontakt@example.com'),'Kontaktov fizičnih oseb ne kopiramo');
+assert.equal(parseMojeDeloDetails(mdDetailFixture,{id:'mojedelo:drugi',title:'Operater na stroju'}),null,'Ne prenašamo opisa napačnega ID-ja');
+const ziMarkup='<script type="application/ld+json">'+JSON.stringify({'@type':'JobPosting',title:'Prodajalec (m/ž)',
+  description:'<p>Prodaja in svetovanje.</p><p>Delo s strankami.</p>',employmentType:'PART_TIME',
+  validThrough:'2026-12-20',hiringOrganization:{name:'Trgovina'}})+'</script>';
+const ziDetail=parseZaposlitevInfoDetails(ziMarkup,{id:'zaposlitevinfo:1',title:'Prodajalec (m/ž)'},Date.parse('2026-11-25'));
+assert.match(ziDetail.description,/Delo s strankami/,'Zaposlitev.info: uporabi samo javni JobPosting');
+assert.equal(ziDetail.deadline,'2026-12-20');
+assert.equal(parseZaposlitevInfoDetails(ziMarkup,{title:'Povsem drug oglas'}),null,'Ne kopiraj drugega oglasa');
+const cacheTime=Date.parse('2026-11-25T13:00:00Z');
+const previousDetail={id:'mojedelo:1',source:'MojeDelo.com',title:'Naziv',description:'Shranjeni opis',
+  detailsFetchedAt:'2026-11-24T13:00:00Z',deadline:'2026-11-20'};
+assert.equal(reuseJobDetails({id:'mojedelo:1',source:'MojeDelo.com',title:'Naziv'},previousDetail,cacheTime).description,'Shranjeni opis');
+assert.equal(reuseJobDetails({id:'mojedelo:1',source:'MojeDelo.com',title:'Naziv'},previousDetail,cacheTime).deadline,undefined,'Preteklega roka iz starega opisa ne ohranimo');
+assert.equal(reuseJobDetails({id:'mojedelo:1',source:'MojeDelo.com',title:'Spremenjen naziv'},previousDetail,cacheTime),null,'Spremenjen oglas preveri znova');
+assert.equal(reuseJobDetails({id:'mojedelo:1',source:'MojeDelo.com',title:'Naziv',date:'2026-11-25'},
+  {...previousDetail,date:'2026-11-24'},cacheTime),null,'Ponovno objavljen oglas preveri znova');
+let requests=0;
+const progressive=await enrichJobsProgressively([
+  {id:'mojedelo:1',source:'MojeDelo.com',title:'Naziv'},
+  {id:'mojedelo:2',source:'MojeDelo.com',title:'Nova zaposlitev'},
+  {id:'mojedelo:3',source:'MojeDelo.com',title:'Tretja zaposlitev'},
+], [previousDetail], {name:'test',limit:1,concurrency:1,now:cacheTime,
+  getDetails:async job=>{requests++;return {id:job.id}},
+  parseDetails:()=>({description:'Nov podroben opis'})});
+assert.equal(requests,1,'Zajamemo samo predpisano število novih podrobnosti');
+assert.equal(progressive[0].description,'Shranjeni opis','Zadržimo že preverjene podatke');
+assert.equal(progressive[1].description,'Nov podroben opis');
+assert.equal(progressive[2].description,undefined,'Preostali oglasi ostanejo v seznamu brez izmišljanja');
+let limitedRequests=0;
+await enrichJobsProgressively(Array.from({length:7},(_,index)=>({id:'mojedelo:'+index,source:'MojeDelo.com',title:'Razpis '+index})),[],
+  {name:'test-limit',limit:5,concurrency:4,now:cacheTime,
+    getDetails:async()=>{limitedRequests++;return {};},parseDetails:()=>({description:'Opis'})});
+assert.equal(limitedRequests,5,'Zadnja sočasna skupina ne sme preseči omejitve zahtevkov');
 const { readableJobText, jobPostingDetails } = await import('../source/job-details.js');
 assert.equal(readableJobText('<p>Prijava &amp; delo</p><ul><li>Vodenje</li><li>Organizacija</li></ul>'),
   'Prijava & delo\n• Vodenje\n• Organizacija','HTML opis ohrani odstavke in alineje');

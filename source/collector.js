@@ -3,6 +3,7 @@ import { getZrszJson, getZrszFromPublicBrowser } from './zrsz.js';
 import { getDm, getNovaPriloznost } from './next-sources.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
+import { enrichJobsProgressively, parseMojeDeloDetails, parseZaposlitevInfoDetails } from './job-enrichment.js';
 
 // Naslov poda ZRSZ in ostane v zaščiteni GitHub Actions skrivnosti.
 const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
@@ -44,6 +45,26 @@ const OPTIUS_REGIONS = [
 let cached = null;
 let cachedAt = 0;
 const CACHE_MS = 15 * 60 * 1000;
+const DETAIL_CACHE_URL = 'https://machinefhead.github.io/deloradar-si/jobs.json';
+let previousJobsPromise;
+async function previousJobs() {
+  if (!previousJobsPromise) previousJobsPromise = (async () => {
+    try {
+      const response = await fetch(DETAIL_CACHE_URL, { signal: AbortSignal.timeout(20000), headers: { accept: 'application/json' } });
+      if (!response.ok || Number(response.headers.get('content-length')) > 35_000_000) return [];
+      const snapshot = await response.json();
+      return Array.isArray(snapshot?.jobs) ? snapshot.jobs : [];
+    } catch (error) {
+      console.warn('DeloRadar: predhodni opisi začasno niso dosegljivi: ' + String(error?.message || error));
+      return [];
+    }
+  })();
+  return previousJobsPromise;
+}
+function detailLimit(name, fallback) {
+  const candidate = Number(process.env[name]);
+  return Number.isInteger(candidate) && candidate >= 0 && candidate <= 500 ? candidate : fallback;
+}
 function decode(value = '') {
   return String(value)
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
@@ -467,7 +488,12 @@ async function getMojeDelo() {
     if (start + 400 < total) await new Promise(resolve => setTimeout(resolve, 250));
   }
   if (failed.length) throw Error('MojeDelo missing pages at offsets ' + failed.join(', '));
-  return Array.from(new Map(jobs.map(job => [job.id, job])).values());
+  const unique = Array.from(new Map(jobs.map(job => [job.id, job])).values());
+  return enrichJobsProgressively(unique, await previousJobs(), {
+    name: 'MojeDelo.com', limit: detailLimit('DETAIL_MOJEDELO_LIMIT', 280), concurrency: 4,
+    getDetails: async job => JSON.parse(await getText('https://api.mojedelo.com/job-ads/' + encodeURIComponent(job.id.slice('mojedelo:'.length)), headers)),
+    parseDetails: parseMojeDeloDetails,
+  });
 }
 export function parseZaposlitevInfoListings(html, now = Date.now()) {
   if (!/<div\s+class=["']wpjb-job-list\b/i.test(html)) throw Error('Zaposlitev.info job listing missing');
@@ -514,7 +540,11 @@ async function getZaposlitevInfo() {
     if (page + 4 <= totalPages) await new Promise(resolve => setTimeout(resolve, 250));
   }
   if (failures.length) throw Error('Zaposlitev.info missing pages ' + failures.join(', '));
-  return Array.from(new Map(jobs.map(job => [job.id, job])).values());
+  const unique = Array.from(new Map(jobs.map(job => [job.id, job])).values());
+  return enrichJobsProgressively(unique, await previousJobs(), {
+    name: 'Zaposlitev.info', limit: detailLimit('DETAIL_ZAPOSLITEV_LIMIT', 100), concurrency: 3,
+    getDetails: job => getText(job.url), parseDetails: parseZaposlitevInfoDetails,
+  });
 }
 const MERCATOR_REGIONS = {
   1: 'Savinjska', 2: 'Gorenjska', 4: 'Jugovzhodna Slovenija',

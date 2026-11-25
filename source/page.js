@@ -505,7 +505,8 @@ export const page = String.raw`<!doctype html>
           ['Kraj dela',j.location],['Dodatne lokacije',j.locations&&j.locations.length?j.locations.join(', '):''],
           ['Regije',Array.isArray(j.regions)?j.regions.join(', '):''],
           ['Naslov dela',j.workplaceAddress],['Datum objave',detailDate(j.date)],
-          ['Rok za prijavo',detailDate(j.deadline)],['Oznaka razpisa',j.reference],['ID oglasa',j.id]
+          ['Rok za prijavo',detailDate(j.deadline)],['Opis preverjen',detailDate(j.detailsFetchedAt)],
+          ['Oznaka razpisa',j.reference],['ID oglasa',j.id]
         ]);
         var zrszSearch=j.source==='ZRSZ / PoiščiDelo'&&j.reference&&String(j.url||'').indexOf('?idp=')<0;
         var url=String(j.url||'');var external=/^https:\/\/[^\s<>"']+$/i.test(url)?'<a class="detailprimary" href="'+safe(url)+'" target="_blank" rel="noopener noreferrer">'+(zrszSearch?'Poišči razpis na ZRSZ':'Odpri izvorni oglas')+' ↗</a>':'';
