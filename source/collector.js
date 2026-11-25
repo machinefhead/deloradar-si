@@ -1,6 +1,7 @@
 import { page } from './page.js';
 import { getZrszJson } from './zrsz.js';
 import { getZrszOfficialHttp } from './zrsz-official-http.js';
+import { fetchCareerjetDataApi } from './careerjet-data-api.js';
 import { getDm, getNovaPriloznost } from './next-sources.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
@@ -11,6 +12,7 @@ import { enrichJobsProgressively, parseMojeDeloDetails, parseZaposlitevInfoDetai
 const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
 const ZRSZ_OFFICIAL_HTTP_ENABLED = process.env.ZRSZ_OFFICIAL_HTTP_ENABLED === '1';
 const EURES_HTTP_ENABLED = process.env.EURES_HTTP_ENABLED === '1';
+const CAREERJET_DATA_API_KEY = process.env.CAREERJET_DATA_API_KEY?.trim();
 
 const SOURCES = [
   { id: 'optius', name: 'Optius', url: 'https://www.optius.com/iskalci/prosta-delovna-mesta/' },
@@ -31,11 +33,12 @@ const SOURCES = [
   ...(ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED ? [{ id: 'zrsz', name: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/' }] : []),
   { id: 'dm', name: 'dm Slovenija', url: 'https://www.dm-jobs.si/job-listing/' },
   { id: 'novapriloznost', name: 'Nova Priložnost', url: 'https://novapriloznost.si/prosta-delovna-mesta/' },
+  ...(CAREERJET_DATA_API_KEY ? [{ id: 'careerjet', name: 'Careerjet', url: 'https://www.careerjet.si/' }] : []),
   ...(EURES_HTTP_ENABLED ? [{ id: 'eures', name: 'EURES', url: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl' }] : []),
 ];
 const PLANNED = [
   ...(!ZRSZ_JSON_URL && !ZRSZ_OFFICIAL_HTTP_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Neposredni HTTP zajem je pripravljen; za uporabo nastavi ZRSZ_OFFICIAL_HTTP_ENABLED=1.' }] : []),
-  { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.' },
+  ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Uradni JSON API je na voljo, za samodejni uvoz pa potrebujemo ustrezen API ključ oziroma XML vir. Brez preverjenega dostopa ne prikazujemo nepopolnih podatkov.' }] : []),
   ...(!EURES_HTTP_ENABLED ? [{ name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?page=1&resultsPerPage=10&orderBy=BEST_MATCH&locationCodes=si&previousPageType=findJob&lang=sl', note: 'Programski HTTP uvoz je pripravljen; vključimo ga po preverjanju lokacij in podatkov.' }] : []),
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
@@ -673,6 +676,12 @@ async function collect() {
   if (ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED) collectors.push(
     ZRSZ_OFFICIAL_HTTP_ENABLED ? getZrszOfficialHttp() : getZrszJson(ZRSZ_JSON_URL));
   collectors.push(getDm(), getNovaPriloznost());
+  if (CAREERJET_DATA_API_KEY) collectors.push(previousJobs().then(async oldJobs => {
+    const result = await fetchCareerjetDataApi({ apiKey: CAREERJET_DATA_API_KEY,
+      maxPages: 1, maxDetails: 10, previous: oldJobs });
+    console.log(`DeloRadar: Careerjet JSON ${result.jobs.length} oglasov, ${result.stats.detailsRequested} dodatnih HTTP opisov.`);
+    return result.jobs;
+  }));
   if (EURES_HTTP_ENABLED) collectors.push(previousJobs().then(async oldJobs => {
     const recent = reuseRecentEuresJobs(oldJobs);
     if (recent.length) {

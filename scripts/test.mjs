@@ -147,6 +147,10 @@ const sourceElements = new Map(['sourceStatus', 'sourceSummary', 'sourcesNum', '
   .map(id => [id, { innerHTML: '', textContent: '' }]));
 const sourceFooter = { textContent: '' };
 const sourceContext = {
+  jobs: [
+    { source: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/?idp=3509311/#/pdm/3509311' },
+    { source: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/?iskalniTekst=podjetje' },
+  ],
   sources: [
     { id: 'zrsz', name: 'ZRSZ / PoiščiDelo', status: 'live', count: 4152 },
     { id: 'eures', name: 'EURES', status: 'live', count: 25 },
@@ -161,6 +165,7 @@ runInNewContext(extract('function sourceRender(', 'function matchesJob('), sourc
 sourceContext.sourceRender();
 assert.equal(sourceElements.get('sourceSummary').textContent, '3 od 3 virov dosegljivih');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /ZRSZ \/ PoiščiDelo/);
+assert.match(sourceElements.get('sourceStatus').innerHTML, /Neposredne povezave: 1 \/ 2/, 'Stanje povezav mora razlikovati preverjeni idp in iskanje');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /EURES/);
 assert.match(sourceElements.get('planned').innerHTML, /Careerjet/);
 assert.doesNotMatch(sourceElements.get('planned').innerHTML, /EURES/, 'Povezanega EURES ne smemo prikazati kot nepovezan vir');

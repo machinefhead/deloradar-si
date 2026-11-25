@@ -152,6 +152,8 @@ export const page = String.raw`<!doctype html>
       .refreshbox{width:100%;align-items:stretch}
       .refreshbox .refreshinfo{text-align:center;max-width:none}
     }
+    .sourceitem.has-quality{flex-wrap:wrap;align-items:center}
+    .sourcequality{flex-basis:100%;font-size:10px;line-height:1.5;color:#78867d}
   </style>
 </head>
 <body>
@@ -396,7 +398,12 @@ export const page = String.raw`<!doctype html>
       }
       function dateLabel(s){if(!s)return '—';var d=new Date(s);return isNaN(d.getTime())?'—':new Intl.DateTimeFormat('sl-SI',{day:'numeric',month:'short',year:'numeric'}).format(d)}
       function sourceRender(){
-        $('sourceStatus').innerHTML=sources.slice().sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name,'sl')}).map(function(s){return '<div class="sourceitem"><span class="name">'+safe(s.name)+'</span><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov':'Ni odziva')+'</span></div>'}).join('');
+        var zrszJobs=jobs.filter(function(j){return j.source==='ZRSZ / PoiščiDelo'});
+        var zrszDirect=zrszJobs.filter(function(j){return /^https:\/\/www\.ess\.gov\.si\//.test(String(j.url||''))&&/[?&]idp=\d{6,10}(?:\/|&|#|$)/.test(String(j.url||''))}).length;
+        $('sourceStatus').innerHTML=sources.slice().sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name,'sl')}).map(function(s){
+          var zrszQuality=s.id==='zrsz'&&s.status==='live'&&zrszJobs.length;
+          return '<div class="sourceitem'+(zrszQuality?' has-quality':'')+'"><span class="name">'+safe(s.name)+'</span><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov':'Ni odziva')+'</span>'+
+            (zrszQuality?'<span class="sourcequality">Neposredne povezave: '+zrszDirect+' / '+zrszJobs.length+' · preostali oglasi vodijo na iskanje</span>':'')+'</div>'; }).join('');
         var active=sources.filter(function(s){return s.status==='live'}).length;
         $('sourceSummary').textContent=active+' od '+sources.length+' virov dosegljivih';
         $('sourcesNum').textContent=active;

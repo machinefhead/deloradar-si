@@ -4,8 +4,8 @@ Osebni pregled slovenskih zaposlitvenih oglasov: [odpri DeloRadar na GitHub Page
 
 ## Zadnje preverjeno stanje (25. november 2026)
 
-- Preverjen lokalni HTTP-zajem: **8.868 oglasov iz 19 virov** z vključenim EURES. Osnovnih 18 virov je prej pripravilo 8.841 oglasov v 41 sekundah; celoten prvi EURES-ov zajem porabi približno dve dodatni minuti. Naslednji 12-urni zagon lahko uporabi svež EURES-ov predpomnilnik.
-- **ZRSZ: 4.152 aktualnih oglasov**, vsi z opisom del in nalog iz uradnega dnevnega JSON-a. Pri **3.899 oglasih** je referenca preverjena s številčnim `idp` prek uradnega HTTP-odgovora za posamezen oglas; povezava vodi neposredno na isti oglas. Preostalih **253** ohranja iskalno povezavo, saj številčni `idp` še ni zanesljivo preverjen. Ne ugibamo ga.
+- Preverjena objava GitHub Pages (25. november 2026, 21:21 UTC): **8.869 oglasov iz 19 dosegljivih virov** z vključenim EURES. Osnovnih 18 virov je v prejšnjem lokalnem zajemu pripravilo 8.841 oglasov v 41 sekundah; celoten prvi EURES-ov zajem porabi približno dve dodatni minuti. Naslednji 12-urni zagon lahko uporabi svež EURES-ov predpomnilnik.
+- **ZRSZ: 4.152 aktualnih oglasov**, vsi z opisom del in nalog iz uradnega dnevnega JSON-a. Pri **3.899 oglasih** je referenca preverjena s številčnim `idp` prek uradnega HTTP-odgovora za posamezen oglas; povezava vodi neposredno na isti oglas. Preostalih **253** (v trenutnem posnetku reference z začetkom `IE`) ohranja iskalno povezavo, saj številčnega `idp` ni mogoče potrditi v uradnem seznamu. Ne ugibamo ga. Razmerje neposrednih povezav se po novem izpiše tudi v razdelku »Stanje povezav«.
 - **Adecco: 161 oglasov** v zadnjem zajemu; 143 veljavnih zapisov iz predpomnilnika in 18 novo preverjenih. Del osvežitev poteka postopoma, da ponavljajoči zajem ne pošilja vseh zahtevkov znova.
 - **EURES: 25 dodatnih oglasov**, od tega 2 z navedenim krajem in 23 z državo Slovenijo, vendar brez potrjenega kraja. Vseh 25 vsebuje opis, pri 13 je objavljen tudi rok prijave. EURES je vključen v urnik; Careerjet ostaja v načrtu.
 - `dist/` vsebuje le `index.html` in `jobs.json`; zgodovinskih predogledov ZRSZ ne pakiramo več za objavo.
@@ -42,7 +42,9 @@ Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `
 | Mercator, IščiDelo | Javni seznami s straničenjem, kjer je na voljo |
 | dm Slovenija, Nova Priložnost | Javni HTML oziroma sitemap in `JobPosting` |
 
-Vsi viri so preverjani ločeno. Če vir trenutno odpove, je označen z napako; en neuspešen vir ne izbriše oglasov drugih portalov. EURES je dodatni HTTP-uvoz z ločevanjem oglasov ZRSZ, preverjanjem lokacij in roka prijave. `EURES_HTTP_ENABLED=1` ga vključi v zbiralnik. Ker polni EURES-ov seznam zahteva več zahtevkov, si dva zaporedna 12-urna zagona lahko delita največ 20 ur star uspešen rezultat; potekle oglase izločimo. Careerjet trenutno ni v zbiralniku.
+Vsi viri so preverjani ločeno. Če vir trenutno odpove, je označen z napako; en neuspešen vir ne izbriše oglasov drugih portalov. EURES je dodatni HTTP-uvoz z ločevanjem oglasov ZRSZ, preverjanjem lokacij in roka prijave. `EURES_HTTP_ENABLED=1` ga vključi v zbiralnik. Ker polni EURES-ov seznam zahteva več zahtevkov, si dva zaporedna 12-urna zagona lahko delita največ 20 ur star uspešen rezultat; potekle oglase izločimo.
+
+Careerjet: njihov javni seznam pri programskem HTTP-zahtevku vrne preverjanje prometa, uradni [Jobs Data API](https://www.careerjet.si/recruiter/jobs-data-api/documentation) pa zahteva ločen API ključ. Pripravljen in z nadomestnimi odzivi preizkušen je `source/careerjet-data-api.js`: po dodatku ključa kot GitHub Actions skrivnosti `CAREERJET_DATA_API_KEY` ga zbiralnik samodejno uporabi. Na zagon je omejen na **eno stran (do 100 zadnjih oglasov) in največ 10 dodatnih HTTP-podrobnosti**, že preverjene daljše opise ponovno uporabi iz prejšnjega posnetka. Kadar API ne vrne neposredne povezave, je URL izrecno označen kot iskanje po naslovu; neposrednih povezav ne izmišljamo. Dokler ključ ni nastavljen in pravi odzivi niso preverjeni, Careerjet pravilno ostaja med nepovezanimi viri.
 
 ## Podatki in prikaz
 
