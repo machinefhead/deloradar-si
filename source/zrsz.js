@@ -1,6 +1,7 @@
 // ZRSZ: dnevni JSON. Javnega gumba se dotaknemo prek običajnega
 // brskalnika; aplikacijskega dostopnega ključa ne beremo niti ne kopiramo.
 import { readZrszPublicDetails, supplementZrszPublicDetails } from './zrsz-links.js';
+import { readableJobText } from './job-details.js';
 const SEARCH_PAGE = 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/';
 const MAX_BYTES = 15_000_000;
 
@@ -33,6 +34,28 @@ function administrativeUnit(raw) {
   return 'UE ' + name;
 }
 
+function detailsFromZrsz(item) {
+  // Uporabimo le jasno poimenovana vsebinska polja, kadar so v dnevnem izvozu.
+  // Podatkov o kontaktnih osebah, telefonu in e-pošti ne kopiramo.
+  const fields = {
+    description: ['OpisDelInNalog', 'OpisDela', 'OpisZaposlitve'],
+    contractDuration: ['TrajanjeZaposlitve'],
+    contractType: ['VrstaDelovnegaRazmerja'],
+    employmentType: ['VrstaZaposlitve'],
+    workHours: ['DelovniCas', 'TedenskiDelovniCas'],
+    requirements: ['PogojiZaZasedboDelovnegaMesta', 'DrugiPogoji'],
+    education: ['ZahtevanaIzobrazba'],
+    experience: ['ZahtevaneDelovneIzkušnje', 'ZahtevaneDelovneIzkusnje'],
+    workplaceAddress: ['KrajOpravljanjaDela'],
+  };
+  const result = {};
+  for (const [field, keys] of Object.entries(fields)) {
+    const value = keys.map(key => readableJobText(item[key])).find(Boolean);
+    if (value) result[field] = value;
+  }
+  return result;
+}
+
 export function parseZrszJson(payload, now = Date.now()) {
   const entries = payload?.ProstaDelovnaMesta;
   if (!Array.isArray(entries) || !Number.isInteger(payload?.SteviloPDM) ||
@@ -61,6 +84,7 @@ export function parseZrszJson(payload, now = Date.now()) {
       location: administrativeUnit(item.UEPDM),
       date: date(item.DatumObjave),
       deadline,
+      ...detailsFromZrsz(item),
       // Izvoz vsebuje registrsko številko, ne pa številčnega idDM za povezavo ?idp=.
       // Uradni iskalnik podpira povezavo s predizpolnjenim iskanjem po delodajalcu.
       url: SEARCH_PAGE + '#/?drzava=SI,&iskalniTekst=' + encodeURIComponent(entityName(item.PoslovniSubjekt) || title) + '&iskalnaLokacija=',

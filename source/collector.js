@@ -2,6 +2,7 @@ import { page } from './page.js';
 import { getZrszJson, getZrszFromPublicBrowser } from './zrsz.js';
 import { getDm, getNovaPriloznost } from './next-sources.js';
 import { markLikelyDuplicates } from './duplicates.js';
+import { jobPostingDetails, readableJobText } from './job-details.js';
 
 // Naslov poda ZRSZ in ostane v zaščiteni GitHub Actions skrivnosti.
 const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
@@ -84,7 +85,8 @@ export function parseOptiusFeed(feed) {
     const parsed = Date.parse(xml(block, 'pubDate'));
     jobs.push({ id: 'optius:' + url, source: 'Optius', title, company: xml(block, 'employer'),
       location: '', date: Number.isFinite(parsed) ? new Date(parsed).toISOString() : '',
-      deadline: xml(block, 'validTill'), url });
+      deadline: xml(block, 'validTill'), url,
+      ...(xml(block, 'description') ? { summary: xml(block, 'description') } : {}) });
   }
   return jobs;
 }
@@ -145,7 +147,9 @@ export function parseGovListings(html) {
     const url = new URL(link[1], 'https://www.gov.si').href;
     jobs.push({ id: 'govsi:' + link[1], source: 'GOV.SI', title,
       company: plain(cells[3]), location: '', date: parseLocalDate(plain(cells[1])),
-      deadline: parseLocalDate(plain(cells[2])), url });
+      deadline: parseLocalDate(plain(cells[2])), url,
+      contractType: plain(cells[5]), workHours: plain(cells[6]),
+      jobCategory: plain(cells[4]) });
   }
   return jobs;
 }
@@ -219,7 +223,8 @@ export function parseAgadoListings(html) {
     // Portal oglašuje tudi delo v tujini; DeloRadar prikazuje le Slovenijo.
     if (/(?:avstrij|nemčij|steiermark|oberosterreich|oberoesterreich|österreich|graz|wien|linz|kassel)/i.test(title + ' ' + locationHtml)) continue;
     jobs.push({ id: 'agado:' + link[2], source: 'Agado', title, company: '', location,
-      date, deadline: '', url: link[1] });
+      date, deadline: '', url: link[1],
+      jobCategory: plain(card.match(/<mark\b[^>]*>\s*Vrsta dela\s*<\/mark>[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/i)?.[1] || '') });
   }
   return Array.from(new Map(jobs.map(j => [j.id, j])).values());
 }
@@ -256,7 +261,8 @@ export function parseAdeccoJobPreview(html, listing, now = Date.now()) {
   return { id: listing.id, source: 'Adecco', title, company: '',
     location: plain(address.addressLocality || address.location || ''),
     date: Number.isFinite(published) ? new Date(published).toISOString() : '',
-    deadline: Number.isFinite(due) ? new Date(due).toISOString() : '', url: listing.url };
+    deadline: Number.isFinite(due) ? new Date(due).toISOString() : '', url: listing.url,
+    ...jobPostingDetails(data) };
 }
 async function getAdeccoPreview(listing) {
   // Javni, v robots.txt dovoljeni URL-ji in samo začetek HTML-ja.
@@ -291,7 +297,8 @@ export function parseRekruterFeed(feed) {
     const city = xml(locations[0], 'tt:city') || xml(locations[0], 'tt:name');
     const posted = Date.parse(xml(block, 'pubDate'));
     jobs.push({ id: 'rekruter:' + id, source: 'Rekruter', title, company: '', location: city,
-      date: Number.isFinite(posted) ? new Date(posted).toISOString() : '', deadline: '', url });
+      date: Number.isFinite(posted) ? new Date(posted).toISOString() : '', deadline: '', url,
+      ...(xml(block, 'description') ? { summary: xml(block, 'description') } : {}) });
   }
   return Array.from(new Map(jobs.map(j => [j.id, j])).values());
 }
@@ -326,7 +333,12 @@ export function parseNoveJob(html, listing, now = Date.now()) {
   if (deadline && Date.parse(deadline + 'T23:59:59Z') < now) return null;
   return { id: listing.id, source: 'Nove zaposlitve', title,
     company: fields.get('Podjetje') || '', location: fields.get('Kraj dela') || '',
-    date: slDate(fields.get('Datum objave') || ''), deadline, url: listing.url };
+    date: slDate(fields.get('Datum objave') || ''), deadline, url: listing.url,
+    ...(fields.get('Vrsta zaposlitve') ? { employmentType: fields.get('Vrsta zaposlitve') } : {}),
+    ...(fields.get('Delovni čas') ? { workHours: fields.get('Delovni čas') } : {}),
+    ...(fields.get('Trajanje zaposlitve') ? { contractDuration: fields.get('Trajanje zaposlitve') } : {}),
+    ...(fields.get('Izobrazba') ? { education: fields.get('Izobrazba') } : {}),
+    ...(fields.get('Plačilo') ? { salary: readableJobText(fields.get('Plačilo')) } : {}) };
 }
 async function getNove() {
   const listings = parseNoveSitemap(await getText('https://novezaposlitve.si/wp-sitemap-posts-job_listing-1.xml'));
@@ -369,7 +381,8 @@ export function parseLidlJob(html, listing, now = Date.now()) {
   return { id: listing.id, source: 'Lidl Slovenija', title, company: 'Lidl Slovenija',
     location: plain(address.addressLocality || ''),
     date: Number.isFinite(posted) ? new Date(posted).toISOString() : '',
-    deadline: Number.isFinite(expiry) ? new Date(expiry).toISOString() : '', url: listing.url };
+    deadline: Number.isFinite(expiry) ? new Date(expiry).toISOString() : '', url: listing.url,
+    ...jobPostingDetails(data) };
 }
 async function getLidl() {
   const listings = parseLidlSitemap(await getText('https://kariera.lidl.si/sitemap-jobs.xml'));
@@ -433,7 +446,8 @@ export function parseMojeDeloJobs(response) {
       location: town, regions,
       date: Number.isFinite(published) ? new Date(published).toISOString() : '', deadline: '',
       // Neposredna stran oglasa uporablja naslovni del in javni UUID iz seznama.
-      url: 'https://www.mojedelo.com/oglas/' + mojeDeloSlug(item.title) + '/' + encodeURIComponent(item.id) }];
+      url: 'https://www.mojedelo.com/oglas/' + mojeDeloSlug(item.title) + '/' + encodeURIComponent(item.id),
+      ...jobPostingDetails(item) }];
   });
 }
 async function getMojeDelo() {

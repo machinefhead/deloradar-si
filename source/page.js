@@ -513,12 +513,18 @@ export const page = String.raw`<!doctype html>
             onlySaved:$('onlySaved').checked,hideApplied:$('hideApplied').checked,
             sort:$('sort').value,groupDuplicates:groupEnabled()};
         }
-        return {format:'DeloRadar-jobs',version:1,exportedAt:exportedAt,
+        var optionalFields=['description','summary','responsibilities','requirements','benefits','skills',
+          'employmentType','contractType','contractDuration','workHours','workplaceType',
+          'workplaceAddress','education','experience','salary','incentives','jobCategory'];
+        return {format:'DeloRadar-jobs',version:2,exportedAt:exportedAt,
           capturedAt:checkedAt||null,scope:scope,total:items.length,
           duplicateMode:filteredScope&&groupEnabled()?'merged':'original',
           filters:filters,sources:sources.slice(),jobs:items.map(function(j){
             var mark=filteredScope?mergedState(j):getState(j.id);
-            return Object.assign({},j,{status:mark.status||'',saved:!!mark.saved});
+            var record=Object.assign({},j);
+            optionalFields.forEach(function(field){if(record[field]===undefined||record[field]==='')record[field]=null});
+            record.locations=Array.isArray(j.locations)?j.locations.slice():(j.location?[j.location]:[]);
+            return Object.assign(record,{status:mark.status||'',saved:!!mark.saved});
           })};
       }
       function downloadJson(scope){
