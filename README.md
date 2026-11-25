@@ -45,6 +45,16 @@ Pomembno: JSON ne vsebuje **neposrednih URL-jev posameznih oglasov** ali točnih
 
 Javni gumb `.json` datoteko prenese prek ZRSZ-jevega javnega iskalnika. **Enak uporabniški postopek zdaj uspešno izvaja** brskalnik Chrome v GitHub Actions (`ZRSZ_BROWSER_ENABLED=1`, knjižnica `playwright-core`), vključno z izbiro nujnih piškotkov. Ne uporabljamo uporabnikovega računa, ne preberemo in ne kopiramo aplikacijskega ključa ter ne kličemo interne poti neposredno. Brskalnik uporabi normalen gumb in preveri vsebino prenosa. Za ločen uradno odobren URL ostaja podpora `ZRSZ_JSON_URL` iz GitHubove zaščitene skrivnosti. Skrivnosti ne shranjujemo v kodo ali javni JSON.
 
+### Pilot branja posameznih oglasov (ločeno od produkcije)
+
+`npm run probe:portals -- --limit=3` izvede največ tri ročno sprožene preizkuse za vsak vir. Za posamezen vir uporabi `--sources=zrsz`, `--sources=eures` ali `--sources=careerjet`. ZRSZ in EURES uporabljata običajni brskalnik Chrome (Playwright), ki prek javnega uporabniškega prikaza odpre posamezne oglase. `DELORADAR_CHROME_PATH` lahko kaže na lokalni izvršljivi Chrome, če Chrome ni nameščen na običajnem mestu.
+
+- **ZRSZ:** prebere vidne kartice, odpre do tri posamezne oglase in potrdi povezave `?idp=.../#/pdm/...` ter registrske oznake.
+- **EURES:** samo za ročni pilot prebere nekaj javnih oglasov za Slovenijo in preveri možne povezave z ZRSZ *na samem ZRSZ*. Številčni ID, izluščen iz EURES povezave, je zgolj kandidat, dokler se ne ujema tudi registrska oznaka. Ne uporablja notranjih API-jev. Morebitna širša avtomatizacija EURES zahteva urejene pravice do avtomatiziranega zajema.
+- **Careerjet:** če vrne interaktivno preverjanje, izpiše `blocked` in se ustavi; preverjanja ne rešuje samodejno.
+
+Pilot izpiše samo osnovne metapodatke in diagnostiko; **ne spreminja zbiralnika, `jobs.json`, produkcijskega urnika ali objave GitHub Pages**. Namen je pred morebitno vključitvijo izmeriti pokritost, pravilnost povezav in stabilnost strani. Ne pridobiva celotnih opisov, kontaktnih podatkov ali uporabniških podatkov.
+
 GitHub Pull Request #13 je 22. 11. 2026 dokazal, da Chrome na GitHubovem strežniku dejansko prenese svež dnevni JSON; tudi končna produkcijska objava je uspela. Ob izpadu ZRSZ načrtovana izdelava spletne strani odpove, zato prejšnja uspešna objava ostane na spletu.
 
 Razširitve z novimi viri, bolj zanesljivimi regijami in morebitnim zasebnim računom za uporabnika in partnerko bomo razvijali postopoma. **GitHub Pages je za zdaj javen**; prijava še ni vgrajena. V prvi različici **ni** oblačne podatkovne baze in **ni** avtomatskega pošiljanja prijav.

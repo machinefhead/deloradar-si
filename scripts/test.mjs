@@ -3,6 +3,10 @@ import { Script, runInNewContext } from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { page } from '../source/page.js';
 import { markLikelyDuplicates } from '../source/duplicates.js';
+import {
+  parseZrszPilotCard, parseZrszPilotDetail, zrszDirectUrl,
+  parseEuresPilotSummary, parseEuresPilotDetail, careerjetProbeStatus,
+} from '../source/portal-probe.js';
 
 const sameVacancy=(id,source,date,extra={})=>({ id,source,date,title:'Elektrotehnik (m/ž)',company:'Primer d.o.o.',location:'Maribor',deadline:'2026-12-15',url:'https://primer.si/delo/'+id,...extra });
 const duplicateFixture=[
@@ -405,4 +409,43 @@ assert.equal(parseNovaPriloznostJob(novaHtml, novaSitemap[0], Date.parse('2027-0
 assert.equal(parseNovaPriloznostJob(novaHtml.replace('"address":"Maribor"', '"address":{"addressLocality":"Graz","addressCountry":"AT"}'), novaSitemap[0], Date.parse('2026-11-22')), null, 'Nova Priložnost: samo Slovenija');
 assert.throws(() => parseNovaPriloznostJob('<html>brez JSON-LD</html>', novaSitemap[0]), /strukturiranih/, 'Nova Priložnost: zaznamo pokvarjene oglase');
 
-console.log('OK: filtri, straničenje, 18 virov in ZRSZ dnevni JSON');
+const pilotZrszCard = parseZrszPilotCard({
+  title: ' TEHNOLOG V PERUTNINSKI PROIZVODNJI - M/Ž ',
+  companyLocation: ' PANVITA, AGROMERKUR d.o.o. | MURSKA SOBOTA ',
+  metadata: 'Določen čas | 40 ur/teden | 11.11.2026',
+});
+assert.equal(pilotZrszCard.company, 'PANVITA, AGROMERKUR d.o.o.');
+assert.equal(pilotZrszCard.location, 'MURSKA SOBOTA');
+assert.equal(pilotZrszCard.date, '2026-11-11');
+const pilotZrsz = parseZrszPilotDetail(pilotZrszCard, {
+  url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/?idp=3503870/#/pdm/3503870',
+  reference: 'RH54049',
+});
+assert.equal(pilotZrsz.id, 'zrsz:RH54049', 'Pilot ZRSZ ohrani registrsko številko kot ID');
+assert.equal(pilotZrsz.url, zrszDirectUrl('3503870'), 'Pilot ZRSZ vrne URL točno določenega oglasa');
+assert.throws(() => parseZrszPilotDetail(pilotZrszCard, {
+  url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/', reference: 'RH54049',
+}), /neposredna/, 'Pilot mora zavrniti povezavo, ki odpira samo iskalnik');
+assert.throws(() => parseZrszPilotDetail(pilotZrszCard, {
+  url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/?idp=3503870/#/pdm/3503871', reference: 'RH54049',
+}), /neposredna/, 'Dva različna številčna ID-ja nista preverjena neposredna povezava');
+
+const pilotEuresSummary = parseEuresPilotSummary({
+  title: 'TEHNOLOG V PERUTNINSKI PROIZVODNJI - M/Ž',
+  company: 'PANVITA, AGROMERKUR d.o.o.', location: 'Slovenia : Mura',
+  publication: 'Publication date: 18/11/2026',
+  url: 'https://europa.eu/eures/portal/jv-se/jv-details/MzUwMzg3MCAxNA?jvDisplayLanguage=sl',
+});
+const pilotEures = parseEuresPilotDetail(pilotEuresSummary, {
+  title: 'TEHNOLOG V PERUTNINSKI PROIZVODNJI - M/Ž',
+  company: 'PANVITA, AGROMERKUR d.o.o.', reference: 'RH54049', deadline: '26/11/2026',
+});
+assert.equal(pilotEures.date, '2026-11-18');
+assert.equal(pilotEures.deadline, '2026-11-26');
+assert.equal(pilotEures.zrszIdCandidate, '3503870', 'EURES ID je lahko kandidat za neposredni ZRSZ URL');
+assert.ok(!('urlZrsz' in pilotEures), 'Kandidat ni potrjena ZRSZ povezava brez preverjanja na zavodu');
+assert.throws(() => parseEuresPilotSummary({ ...pilotEuresSummary, url: 'https://tuj-portal.example/jobs/1' }), /neznana/, 'EURES: izloči tuje URL-je');
+assert.equal(careerjetProbeStatus('<html><h1>Zahtevano je preverjanje</h1></html>').status, 'blocked',
+  'Careerjetovih zaščit ne zaobidemo');
+
+console.log('OK: filtri, straničenje, 18 virov, ZRSZ JSON in pilotski parserji');
