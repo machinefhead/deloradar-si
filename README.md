@@ -1,69 +1,85 @@
 # DeloRadar 🇸🇮
 
-Pregled prostih delovnih mest iz slovenskih zaposlitvenih portalov: **[odpri aplikacijo](https://machinefhead.github.io/deloradar-si/)**.
+Osebni pregled slovenskih zaposlitvenih oglasov: [odpri DeloRadar na GitHub Pages](https://machinefhead.github.io/deloradar-si/). Podatki se posodobijo po uspešnem zajemu in objavi v GitHub Actions; sam obisk strani ne sproži novih poizvedb na zaposlitvene portale.
 
-## Prva različica
+## Zadnje preverjeno stanje (25. november 2026)
 
-- Viri: **Optius** (12 regionalnih RSS-virov), **Kariera.si**, **GOV.SI** (aktualni javni razpisi), **Atama**, **Trenkwalder** (prva javna stran s približno 30 oglasi), **Agado**, **Adecco** (uradni slovenski sitemap in javni metapodatki JobPosting), **Rekruter** (uradni RSS z nazivi, kraji in datumi), **Nove zaposlitve** (javni sitemap in podstrani dejanskih delovnih mest) ter **Lidl Slovenija** (javni sitemap delovnih mest in strukturirani metapodatki JobPosting). Pri Agadu in Rekruterju izločimo tuje zaposlitve. Pri Adeccu pregledamo do približno 164 povezav in preberemo le manjši začetni del HTML, ne celotnega besedila. Pri Novih zaposlitvah ločimo ponudbe dela od objav kandidatov; pri Lidlu izključimo potekle razpise in uporabimo dejanski kraj. Trenkwalder javno prikazuje še več oglasov, vendar za celoten seznam ne uporabljamo internega API-ja, ki je v njihovem robots.txt izključen. Pri vsakem oglasu je povezava do izvirnega portala.
-- Večizbirni filtri: zaposlitveni portal, regija, kraj, poklicno področje, delodajalec. Izbire se medsebojno prilagajajo: npr. po izbiri Podravske so v seznamu krajev samo kraji, ki ustrezajo ostalim filtrom. Pri vsaki možnosti je število ujemajočih se oglasov, v spustnih seznamih pa deluje besedno iskanje; iskalno polje se po izbiri oziroma zaprtju samodejno izprazni. Gumb »Počisti izbor« zapre meni. Glavni iskalnik ima X za izbris celotnega vnosa. Dodatno: datum objave, rok prijave, status, zaznamki. Nejasni dodatni iskalnik kraja in onemogočeni filter vrste zaposlitve sta odstranjena.
-- Dva izvoza **JSON**: prvi izvozi vse filtrirane zadetke in upošteva združevanje dvojnikov, drugi izvozi vse izvorne oglase trenutnega posnetka ne glede na filtre. Oba vključujeta datum zajema, podatke o virih in osebne oznake/status po trenutnem brskalniku; CSV je odstranjen. **JSON različica 2** ima enotna polja `title`, `company`, `location`, `locations`, `regions`, `source`, `url`, `date` (datum objave), `deadline` (rok prijave), `description`, `employmentType` (obseg/vrsta dela), `contractType` (določen/nedoločen čas), `contractDuration`, `workHours`, `workplaceType`, `workplaceAddress`, `requirements`, `responsibilities`, `education`, `experience`, `skills`, `benefits`, `salary`, `incentives` in `jobCategory`. Neznana dodatna polja so `null`, ne izmišljeni podatki.
-- **Klik na naziv oglasa** odpre podroben prikaz z že zajetim opisom ali povzetkom, nalogami in pogoji, plačo, vrsto pogodbe, delovnim časom, lokacijo, datumi in oznakami. Polja se prikažejo le, kadar so dejansko znana. Pri označenih dvojnikih lahko preklopimo tudi na podatke drugega vira. Izvirna objava ostane dostopna s puščico ↗ v tabeli ali z gumbom v podrobnostih. Prikaz je prilagojen telefonu. Surovi ali HTML-kodirani opisi se najprej pretvorijo v varno besedilo, nato so odstavki in alineje prikazani pregledno; izvornega HTML-ja nikoli ne vstavljamo neposredno v DOM.
-- Prvi val bogatejših podatkov prihaja **brez novih zahtevkov** iz ZRSZ-jevega dnevnega JSON-a, obstoječih strani Adecco, Lidl in Nova Priložnost s shemo `JobPosting` ter seznama javnih razpisov GOV.SI. Opise shranimo kot navadno besedilo z odstavki, ne kot HTML. Drugi viri ostajajo pri metapodatkih, dokler njihovih podrobnosti ne preverimo. `capturedAt` pomeni čas zajema posnetka, ne datuma zaprtja posameznega oglasa; `deadline` pomeni rok prijave, ne potrjen datum umika. Za dejanski `removedAt` bi potrebovali trajno zgodovino med posnetki.
-- Naslednji val bogatejših podatkov zajame javno prikazane podrobnosti **MojeDelo.com** (`/job-ads/{id}`, javni klic njihovega spletnega odjemalca) in **Zaposlitev.info** (`JobPosting` v HTML-ju posameznega razpisa). Vsak zajem obdela največ **280 oglasov MojeDelo** in **100 oglasov Zaposlitev.info**, brez posameznih obiskov v uporabnikovem brskalniku. Pretekle podrobnosti iz prejšnjega javnega `jobs.json` ponovno uporabi, če ID, izvor in naziv ostanejo nespremenjeni; po 14 dneh jih poskusi osvežiti, po 30 dneh pa starih podrobnosti ne uporablja več. Zato se po začetni objavi delež opisov postopoma povečuje, ne da bi pri vsakem osveževanju ponovno zajeli več tisoč strani. Zajem dodatnih podatkov je dopolnilen: ob napaki ne odstrani oglasa iz osnovnega seznama. Število zahtevkov je mogoče omejiti z `DETAIL_MOJEDELO_LIMIT` in `DETAIL_ZAPOSLITEV_LIMIT` (0–500); osebnih polj kontaktov ne prepisuje.
-- Enak postopni zajem velja tudi za **Kariera.si** (javno objavljeni uvod, naloge, pogoji in ugodnosti; največ **75** novih pregledov na zajem) in **Optius** (javni opis, pričakovanja in ponudba; največ **100** pregledov na zajem). Podrobnosti se dopolnjujejo med 12-urnimi zagoni in se z veljavnim datumom preverjanja ohranijo iz predhodnega posnetka. Nastavitvi `DETAIL_KARIERA_LIMIT` in `DETAIL_OPTIUS_LIMIT` omogočata omejitev od 0 do 500; ob napaki posamezne podstrani osnovni oglas ostane v seznamu.
-- **Opozorilo o javnosti:** celotni podatkovni posnetek `jobs.json` gostuje na javnem GitHub Pages. Tudi bogatejši opisi, ko so vključeni, so javno dostopni; pred množičnim shranjevanjem opisov drugih portalov je treba uskladiti pravico do ponovne objave ali prestaviti vsebinsko zbirko v zasebno hrambo.
-- Filtri in osebne oznake so shranjeni **v trenutnem brskalniku** (`localStorage`); telefon in računalnik za zdaj **nista sinhronizirana**.
-- GitHub Actions predvidoma **vsakih 12 ur** (05:17 in 17:17 UTC) pridobi oglase in objavi statično stran; urnik je lahko ob obremenitvah GitHuba zamaknjen. Stran se ob obisku poveže z zadnjim objavljenim `jobs.json`. Gumb **»Osveži«** odpre GitHub Actions, kjer prijavljen lastnik izbere **Run workflow**. Sam klik na gumb na javni strani torej **ne zažene novega zajema**. Po uspešnem zajemu/objavi osveži spletno stran. Pod gumbom je datum zadnjega zajema. Sprotno osveževanje neposredno ob kliku bi potrebovalo dodatni strežniški API.
-- Nevtralna temna tema in mobilna zložljiva razdelka »Filtri« ter »Stanje povezav in viri«.
-- Dodatni povezani viri: **Kolektor** (uradni seznam delovnih mest z lokacijami in roki), **MojeDelo.com** (straničeni javni podatkovni vmesnik, slovenska prosta mesta) in **Zaposlitev.info** (vse strani javnega seznama). Skupno je podprtih **13 virov**. Povezave MojeDelo odprejo **neposredno stran posameznega oglasa** (`/oglas/naziv/UUID`), ne več seznama rezultatov. **SPAR Slovenija** in **Slovenske železnice** sta iz GitHubovega strežnika vrnila **HTTP 403**, zato ju ne zajemamo samodejno.
-- Novi povezani viri: **Mercator** (uradni javni seznam, pri razpisih za več krajev se upošteva več regij) in **IščiDelo** (javni seznam s straničenjem, brez branja njihovih izključenih poti `/api/`). S tem je bilo podprtih **15 virov**. Pri obeh shranimo le naslov, delodajalca, navedeno lokacijo, razpoložljive roke in povezavo do izvirnega oglasa; posameznih opisov ne kopiramo. Stanje preverja tudi GitHub Actions pred objavo.
-- **ZRSZ / PoiščiDelo** je bil preizkušen kot 16. vir: 22. 11. 2026 je brskalniški prenos vrnil 3.554 oglasov. Od 25. 11. je **izključen iz rednega GitHub Actions zajema**, vključno z dodatnim odpiranjem 60 oglasov. Parser dnevnega JSON-a in raziskovalna koda ostajata za poznejšo odločitev o neposrednem programskem uvozu.
-- **dm Slovenija** in **Nova Priložnost** sta naslednja povezana vira (skupaj **18 virov**). dm: javni HTML s podatki trenutnih razpisov; izločimo splošne samoiniciativne prijave in potekle roke. Nova Priložnost: javni `job_listing-sitemap.xml` in sheme JobPosting na izvirnih straneh; preverimo veljaven rok in pripadnost Sloveniji. Če se dm seznam razdeli na dodatne strani, zajem namerno javi napako, dokler ni implementirano popolno straničenje.
-- Pod stanjem povezav je kratek povzetek aktivnih virov (po izklopu ZRSZ največ 17), **vsi posamezni aktivni viri in njihove številke so vedno vidni**, tudi na telefonu. Pojasnilo pravi »Oglasi se posodabljajo približno vsakih 12 ur.«. Na dnu strani sta **vedno prikazani povezavi Careerjet in EURES (Slovenija)** z opisoma trenutnega dostopa. Odstranjeni so gumb za razkrivanje posameznih virov, zgornji »Viri podatkov«, gumb »Prikaži Careerjet in EURES« in mobilni gumb za skrivanje stanja povezav. Pod straničenjem ostaja usklajen razmik do zaključka strani.
-- **Nepovezani so ZRSZ, Careerjet in EURES (Slovenija)**; na dnu spletne strani sta trenutno izpostavljena Careerjet in EURES, ZRSZ pa ostane v podatkovnem načrtu do dogovora o uvozu. EURES vodi neposredno do rezultatov za Slovenijo (`locationCodes=si`); množični API-izvoz je vezan na partnerski dostop. SPAR in Slovenske železnice še vedno vračajo `HTTP 403` iz GitHub Actions (ponovni preizkus 22. 11. 2026), njihovi oglasi pa že prihajajo prek povezanih portalov. Prohuman ima v preverjenem posnetku 22. 11. 2026 že 28 oglasov prek MojeDelo, zato ni samostojen vir v načrtu.
-- **Pokritost in podvojitve:** SURS je za 3. četrtletje 2026 poročal o približno 19.600 prostih delovnih mestih (https://www.stat.si/StatWeb/sl/News/Index/14719). Tega števila ni mogoče neposredno primerjati z oglasi DeloRadarja: statistika meri prosta delovna mesta v četrtletju, en oglas lahko išče več ljudi, en razpis pa je lahko objavljen večkrat. V posnetku z 8.072 izvornimi zapisi smo prepoznali 28 zelo verjetnih parov med MojeDelo.com in Zaposlitev.info. Zajem **ne briše ali prepisuje nobenega izvornega oglasa**. Za par je potreben enak normaliziran naziv, podjetje in kraj, dva različna vira ter datuma objave največ 14 dni narazen; če sta znana oba prijavna roka, se morata ujemati. Nezdruženi ostanejo primeri z manjkajočimi podatki, več kot dvema podobnima objavama ali ZRSZ brez neposrednega URL-ja. To je previdna ocena, ne dokaz istovetnosti: razpisi z enakimi podatki lahko pomenijo različna prosta mesta.
-- **Prikaz dvojnikov:** Privzeto je vključen izbirnik »Združi verjetne dvojnike«, ki za označeni par prikaže eno vrstico in pod njo **povezavo do drugega izvornega portala**. Izbirnik je mogoče izklopiti in ponovno videti vsako objavo posebej; nastavitev se shrani v brskalnik. Statusi in zaznamki ostanejo shranjeni po izvornih ID-jih, pri združevanju se prikaže skupni status, sprememba oznake pa se zapiše za oba člana para. Filtri in štetja možnosti upoštevajo izbrani prikaz, filtra posameznega portala pa še vedno ločita izvorne objave. Filtrirani JSON vključuje alternativne povezave združenih oglasov, celotni JSON pa vsak izvorni zapis posebej. Števec »Zajeti oglasi« ves čas kaže število **vseh izvornih zapisov**, zato je lahko večji od števila prikazanih razpisov.
-- Optius omogoča oznake regij iz regionalnih RSS-virov, tudi ko ni navedenega natančnega kraja; posamezen oglas se lahko pojavi v več regijah, vendar je v skupni tabeli samo enkrat. Pri drugih virih se regije in področja ocenjujejo iz navedenega kraja/naziva; nepopolnih podatkov ne ugibamo.
-- Tabela je razdeljena na strani, privzeto po **50** oglasov (izbira **10, 25, 50 ali 100** se shrani v brskalnik). Na voljo so na sredini poravnane številke strani ter gumba **prejšnja/naslednja** brez dodatnih skokov na začetek/konec; izbira števila oglasov je na desni, na telefonu pa pod številkami. Ob spremembi filtrov se prikaz vrne na prvo stran. Pri pomiku navzdol se desno spodaj prikaže gumb za vrnitev na vrh. Izvoz filtriranega JSON-a zajame **vse** filtrirane zadetke, ne samo trenutne strani. Oglasi lahko že potečejo med dvema zajemoma, zato preveri izvirnik.
+- Preverjen lokalni HTTP-zajem: **8.868 oglasov iz 19 virov** z vključenim EURES. Osnovnih 18 virov je prej pripravilo 8.841 oglasov v 41 sekundah; celoten prvi EURES-ov zajem porabi približno dve dodatni minuti. Naslednji 12-urni zagon lahko uporabi svež EURES-ov predpomnilnik.
+- **ZRSZ: 4.152 aktualnih oglasov**, vsi z opisom del in nalog iz uradnega dnevnega JSON-a. Pri **3.899 oglasih** je referenca preverjena s številčnim `idp` prek uradnega HTTP-odgovora za posamezen oglas; povezava vodi neposredno na isti oglas. Preostalih **253** ohranja iskalno povezavo, saj številčni `idp` še ni zanesljivo preverjen. Ne ugibamo ga.
+- **Adecco: 161 oglasov** v zadnjem zajemu; 143 veljavnih zapisov iz predpomnilnika in 18 novo preverjenih. Del osvežitev poteka postopoma, da ponavljajoči zajem ne pošilja vseh zahtevkov znova.
+- **EURES: 25 dodatnih oglasov**, od tega 2 z navedenim krajem in 23 z državo Slovenijo, vendar brez potrjenega kraja. Vseh 25 vsebuje opis, pri 13 je objavljen tudi rok prijave. EURES je vključen v urnik; Careerjet ostaja v načrtu.
+- `dist/` vsebuje le `index.html` in `jobs.json`; zgodovinskih predogledov ZRSZ ne pakiramo več za objavo.
 
-## Zagon in preverjanje
+## Načelo pridobivanja podatkov
 
-Potrebujete **Node.js 22+**. Odvisnosti namestite iz zaklenjenega seznama:
+**Podatke uvažamo programsko, prek HTTP in strukturiranih virov.** Zbiralnik ne uporablja brskalnika za odpiranje posameznih zaposlitvenih oglasov. Uporabljeni so JSON, XML, RSS, javni seznami, strukturirani podatki `JobPosting` ter omejeni neposredni HTTP-odgovori. Za vsebino, ki je vir ne objavi, ne izmišljamo vrednosti.
+
+ZRSZ (`source/zrsz-official-http.js`):
+
+1. Iz javnega aplikacijskega skripta programsko odkrijemo aplikacijski `user_key`. Ta ostane samo v pomnilniku, ne v kodi, dnevnikih ali izvoženem JSON-u.
+2. Preberemo uradni dnevni `ProstaDelovnaMesta.json`, ki vsebuje tudi vsebino oglasov.
+3. Preberemo straničeni uradni seznam oglasov, iz katerega dobimo kandidate za numerični `idp`.
+4. Za dejansko povezavo združimo referenco in `idp` šele po preverjanju registrske številke z neposrednim HTTP-odgovorom za podrobnosti. Preverjeno preslikavo hranimo v `data/zrsz-idp-verified.json`.
+5. Pri spremembi identifikatorja ali dvoumnem ujemanju pustimo iskalno povezavo, namesto da bi prikazali napačen oglas.
+
+Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `ZRSZ_JSON_URL` je podprt kot rezervna možnost. V uporabi ni nobenega zagona Chroma ali Playwrighta za ZRSZ.
+
+## Povezani viri
+
+| Vir | Programski način zajema |
+| --- | --- |
+| ZRSZ / PoiščiDelo | Uradni dnevni JSON, iskalnik in preverjanje ID-jev prek HTTP |
+| Optius | 12 regionalnih RSS-virov; omejen dodatni HTTP opis |
+| Kariera.si | Javni seznam in postopno dopolnjevanje opisa |
+| GOV.SI | Straničeni javni razpisi |
+| Atama, Trenkwalder, Agado | Javno dostopni seznami |
+| Adecco | XML sitemap, HTTP Range za strukturirane podrobnosti, inkrementalni zajem |
+| Rekruter | Uradni RSS |
+| Nove zaposlitve, Lidl | XML sitemap in `JobPosting` |
+| Kolektor | Uradni seznam delovnih mest |
+| MojeDelo.com | Straničeni JSON in HTTP podrobnosti oglasa |
+| Zaposlitev.info | Straničenje in strukturirani `JobPosting` |
+| Mercator, IščiDelo | Javni seznami s straničenjem, kjer je na voljo |
+| dm Slovenija, Nova Priložnost | Javni HTML oziroma sitemap in `JobPosting` |
+
+Vsi viri so preverjani ločeno. Če vir trenutno odpove, je označen z napako; en neuspešen vir ne izbriše oglasov drugih portalov. EURES je dodatni HTTP-uvoz z ločevanjem oglasov ZRSZ, preverjanjem lokacij in roka prijave. `EURES_HTTP_ENABLED=1` ga vključi v zbiralnik. Ker polni EURES-ov seznam zahteva več zahtevkov, si dva zaporedna 12-urna zagona lahko delita največ 20 ur star uspešen rezultat; potekle oglase izločimo. Careerjet trenutno ni v zbiralniku.
+
+## Podatki in prikaz
+
+- Filtri: vir, regija, kraj, področje, delodajalec, čas, status in zaznamki; deluje združevanje verjetnih dvojnikov brez izgube izvornih zapisov.
+- Klik na naziv odpre podrobnosti z opisom, nalogami, pogoji, vrsto zaposlitve, roki in drugimi razpoložljivimi podatki. Izvorni HTML pretvorimo v varno besedilo.
+- Dva JSON-izvoza neposredno na strani: filtrirani prikaz in vsi izvorni oglasi. Datoteka se ustvari in prenese **samo ob kliku ustreznega gumba**; neznana polja ostanejo neznana.
+- Osebne oznake ter filtri se za zdaj hranijo samo v lokalnem pomnilniku brskalnika (`localStorage`). Ne sinhronizirajo se med napravami.
+- ZRSZ-jeva upravna enota ni nujno natančen kraj dela, zato jo označimo kot `UE ...`. Ne ustvarjamo izmišljenih občin ali delovnih naslovov.
+
+Običajni dopolnilni opis se brez nepotrebnih ponovitev prevzame iz prejšnjega veljavnega posnetka. Po 14 dneh ga poskusimo osvežiti, po 30 dneh pa zastarelega opisa ne uporabimo. Število zahtevkov na zajem je omejljivo z `DETAIL_OPTIUS_LIMIT`, `DETAIL_KARIERA_LIMIT`, `DETAIL_MOJEDELO_LIMIT` in `DETAIL_ZAPOSLITEV_LIMIT` (0–500). V GitHubovem urniku uporabljamo nižje dnevne omejitve za predvidljivo porabo izvajalnika.
+
+## Lokalni zagon
+
+Potrebujete Node.js 22 ali novejši.
 
 ```bash
 npm ci
 npm test
-npm run build
+ZRSZ_OFFICIAL_HTTP_ENABLED=1 npm run build
 ```
 
-Generirana statična stran je v `dist/` (`index.html`, `jobs.json`). Za lokalni test brez internetnega zajema je na voljo `node scripts/build-site.mjs --fixture POT/DO/PODATKOV.json`.
+Rezultat je `dist/index.html` in `dist/jobs.json`. Brez novega internetnega zajema je mogoče iz že ustvarjene datoteke zgraditi stran:
 
-## Objavljanje
+```bash
+node scripts/build-site.mjs --fixture dist/jobs.json
+```
 
-GitHub Pages uporablja **GitHub Actions** (`.github/workflows/pages.yml`): ob spremembi `main`, ročno in po urniku. Če vsi viri odpovedo oziroma vrnejo nič oglasov, sestavljanje odpove in prejšnja uspešna objava ostane na spletu.
+Ročni pilot, ki ne objavlja ničesar in uporablja izključno HTTP:
 
-### ZRSZ – preizkušeni dnevni JSON (trenutno izključen)
+```bash
+npm run probe:portals -- --sources=zrsz --limit=3
+```
 
-Preverili smo dva javna prenosa `seznamDelovnihMest.json`, ki ju je 22. 11. 2026 prenesel uporabnik brez prijave. Prvi je imel časovno oznako 21. 11. 2026 in 3.772 objav, drugi oznako 22. 11. 2026 in 3.554 objav; 218 razpisom je vmes potekel rok. Priključek v `source/zrsz.js` je preizkušen na dejanskih datotekah. Izloči pretečene, podvojene in nepopolne zapise, ohrani naslov, naziv delodajalca, upravno enoto, datuma in uradno referenco ter razpoložljiv opis del in nalog oziroma druga jasno poimenovana vsebinska polja. Ne kopira podatkov o kontaktnih osebah.
+Podobno sta na voljo `--sources=eures` in `--sources=careerjet`. Ločeni `.github/workflows/portal-pilot.yml` je ročen preizkus ZRSZ HTTP brez objave; nima urnika.
 
-Pomembno: JSON ne vsebuje **neposrednih URL-jev posameznih oglasov** ali točnih krajev dela. Izbranih do 60 neposrednih URL-jev pridobimo iz javnega seznama. Ujemajoče se reference dopolnimo, ostale preverjene javne oglase dodamo kot začasno svežejši del posnetka. Pri vnosih iz JSON-a upravno enoto izrecno označimo kot `UE ...`, nikoli kot točen kraj dela. Neizboljšani vnosi obdržijo iskalni URL.
+## GitHub Actions in objava
 
-Javni gumb `.json` datoteko prenese prek ZRSZ-jevega javnega iskalnika. Ta brskalniški postopek je bil uspešno preverjen, a **ni več v produkcijskem ali PR workflowu**. Ohranjen je le za posebej sprožen raziskovalni preizkus. Za ločen uradno odobren URL ostaja podpora `ZRSZ_JSON_URL`, vendar ga workflow ne posreduje več zbiralniku. Skrivnosti ne shranjujemo v kodo ali javni JSON.
+`.github/workflows/pages.yml` je pripravljen za periodični zajem ob 05:17 in 17:17 UTC ter objavo statične strani. Na vsakem zagonu uporablja neposredni ZRSZ HTTP in omejene dopolnilne zahtevke. GitHub Actions se **ne izvajajo** zaradi lokalnih sprememb. Dokler sprememb ne preverimo in namerno potisnemo na `main`, se obstoječa spletna različica ne spremeni.
 
-Pred izklopom je `ZRSZ_DIRECT_LINK_LIMIT=60` omogočal dodatno preverjanje prvih 60 kartic. Zdaj **redna izdelava strani in PR testi ne prenašajo JSON-a prek brskalnika, ne odpirajo ZRSZ kartic in ne zahtevajo `ZRSZ_LINKS_REQUIRED`**. Prejšnji pilot s 60 oglasi je trajal približno 110 sekund; funkcionalnost ostane le kot zgodovinski preizkus.
-
-### Pilot branja posameznih oglasov (ločeno od produkcije)
-
-`npm run probe:portals -- --limit=3` izvede tri ročno sprožene preizkuse na vir. Za posamezen vir uporabi `--sources=zrsz`, `--sources=eures` ali `--sources=careerjet`. Samo za ZRSZ je na voljo razširjeni preizkus `--sources=zrsz --limit=60` (zgornja meja 100), ki po potrebi naloži dodatne javne sezname, podrobnosti odpira in zapira brez ponovnega nalaganja strani ter meri hitrost. ZRSZ in EURES uporabljata običajni brskalnik Chrome (Playwright), ki prek javnega uporabniškega prikaza odpre posamezne oglase. Chrome teče na GitHub Actions runnerju; uporabnikov osebni brskalnik ni potreben. `DELORADAR_CHROME_PATH` je rezervna možnost za ločen lokalni razvojni test.
-
-- **ZRSZ:** prebere vidne kartice, po potrebi uporabi javni gumb za več oglasov, odpre do 60 posameznih oglasov in potrdi povezave `?idp=.../#/pdm/...` ter registrske oznake. Ponovno uporablja seznam in vmes vstavi kratek premor.
-- **EURES:** samo za ročni pilot prebere nekaj javnih oglasov za Slovenijo in preveri možne povezave z ZRSZ *na samem ZRSZ*. Številčni ID, izluščen iz EURES povezave, je zgolj kandidat, dokler se ne ujema tudi registrska oznaka. Ne uporablja notranjih API-jev. Morebitna širša avtomatizacija EURES zahteva urejene pravice do avtomatiziranega zajema.
-- **Careerjet:** če vrne interaktivno preverjanje, izpiše `blocked` in se ustavi; preverjanja ne rešuje samodejno.
-
-Ločeni pilot izpiše samo osnovne metapodatke in diagnostiko; **sam ne spreminja `jobs.json` ali objave GitHub Pages**. Z rednim dopolnjevanjem povezav si deli preverjeni parser v `source/zrsz-links.js`. Ne pridobiva celotnih opisov, kontaktnih podatkov ali uporabniških podatkov.
-
-GitHub Pull Request #13 je 22. 11. 2026 dokazal brskalniški prenos ZRSZ. Od 25. 11. redna objava **ni več odvisna od dosegljivosti ZRSZ**; tudi ločeni pilotski workflow se samodejno ne izvaja ob PR, ampak ga je mogoče zagnati le ročno.
-
-Razširitve z novimi viri, bolj zanesljivimi regijami in morebitnim zasebnim računom za uporabnika in partnerko bomo razvijali postopoma. **GitHub Pages je za zdaj javen**; prijava še ni vgrajena. V prvi različici **ni** oblačne podatkovne baze in **ni** avtomatskega pošiljanja prijav.
-
-Lastnik projekta je potrdil ustno soglasje ZRSZ, MojeDelo.com, Careerjet in Zaposlitev.info za nekomercialno zbiranje metapodatkov oglasov; soglasja nismo neodvisno preverjali. Zajem poteka samo z javno dostopnih strani oziroma neavtenticiranega vmesnika. **Careerjet** pri avtomatiziranem dostopu zahteva preverjanje obiskovalca, česar ne obhajamo; čakamo dogovorjen API/XML. EURES in Manpower brez ustreznega partnerstva/dovoljenja ostajata nepovezana. Deloglasnik je marca 2025 prenehal z delovanjem v Sloveniji, zato ni več uporaben vir.
+GitHub Pages in objavljeni `jobs.json` sta tehnično javna; pred morebitno nadaljnjo objavo je treba preveriti obseg prikazanih vsebin in želeni način zasebnega dostopa. DeloRadar ne pošilja prijav na delovna mesta in ne zbira osebnih podatkov prijaviteljev.

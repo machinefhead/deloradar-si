@@ -20,6 +20,8 @@ jobs:
       - name: Preveri JavaScript in parserje
         run: npm test
       - name: Preveri dejanski zajem tudi na GitHubu
+        env:
+          ZRSZ_OFFICIAL_HTTP_ENABLED: '1'
         run: npm run build
       - name: Preveri podrobnosti oglasov v brskalniku in na telefonu
         run: node scripts/test-browser.mjs

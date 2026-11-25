@@ -24,12 +24,41 @@ try {
     ...(process.env.DELORADAR_CHROME_PATH ? { executablePath: process.env.DELORADAR_CHROME_PATH } : { channel: 'chrome' }),
     headless: true, args: ['--no-sandbox'],
   });
+  const snapshot = JSON.parse(await readFile(new URL('../dist/jobs.json', import.meta.url)));
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     const page = await browser.newPage({ viewport, locale: 'sl-SI' });
     const errors = [];
+    const downloads = [];
     page.on('pageerror', error => errors.push(error.message));
+    page.on('download', download => downloads.push(download));
     await page.goto('http://127.0.0.1:' + server.address().port, { waitUntil: 'domcontentloaded' });
     await page.locator('button.jobtitle').first().waitFor({ timeout: 20000 });
+    assert.equal(downloads.length, 0, 'JSON se ne sme prenesti samodejno ob odprtju strani');
+    if (viewport.width === 1440) {
+      const target = snapshot.jobs.find(job => job.source === 'EURES' && /Chauffeur_in/.test(job.title)) || snapshot.jobs[0];
+      await page.locator('#search').fill(target.title);
+      await page.locator('button.jobtitle').first().waitFor({ timeout: 10000 });
+      const [filteredDownload] = await Promise.all([
+        page.waitForEvent('download'), page.locator('#exportFiltered').click(),
+      ]);
+      const filtered = JSON.parse(await readFile(await filteredDownload.path(), 'utf8'));
+      assert.match(filteredDownload.suggestedFilename(), /^deloradar-filtrirani-\d{4}-\d{2}-\d{2}\.json$/);
+      assert.equal(filtered.scope, 'filtered');
+      assert.ok(filtered.jobs.some(job => job.id === target.id), 'Filtrirani JSON mora vsebovati poiskan oglas');
+      assert.ok(filtered.total <= snapshot.jobs.length, 'Filtrirani JSON mora upoštevati izbor na strani');
+      await page.locator('#search').fill('');
+      const [allDownload] = await Promise.all([
+        page.waitForEvent('download'), page.locator('#exportAll').click(),
+      ]);
+      const exported = JSON.parse(await readFile(await allDownload.path(), 'utf8'));
+      assert.match(allDownload.suggestedFilename(), /^deloradar-vsi-oglasi-\d{4}-\d{2}-\d{2}\.json$/);
+      assert.equal(exported.scope, 'all');
+      assert.equal(exported.total, snapshot.jobs.length, 'Celoten JSON mora vsebovati vse oglase');
+      if (snapshot.jobs.some(job => job.source === 'EURES')) {
+        assert.equal(exported.jobs.filter(job => job.source === 'EURES').length,
+          snapshot.jobs.filter(job => job.source === 'EURES').length, 'Izvoz mora vključiti tudi EURES');
+      }
+    }
     await page.locator('button.jobtitle').first().click();
     await page.locator('#jobDialog[open]').waitFor({ timeout: 5000 });
     const content = await page.locator('#jobDetailBody').innerText();
@@ -43,7 +72,7 @@ try {
     assert.deepEqual(errors, [], 'Brskalniška skripta ne sme povzročiti napake');
     await page.close();
   }
-  console.log('OK: podrobnosti delujejo na računalniku in mobilni širini');
+  console.log('OK: prikaz na računalniku in telefonu ter oba JSON izvoza izključno ob kliku');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));

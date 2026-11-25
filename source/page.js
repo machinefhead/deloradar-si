@@ -163,7 +163,7 @@ export const page = String.raw`<!doctype html>
     <button class="backtotop" id="backToTop" type="button" aria-label="Na vrh strani" title="Na vrh strani" hidden>↑</button>
     <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="exportFiltered" type="button" title="Prenesi vse zadetke trenutnih filtrov in izbranega združevanja dvojnikov">↓ Izvozi filtrirane (JSON)</button><button class="outline" id="exportAll" type="button" title="Prenesi vse izvorne oglase iz trenutnega posnetka, ne glede na filtre">↓ Izvozi vse (JSON)</button></div></div><p class="exporthint">Klikni naziv oglasa za podrobnosti; puščica ↗ odpre izvirni portal. Filtrirani JSON upošteva filtre in združevanje dvojnikov (vse strani zadetkov). Celoten JSON vsebuje vse izvorne oglase, tudi podvojene objave. Oba ohranita tvoje oznake in statuse.</p><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Klikni naziv za podrobnosti ali ↗ za izvorno objavo.</div></div></main></div>
     <dialog id="jobDialog" class="jobdialog" aria-labelledby="detailTitle"><button id="closeJobDialog" class="detailclose" type="button" aria-label="Zapri podrobnosti">×</button><div id="jobDetailBody"></div></dialog>
-    <section id="viri" class="sourcecatalog"><h2>Še nepovezani viri</h2><p>Za ta iskalnika še nimamo samodejnega izvoza. Povezavi odpreta izvirno iskanje, kjer lahko oglase preveriš ročno.</p><div class="sourcegrid" id="planned"><div class="sourcecard"><a href="https://www.careerjet.si/" target="_blank" rel="noopener noreferrer">Careerjet ↗</a><p>Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.</p></div><div class="sourcecard"><a href="https://europa.eu/eures/portal/jv-se/search?page=1&amp;resultsPerPage=10&amp;orderBy=BEST_MATCH&amp;locationCodes=si&amp;previousPageType=findJob&amp;lang=sl" target="_blank" rel="noopener noreferrer">EURES (Slovenija) ↗</a><p>Iskanje je omejeno na Slovenijo. Za množični izvoz potrebujemo ustrezen partnerski dostop; nekateri oglasi se prekrivajo z ZRSZ.</p></div></div></section>
+    <section id="viri" class="sourcecatalog"><h2>Še nepovezani viri</h2><p>Spodaj so portali, ki še nimajo preverjenega samodejnega uvoza. Povezave odprejo izvorno iskanje.</p><div class="sourcegrid" id="planned"><div class="sourcecard"><a href="https://www.careerjet.si/" target="_blank" rel="noopener noreferrer">Careerjet ↗</a><p>Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.</p></div></div></section>
     <footer class="bottom"><span>© DeloRadar · Osebni pregled prostih delovnih mest</span><span>Podatki so informativni · Veljavnost in pogoje preveri na izvornem portalu</span></footer>
   </div>
   <script>
@@ -548,13 +548,18 @@ export const page = String.raw`<!doctype html>
         ]);
         var whereAndWhen=detailSection('Kje, kdaj in pri kom',[
           ['Kraj dela',j.location],['Dodatne lokacije',j.locations&&j.locations.length?j.locations.join(', '):''],
+          ['Natančnost lokacije',j.source==='EURES'&&j.locationConfidence==='country-only'?'EURES navaja Slovenijo, vendar ne določi kraja dela.':'' ],
           ['Regije',Array.isArray(j.regions)?j.regions.join(', '):''],
           ['Naslov dela',j.workplaceAddress],['Datum objave',detailDate(j.date)],
           ['Rok za prijavo',detailDate(j.deadline)],['Opis preverjen',detailDate(j.detailsFetchedAt)],
           ['Oznaka razpisa',j.reference],['ID oglasa',j.id]
         ]);
-        var zrszSearch=j.source==='ZRSZ / PoiščiDelo'&&j.reference&&String(j.url||'').indexOf('?idp=')<0;
+        var zrszSearch=j.source==='ZRSZ / PoiščiDelo'&&j.reference&&String(j.url||'').startsWith('https://www.ess.gov.si/')&&String(j.url||'').indexOf('?idp=')<0;
         var url=String(j.url||'');var external=/^https:\/\/[^\s<>"']+$/i.test(url)?'<a class="detailprimary" href="'+safe(url)+'" target="_blank" rel="noopener noreferrer">'+(zrszSearch?'Poišči razpis na ZRSZ':'Odpri izvorni oglas')+' ↗</a>':'';
+        var euresCandidate=String(j.euresDetailUrlCandidate||'');
+        if(/^https:\/\/europa\.eu\/eures\/portal\/jv-se\/jv-details\/[A-Za-z0-9_-]+\?lang=sl$/.test(euresCandidate)){
+          external+=' <a href="'+safe(euresCandidate)+'" target="_blank" rel="noopener noreferrer" title="EURES hrani povezano objavo, vendar njen rok prijave morda ni več aktualen">Povezana objava EURES (preveri rok) ↗</a>';
+        }
         var variations=members.length>1?'<div class="detailother"><span class="detailhint">Isti razpis je objavljen tudi drugje. Podrobnosti po virih:</span>'+members.map(function(other){
           return '<button type="button" data-detail-source="'+safe(other.id)+'" aria-pressed="'+(other.id===j.id?'true':'false')+'">'+safe(other.source)+'</button>';
         }).join('')+'</div>':'';

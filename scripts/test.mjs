@@ -1,8 +1,31 @@
 import assert from 'node:assert/strict';
 import { Script, runInNewContext } from 'node:vm';
 import { readFileSync } from 'node:fs';
+for (const file of ['../source/zrsz.js', '../source/zrsz-links.js', './probe-public-portals.mjs']) {
+  const source = readFileSync(new URL(file, import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /playwright-core|chromium\.launch|\.goto\(|dispatchEvent\('click'/,
+    `${file}: zajem oglasov ne sme več odpirati brskalnika ali klikati kartic`);
+}
 import { page } from '../source/page.js';
+import { planAdeccoIncremental } from '../source/collector.js';
 import { markLikelyDuplicates } from '../source/duplicates.js';
+const adeccoNow = Date.parse('2026-11-25T12:00:00Z');
+const adeccoListings = Array.from({ length: 140 }, (_, i) => ({
+  id: `adecco:jn-112026-${String(i).padStart(7, '0')}`,
+  url: `https://www.adecco.com/sl-si/prosta-delovna-mesta/oglas/jn-112026-${String(i).padStart(7, '0')}`,
+}));
+const adeccoPrevious = adeccoListings.map(listing => ({ ...listing, source: 'Adecco', title: 'Oglas', deadline: '2026-12-20' }));
+const adeccoPlan = planAdeccoIncremental(adeccoListings, adeccoPrevious, adeccoNow);
+assert.equal(adeccoPlan.cached.size, 140, 'Adecco: aktualne oglase preberemo iz predpomnilnika');
+assert.ok(adeccoPlan.requests.length > 0 && adeccoPlan.requests.length < 30,
+  'Adecco: dnevno osvežimo le del trenutno veljavnih oglasov');
+const adeccoChanged = planAdeccoIncremental(adeccoListings.slice(0, 1),
+  [{ ...adeccoPrevious[0], url: 'https://www.adecco.com/sl-si/prosta-delovna-mesta/drug-oglas/jn-112026-0000000' }], adeccoNow);
+assert.equal(adeccoChanged.cached.size, 0, 'Adecco: starih spremenjenih povezav ne uporabimo');
+assert.equal(adeccoChanged.requests.length, 1, 'Adecco: nov URL je treba preveriti s HTTP');
+const adeccoExpired = planAdeccoIncremental(adeccoListings.slice(0, 1),
+  [{ ...adeccoPrevious[0], deadline: '2026-11-24' }], adeccoNow);
+assert.equal(adeccoExpired.cached.size, 0, 'Adecco: potečen oglas ni varno ponovno uporabiti');
 import { mergeZrszDirectLinks, supplementZrszPublicDetails } from '../source/zrsz-links.js';
 import { planZrszDetails } from '../source/zrsz-incremental.js';
 import {
@@ -90,12 +113,12 @@ assert.match(page, /id="sourceSummary"/, 'Povzetek dosegljivosti virov mora biti
 assert.match(page, /<div class="sourceslist" id="sourceStatus">/, 'Statusi vseh posameznih virov morajo biti vedno vidni');
 assert.doesNotMatch(page, /<details class="sourcedetails"|id="sourceDetails"/, 'Seznam stanja povezav ne potrebuje razširljivega menija');
 assert.match(page, /\.sidebar>\.panel:nth-of-type\(2\)\{display:block\}/, 'Stanje povezav mora ostati vidno tudi na telefonu');
-assert.match(page, /\.sourcecatalog\{display:block\}/, 'Careerjet in EURES morata biti prikazana na dnu brez klika');
+assert.match(page, /\.sourcecatalog\{display:block\}/, 'Nepovezani viri morajo biti prikazani brez klika');
 assert.match(page, /id="planned"><div class="sourcecard"><a href="https:\/\/www\.careerjet\.si\//, 'Careerjet mora ostati dosegljiv tudi, če zajem podatkov ne uspe');
-assert.match(page, /locationCodes=si&amp;previousPageType=findJob&amp;lang=sl/, 'EURES mora imeti stalno povezavo na iskanje po Sloveniji');
+assert.doesNotMatch(page, /Za ta iskalnika še nimamo samodejnega izvoza/, 'Ko EURES priključimo, ne sme ostati zastarelo navodilo');
 assert.doesNotMatch(page, /id="showCatalog"|id="topSources"|function showSources\(/, 'Odvečna gumba za prikaz istih povezav morata biti odstranjena');
 assert.doesNotMatch(page, /sourcesToggle|sidebar\.sources-open/, 'Tudi mobilni seznam virov ostaja odprt');
-assert.match(script, /planned\.filter\(function\(s\)\{return s\.name==='Careerjet'\|\|s\.name==='EURES \(Slovenija\)'\}\)/, 'Na dnu sta samo dva nepovezana iskalnika');
+assert.match(script, /planned\.filter\(function\(s\)\{return s\.name==='Careerjet'\|\|s\.name==='EURES \(Slovenija\)'\}\)/, 'Na dnu prikažemo le še dejansko nepovezane iskalnike');
 assert.match(script, /sources\.slice\(\)\.sort\(function\(a,b\)\{return b\.count-a\.count/, 'Seznam virov naj bo razvrščen po količini oglasov');
 assert.doesNotMatch(page, /Več oglasov na velikih portalih/, 'Povezana portala se ne smeta prikazovati kot nepovezana');
 assert.doesNotMatch(page, /class="quicklinks"/, 'Podvojene hitre povezave niso več potrebne');
@@ -120,6 +143,33 @@ const extract = (start, end) => {
   assert.ok(a >= 0 && b > a, `Manjka odsek ${start}`);
   return script.slice(a, b);
 };
+const sourceElements = new Map(['sourceStatus', 'sourceSummary', 'sourcesNum', 'planned', 'notice']
+  .map(id => [id, { innerHTML: '', textContent: '' }]));
+const sourceFooter = { textContent: '' };
+const sourceContext = {
+  sources: [
+    { id: 'zrsz', name: 'ZRSZ / PoiščiDelo', status: 'live', count: 4152 },
+    { id: 'eures', name: 'EURES', status: 'live', count: 25 },
+    { id: 'adecco', name: 'Adecco', status: 'live', count: 161 },
+  ],
+  planned: [{ name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Še ni uvoza' }],
+  $: id => sourceElements.get(id),
+  safe: value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;'),
+  document: { querySelector: () => sourceFooter },
+};
+runInNewContext(extract('function sourceRender(', 'function matchesJob('), sourceContext);
+sourceContext.sourceRender();
+assert.equal(sourceElements.get('sourceSummary').textContent, '3 od 3 virov dosegljivih');
+assert.match(sourceElements.get('sourceStatus').innerHTML, /ZRSZ \/ PoiščiDelo/);
+assert.match(sourceElements.get('sourceStatus').innerHTML, /EURES/);
+assert.match(sourceElements.get('planned').innerHTML, /Careerjet/);
+assert.doesNotMatch(sourceElements.get('planned').innerHTML, /EURES/, 'Povezanega EURES ne smemo prikazati kot nepovezan vir');
+assert.equal(sourceElements.get('notice').innerHTML, '', 'Ko vsi viri delujejo, ne prikazujemo opozorila');
+sourceContext.sources[1].status = 'error';
+sourceContext.sourceRender();
+assert.equal(sourceElements.get('sourceSummary').textContent, '2 od 3 virov dosegljivih');
+assert.match(sourceElements.get('sourceStatus').innerHTML, /Ni odziva/);
+assert.match(sourceElements.get('notice').innerHTML, /EURES/, 'Napaka mora biti vidna med stanjem virov');
 const linkContext = {};
 runInNewContext(extract('function slugForJob(', 'function load('), linkContext);
 const fixtureExportJobs = [
@@ -396,6 +446,16 @@ const zrszSample = {
   ],
 };
 const zrsz = parseZrszJson(zrszSample, Date.parse('2026-11-22T12:00:00+01:00'));
+const zrszRich = parseZrszJson({ ...zrszSample, SteviloPDM: 1, ProstaDelovnaMesta: [{
+  ...zrszSample.ProstaDelovnaMesta[0], TrajanjeInVrstaZaposlitve: 'nedoločen čas, polni delovni čas',
+  Klasius: 'srednja poklicna, Elektrotehnika', DelovneIzkusnje: '2 leti',
+  VozniskiIzpit: ', vozniški izpit B', ZnanjeJezikov: ', slovenski jezik tekoče',
+  PredvidenoPlacilo: '1800 EUR', AltKlasius: 'srednja tehniška',
+}] }, Date.parse('2026-11-22T12:00:00+01:00'));
+assert.equal(zrszRich[0].contractType, 'nedoločen čas, polni delovni čas');
+assert.match(zrszRich[0].education, /Alternativna izobrazba: srednja tehniška/);
+assert.match(zrszRich[0].requirements, /^vozniški izpit B|^poskusno delo|^slovenski jezik|^pogoji/i);
+assert.equal(zrszRich[0].salary, '1800 EUR');
 assert.equal(zrsz.length, 1, 'ZRSZ: izločimo potekle oglase in dvojnike po uradni referenci');
 assert.equal(zrsz[0].id, 'zrsz:NY31603');
 assert.equal(zrsz[0].company, 'Primer, d.o.o.');

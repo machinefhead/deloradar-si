@@ -19,5 +19,5 @@ jobs:
       - run: npm ci
       - name: Preveri razčlenjevanje
         run: npm test
-      - name: Preizkus naslednjega svežnja oglasov ZRSZ (60), brez objave
-        run: npm run probe:portals -- --sources=zrsz --limit=60
+      - name: Preveri ZRSZ dnevni JSON in prvih 10 neposrednih povezav brez brskalnika
+        run: node scripts/import-zrsz-official-local.mjs 10

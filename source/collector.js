@@ -1,13 +1,16 @@
 import { page } from './page.js';
-import { getZrszJson, getZrszFromPublicBrowser } from './zrsz.js';
+import { getZrszJson } from './zrsz.js';
+import { getZrszOfficialHttp } from './zrsz-official-http.js';
 import { getDm, getNovaPriloznost } from './next-sources.js';
 import { markLikelyDuplicates } from './duplicates.js';
+import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
 import { enrichJobsProgressively, parseMojeDeloDetails, parseZaposlitevInfoDetails, parseKarieraDetails, parseOptiusDetails } from './job-enrichment.js';
 
 // Naslov poda ZRSZ in ostane v zaščiteni GitHub Actions skrivnosti.
 const ZRSZ_JSON_URL = process.env.ZRSZ_JSON_URL?.trim();
-const ZRSZ_BROWSER_ENABLED = process.env.ZRSZ_BROWSER_ENABLED === '1';
+const ZRSZ_OFFICIAL_HTTP_ENABLED = process.env.ZRSZ_OFFICIAL_HTTP_ENABLED === '1';
+const EURES_HTTP_ENABLED = process.env.EURES_HTTP_ENABLED === '1';
 
 const SOURCES = [
   { id: 'optius', name: 'Optius', url: 'https://www.optius.com/iskalci/prosta-delovna-mesta/' },
@@ -25,14 +28,15 @@ const SOURCES = [
   { id: 'zaposlitevinfo', name: 'Zaposlitev.info', url: 'https://zaposlitev.info/prosta-delovna-mesta/' },
   { id: 'mercator', name: 'Mercator', url: 'https://www.mercatorgroup.si/sl/kariera/prosta-delovna-mesta/seznam-prostih-delovnih-mest/' },
   { id: 'iscidelo', name: 'IščiDelo', url: 'https://iscidelo.com/delovna-mesta/' },
-  ...(ZRSZ_JSON_URL || ZRSZ_BROWSER_ENABLED ? [{ id: 'zrsz', name: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/' }] : []),
+  ...(ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED ? [{ id: 'zrsz', name: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/' }] : []),
   { id: 'dm', name: 'dm Slovenija', url: 'https://www.dm-jobs.si/job-listing/' },
   { id: 'novapriloznost', name: 'Nova Priložnost', url: 'https://novapriloznost.si/prosta-delovna-mesta/' },
+  ...(EURES_HTTP_ENABLED ? [{ id: 'eures', name: 'EURES', url: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl' }] : []),
 ];
 const PLANNED = [
-  ...(!ZRSZ_JSON_URL && !ZRSZ_BROWSER_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Samodejni brskalniški zajem je izključen; način neposrednega programskega uvoza še usklajujemo.' }] : []),
+  ...(!ZRSZ_JSON_URL && !ZRSZ_OFFICIAL_HTTP_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Neposredni HTTP zajem je pripravljen; za uporabo nastavi ZRSZ_OFFICIAL_HTTP_ENABLED=1.' }] : []),
   { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.' },
-  { name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?page=1&resultsPerPage=10&orderBy=BEST_MATCH&locationCodes=si&previousPageType=findJob&lang=sl', note: 'Iskanje je že omejeno na Slovenijo. Za samodejni množični izvoz še potrebujemo ustrezen partnerski dostop; številni oglasi se prekrivajo z ZRSZ.' },
+  ...(!EURES_HTTP_ENABLED ? [{ name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?page=1&resultsPerPage=10&orderBy=BEST_MATCH&locationCodes=si&previousPageType=findJob&lang=sl', note: 'Programski HTTP uvoz je pripravljen; vključimo ga po preverjanju lokacij in podatkov.' }] : []),
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
@@ -133,7 +137,7 @@ async function getOptius() {
   }
   if (!successful) throw Error('All Optius regional RSS feeds failed');
   return enrichJobsProgressively([...jobsByUrl.values()], await previousJobs(), {
-    name: 'Optius', limit: detailLimit('DETAIL_OPTIUS_LIMIT', 100), concurrency: 2,
+    name: 'Optius', limit: detailLimit('DETAIL_OPTIUS_LIMIT', 12), concurrency: 2,
     getDetails: job => getText(job.url), parseDetails: parseOptiusDetails,
   });
 }
@@ -154,7 +158,7 @@ async function getKariera() {
   }
   if (!jobs.length) throw Error('Unexpected listing format');
   return enrichJobsProgressively(jobs, await previousJobs(), {
-    name: 'Kariera.si', limit: detailLimit('DETAIL_KARIERA_LIMIT', 75), concurrency: 3,
+    name: 'Kariera.si', limit: detailLimit('DETAIL_KARIERA_LIMIT', 30), concurrency: 3,
     getDetails: job => getText(job.url), parseDetails: parseKarieraDetails,
   });
 }
@@ -299,15 +303,49 @@ async function getAdeccoPreview(listing) {
   if (response.status !== 206) throw Error('Adecco did not honor a small range request');
   return parseAdeccoJobPreview(await response.text(), listing);
 }
+function adeccoRefreshBucket(id, days) {
+  let hash = 5381;
+  for (const character of id) hash = (Math.imul(hash, 33) + character.charCodeAt(0)) >>> 0;
+  return hash % days;
+}
+export function planAdeccoIncremental(listings, previousJobs, now = Date.now()) {
+  const cachedById = new Map(previousJobs.filter(job => job?.source === 'Adecco').map(job => [job.id, job]));
+  const cached = new Map();
+  const requests = [];
+  const refreshDays = 14;
+  const todayBucket = Math.floor(now / 86400000) % refreshDays;
+  for (const listing of listings) {
+    const old = cachedById.get(listing.id);
+    const expired = old?.deadline && Number.isFinite(Date.parse(old.deadline)) && Date.parse(old.deadline) < now;
+    const valid = old?.url === listing.url && old?.title && !expired;
+    if (valid) cached.set(listing.id, old);
+    const lastFetch = Date.parse(old?.detailsFetchedAt || '');
+    const refreshDue = adeccoRefreshBucket(listing.id, refreshDays) === todayBucket &&
+      (!Number.isFinite(lastFetch) || now - lastFetch >= 7 * 86400000);
+    if (!valid || refreshDue) requests.push(listing);
+  }
+  return { cached, requests };
+}
 async function getAdecco() {
   const listings = parseAdeccoSitemap(await getText('https://www.adecco.com/sitemap-jobs-slovenia-sl.xml'));
   if (!listings.length) throw Error('Adecco sitemap has no job listings');
-  const jobs = [];
-  for (let start = 0; start < listings.length; start += 6) {
-    const batch = await Promise.allSettled(listings.slice(start, start + 6).map(getAdeccoPreview));
-    for (const result of batch) if (result.status === 'fulfilled' && result.value) jobs.push(result.value);
-    if (start + 6 < listings.length) await new Promise(resolve => setTimeout(resolve, 250));
+  const { cached, requests } = planAdeccoIncremental(listings, await previousJobs());
+  let refreshed = 0, failed = 0;
+  for (let start = 0; start < requests.length; start += 6) {
+    const batch = await Promise.allSettled(requests.slice(start, start + 6).map(getAdeccoPreview));
+    for (let i = 0; i < batch.length; i++) {
+      const result = batch[i];
+      if (result.status === 'fulfilled' && result.value) {
+        cached.set(requests[start + i].id, { ...result.value, detailsFetchedAt: new Date().toISOString() });
+        refreshed++;
+      } else {
+        failed++;
+      }
+    }
+    if (start + 6 < requests.length) await new Promise(resolve => setTimeout(resolve, 250));
   }
+  const jobs = listings.map(listing => cached.get(listing.id)).filter(Boolean);
+  console.log(`DeloRadar: Adecco ${refreshed} osveženih, ${jobs.length - refreshed} iz predpomnilnika, ${failed} neuspešnih; ${listings.length} povezav v aktualnem seznamu.`);
   if (!jobs.length) throw Error('Adecco details unavailable');
   return jobs;
 }
@@ -548,7 +586,7 @@ async function getZaposlitevInfo() {
   if (failures.length) throw Error('Zaposlitev.info missing pages ' + failures.join(', '));
   const unique = Array.from(new Map(jobs.map(job => [job.id, job])).values());
   return enrichJobsProgressively(unique, await previousJobs(), {
-    name: 'Zaposlitev.info', limit: detailLimit('DETAIL_ZAPOSLITEV_LIMIT', 100), concurrency: 3,
+    name: 'Zaposlitev.info', limit: detailLimit('DETAIL_ZAPOSLITEV_LIMIT', 30), concurrency: 3,
     getDetails: job => getText(job.url), parseDetails: parseZaposlitevInfoDetails,
   });
 }
@@ -632,9 +670,38 @@ async function getIscidelo() {
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
   const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
-  if (ZRSZ_JSON_URL || ZRSZ_BROWSER_ENABLED) collectors.push(ZRSZ_JSON_URL ? getZrszJson(ZRSZ_JSON_URL) : getZrszFromPublicBrowser());
+  if (ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED) collectors.push(
+    ZRSZ_OFFICIAL_HTTP_ENABLED ? getZrszOfficialHttp() : getZrszJson(ZRSZ_JSON_URL));
   collectors.push(getDm(), getNovaPriloznost());
-  const results = await Promise.allSettled(collectors);
+  if (EURES_HTTP_ENABLED) collectors.push(previousJobs().then(async oldJobs => {
+    const recent = reuseRecentEuresJobs(oldJobs);
+    if (recent.length) {
+      console.log(`DeloRadar: EURES ${recent.length} svežih oglasov iz prejšnjega zajema (brez novih HTTP poizvedb).`);
+      return recent;
+    }
+    const result = await fetchEuresAdditional({ pages: 65, maxDetails: 100 });
+    console.log(`DeloRadar: EURES HTTP ${result.stats.searchHits} zadetkov, ${result.stats.unique} dodatnih, ` +
+      `${result.stats.cityConfirmed} s krajem, ${result.stats.countryOnly} brez kraja, ${result.stats.failures} napak; ` +
+      `iskanje ${Math.round(result.stats.searchDurationMs / 1000)} s, podrobnosti ${Math.round(result.stats.detailsDurationMs / 1000)} s.`);
+    const checkedAt = new Date().toISOString();
+    return result.jobs.map(job => ({ ...job, euresFetchedAt: checkedAt }));
+  }));
+  const startedAt = Date.now();
+  const observed = collectors.map((promise, i) => Promise.resolve(promise).then(
+    jobs => {
+      console.log(`DeloRadar: vir ${SOURCES[i].id} pripravljen v ${Math.round((Date.now() - startedAt) / 1000)} s (${jobs.length} oglasov)`);
+      return jobs;
+    },
+    error => {
+      console.warn(`DeloRadar: vir ${SOURCES[i].id} neuspešen po ${Math.round((Date.now() - startedAt) / 1000)} s`);
+      throw error;
+    },
+  ));
+  const results = await Promise.allSettled(observed);
+  if (EURES_HTTP_ENABLED && results.at(-1)?.status === 'fulfilled') {
+    const otherJobs = results.slice(0, -1).flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    results.at(-1).value = excludeExistingEures(results.at(-1).value, otherJobs).unique;
+  }
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
       const reason = result.reason;

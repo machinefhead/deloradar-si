@@ -31,6 +31,13 @@ jobs:
       - name: Preveri kodo
         run: npm test
       - name: Pridobi oglase in zgradi stran
+        env:
+          ZRSZ_OFFICIAL_HTTP_ENABLED: '1'
+          EURES_HTTP_ENABLED: '1'
+          DETAIL_OPTIUS_LIMIT: '8'
+          DETAIL_KARIERA_LIMIT: '20'
+          DETAIL_MOJEDELO_LIMIT: '100'
+          DETAIL_ZAPOSLITEV_LIMIT: '20'
         run: npm run build
       - name: Configure Pages
         uses: actions/configure-pages@v5

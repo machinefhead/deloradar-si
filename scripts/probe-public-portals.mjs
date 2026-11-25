@@ -1,10 +1,7 @@
-// Ročno sprožen pilot: največ 100 oglasov ZRSZ oziroma pet pri ostalih virih.
-// Ne spreminja jobs.json, ne objavlja ničesar in ne obhaja preverjanj obiskovalcev.
-import {
-  ZRSZ_SEARCH_URL, EURES_SLOVENIA_URL,
-  parseEuresPilotSummary, parseEuresPilotDetail, zrszDirectUrl, careerjetProbeStatus,
-} from '../source/portal-probe.js';
-import { readZrszPublicDetails } from '../source/zrsz-links.js';
+// Ročni pilot z neposrednimi HTTP/JSON zahtevki. Nikoli ne odpira oglasov v brskalniku.
+import { discoverZrszPublicClient, matchZrszListingIds } from '../source/zrsz-official-http.js';
+import { fetchEuresAdditional } from '../source/eures-source.js';
+import { careerjetProbeStatus } from '../source/portal-probe.js';
 
 const parameter = name => process.argv.find(item => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const count = Number(parameter('limit') || 3);
@@ -16,133 +13,52 @@ const maxCount = requested.every(x => x === 'zrsz') ? 100 : 5;
 if (!Number.isInteger(count) || count < 1 || count > maxCount) {
   throw Error(`Pilot za izbrane vire podpira samo --limit=1..${maxCount}`);
 }
-const output = { type: 'DeloRadar portal pilot', countPerSource: count, capturedAt: new Date().toISOString(), sources: {} };
+const output = { type: 'DeloRadar HTTP portal pilot', countPerSource: count,
+  capturedAt: new Date().toISOString(), sources: {} };
 
-function registrationFromZrsz(page) {
-  return page.locator('b').filter({ hasText: 'Registrska št.:' }).first().evaluate(element =>
-    element.parentElement?.parentElement?.querySelector('.padding-left')?.textContent?.trim() || '');
-}
-
-async function browserSession() {
-  const { chromium } = await import('playwright-core');
-  const browserPath = process.env.DELORADAR_CHROME_PATH?.trim();
-  return chromium.launch(browserPath
-    ? { executablePath: browserPath, headless: true, timeout: 70_000 }
-    : { channel: 'chrome', headless: true, timeout: 70_000 });
-}
-
-async function dismissCookieChoices(page, portal) {
-  if (portal === 'zrsz') {
-    const dialog = page.locator('#cookieman-modal');
-    if (!await dialog.isVisible()) return;
-    for (const name of [/zavrni|reject/i, /(?:samo|le|only).{0,30}(?:nujn|necessary|essential)/i, /shrani|save settings/i]) {
-      const button = dialog.getByRole('button', { name }).first();
-      if (await button.count() && await button.isVisible()) { await button.click(); return; }
-    }
-    throw Error('ZRSZ: neznana izbira piškotkov');
+async function zrszSample() {
+  const client = await discoverZrszPublicClient();
+  const [daily, listing] = await Promise.all([client.daily(), client.listings()]);
+  const candidates = matchZrszListingIds(daily.jobs, listing.jobs).jobs
+    .filter(job => job.zrszIdCandidateSource === 'ZRSZ listing').slice(0, count);
+  let verified = 0;
+  const records = [];
+  for (const item of candidates) {
+    const detail = await client.detail(item.zrszIdCandidate);
+    const matches = String(detail.registerskaStevilka).toUpperCase() === item.reference;
+    if (matches) verified++;
+    records.push({ reference: item.reference, idp: item.zrszIdCandidate, matched: matches });
   }
-  const essential = page.getByRole('link', { name: /Accept only essential cookies|samo nujne piškotke/i });
-  if (await essential.count() && await essential.first().isVisible()) await essential.first().click();
+  return { status: candidates.length === count && verified === count ? 'ok' : 'partial',
+    jsonJobs: daily.jobs.length, listedJobs: listing.total, tested: candidates.length, verified, records };
 }
 
-async function zrszSample(browser) {
-  const context = await browser.newContext({ locale: 'sl-SI' });
-  const page = await context.newPage();
-  const startedAt = Date.now();
-  try {
-    await page.goto(ZRSZ_SEARCH_URL, { waitUntil: 'domcontentloaded', timeout: 40_000 });
-    await page.locator('#vacancy-0').waitFor({ state: 'visible', timeout: 55_000 });
-    await dismissCookieChoices(page, 'zrsz');
-    const results = await readZrszPublicDetails(page, count);
-    const elapsedMs = Date.now() - startedAt;
-    return { status: results.length === count ? 'ok' : 'partial', tested: results.length,
-      elapsedMs, averageMsPerJob: Math.round(elapsedMs / Math.max(1, results.length)), records: results };
-  } finally { await context.close(); }
-}
-
-async function verifyOnZrsz(page, record) {
-  if (!record.zrszIdCandidate) return { status: 'not_applicable' };
-  const href = zrszDirectUrl(record.zrszIdCandidate);
-  try {
-    await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 40_000 });
-    await page.locator('b').filter({ hasText: 'Registrska št.:' }).first().waitFor({ state: 'visible', timeout: 40_000 });
-    const actualReference = await registrationFromZrsz(page);
-    return actualReference.toUpperCase() === record.reference
-      ? { status: 'confirmed', url: href }
-      : { status: 'mismatch', actualReference };
-  } catch (error) {
-    return { status: 'unverified', reason: String(error.message).slice(0, 150) };
-  }
-}
-
-async function euresSample(browser) {
-  const context = await browser.newContext({ locale: 'sl-SI' });
-  const search = await context.newPage();
-  const details = await context.newPage();
-  const verify = await context.newPage();
-  try {
-    await search.goto(EURES_SLOVENIA_URL, { waitUntil: 'domcontentloaded', timeout: 40_000 });
-    await dismissCookieChoices(search, 'eures');
-    await search.locator('[role="article"][aria-label="Job vacancy result"] a[href*="/jv-details/"]')
-      .first().waitFor({ state: 'visible', timeout: 50_000 });
-    const listing = await search.locator('[role="article"][aria-label="Job vacancy result"]')
-      .evaluateAll(items => items.map(item => ({
-        title: item.querySelector('h3 a[href*="/jv-details/"]')?.textContent,
-        url: item.querySelector('h3 a[href*="/jv-details/"]')?.href,
-        company: item.querySelector('[id^="jv-employer-name-"]')?.textContent,
-        location: [...item.querySelectorAll('[id^="location-"]')].map(x => x.textContent.trim()).join('; '),
-        publication: item.querySelector('[id^="date-"]')?.textContent,
-      })));
-    // Za pilot izberemo javne oglase v slovenščini, katerih lokacija vključuje Slovenijo.
-    const shortlist = listing.filter(item => item.url?.includes('jvDisplayLanguage=sl') && /Slovenia/i.test(item.location)).slice(0, count);
-    const results = [];
-    for (const item of shortlist) {
-      const summary = parseEuresPilotSummary(item);
-      await details.goto(summary.url, { waitUntil: 'domcontentloaded', timeout: 40_000 });
-      await details.locator('#jv-detail-document-id').waitFor({ state: 'visible', timeout: 40_000 });
-      const rawDetail = await details.evaluate(() => ({
-        title: document.querySelector('main h1')?.textContent,
-        company: document.querySelector('main h2')?.textContent,
-        reference: document.querySelector('#jv-detail-document-id')?.nextElementSibling?.textContent,
-        deadline: document.querySelector('#jv-details-how-to-apply-application-date')?.textContent,
-      }));
-      const record = parseEuresPilotDetail(summary, rawDetail);
-      record.zrszLinkCheck = await verifyOnZrsz(verify, record);
-      results.push(record);
-    }
-    return { status: results.length === count ? 'ok' : 'partial', tested: results.length, records: results };
-  } finally { await context.close(); }
+async function euresSample() {
+  const result = await fetchEuresAdditional({ pages: 1, maxDetails: count, concurrency: 2 });
+  return { status: result.errors.length ? 'partial' : 'ok',
+    ...result.stats, records: result.jobs.map(job => ({ title: job.title, source: job.euresSource,
+      location: job.location, confidence: job.locationConfidence })) };
 }
 
 async function careerjetSample() {
   const response = await fetch('https://www.careerjet.si/delovna-mesta', {
     signal: AbortSignal.timeout(20_000),
-    headers: { 'user-agent': 'DeloRadar/0.1 (non-commercial metadata pilot)', accept: 'text/html' },
+    headers: { 'user-agent': 'DeloRadar/0.1 (personal metadata index)', accept: 'text/html' },
   });
   if (!response.ok) return { status: 'blocked', reason: `HTTP ${response.status}` };
+  if (Number(response.headers.get('content-length')) > 500_000) throw Error('Careerjet: predolg odziv');
   const html = await response.text();
   if (html.length > 500_000) throw Error('Careerjet: predolg odziv');
   return careerjetProbeStatus(html);
 }
 
-let browser;
-try {
-  if (requested.some(item => item !== 'careerjet')) browser = await browserSession();
-  for (const source of requested) {
-    try {
-      output.sources[source] = source === 'zrsz' ? await zrszSample(browser)
-        : source === 'eures' ? await euresSample(browser) : await careerjetSample();
-    } catch (error) {
-      output.sources[source] = { status: 'error', reason: String(error.message).slice(0, 300) };
-    }
+for (const source of requested) {
+  try {
+    output.sources[source] = source === 'zrsz' ? await zrszSample()
+      : source === 'eures' ? await euresSample() : await careerjetSample();
+  } catch (error) {
+    output.sources[source] = { status: 'error', reason: String(error?.message || error).slice(0, 300) };
   }
-} catch (error) {
-  for (const source of requested) output.sources[source] = { status: 'unavailable', reason: String(error.message).slice(0, 300) };
-  if (requested.includes('careerjet')) output.sources.careerjet = await careerjetSample().catch(e => ({ status: 'error', reason: e.message }));
-} finally {
-  if (browser) await browser.close();
 }
 console.log(JSON.stringify(output, null, 2));
-if (requested.some(source => source === 'careerjet'
-  ? ['error', 'unavailable'].includes(output.sources[source].status)
-  : output.sources[source].status !== 'ok')) process.exitCode = 1;
+if (requested.some(source => ['error', 'partial'].includes(output.sources[source].status))) process.exitCode = 1;
