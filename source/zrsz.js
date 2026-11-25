@@ -60,8 +60,9 @@ export function parseZrszJson(payload, now = Date.now()) {
       location: administrativeUnit(item.UEPDM),
       date: date(item.DatumObjave),
       deadline,
-      // Izvoz ne vsebuje povezav do posameznih oglasov. Uporabimo javni iskalnik.
-      url: SEARCH_PAGE,
+      // Izvoz vsebuje registrsko številko, ne pa številčnega idDM za povezavo ?idp=.
+      // Uradni iskalnik podpira povezavo s predizpolnjenim iskanjem po delodajalcu.
+      url: SEARCH_PAGE + '#/?drzava=SI,&iskalniTekst=' + encodeURIComponent(entityName(item.PoslovniSubjekt) || title) + '&iskalnaLokacija=',
     });
   }
   if (entries.length && !jobs.size) throw Error('ZRSZ: v posnetku ni uporabnih aktualnih oglasov');
