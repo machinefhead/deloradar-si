@@ -1,4 +1,4 @@
-// Ročno sprožen pilot: največ 20 oglasov ZRSZ oziroma pet pri ostalih virih.
+// Ročno sprožen pilot: največ 100 oglasov ZRSZ oziroma pet pri ostalih virih.
 // Ne spreminja jobs.json, ne objavlja ničesar in ne obhaja preverjanj obiskovalcev.
 import {
   ZRSZ_SEARCH_URL, EURES_SLOVENIA_URL, parseZrszPilotCard, parseZrszPilotDetail,
@@ -11,7 +11,7 @@ const requested = (parameter('sources') || 'zrsz,eures,careerjet').split(',').ma
 if (!requested.length || requested.some(x => !['zrsz', 'eures', 'careerjet'].includes(x))) {
   throw Error('Dovoljeni viri: zrsz,eures,careerjet');
 }
-const maxCount = requested.every(x => x === 'zrsz') ? 20 : 5;
+const maxCount = requested.every(x => x === 'zrsz') ? 100 : 5;
 if (!Number.isInteger(count) || count < 1 || count > maxCount) {
   throw Error(`Pilot za izbrane vire podpira samo --limit=1..${maxCount}`);
 }
@@ -52,7 +52,19 @@ async function zrszSample(browser) {
     await page.goto(ZRSZ_SEARCH_URL, { waitUntil: 'domcontentloaded', timeout: 40_000 });
     await page.locator('#vacancy-0').waitFor({ state: 'visible', timeout: 55_000 });
     await dismissCookieChoices(page, 'zrsz');
-    const cards = (await page.locator('a[id^="vacancy-"]').evaluateAll(items => items.slice(0, 30).map(item => ({
+    // Naložimo samo toliko dodatnih strani, kot jih potrebuje omejen pilot.
+    // Ob vsakem kliku mora na javnem seznamu dejansko pribiti nova kartica.
+    for (let batch = 0; batch < 4; batch++) {
+      const have = await page.locator('a[id^="vacancy-"]').count();
+      if (have >= count) break;
+      const next = page.getByText(/Prikaži več/i).last();
+      if (!await next.count()) throw Error(`ZRSZ: prikazanih ${have} oglasov, gumb »Prikaži več« ni na voljo`);
+      await next.dispatchEvent('click', { timeout: 15_000 });
+      await page.waitForFunction(previous => document.querySelectorAll('a[id^="vacancy-"]').length > previous,
+        have, { timeout: 30_000 });
+      await page.waitForTimeout(450);
+    }
+    const cards = (await page.locator('a[id^="vacancy-"]').evaluateAll(items => items.slice(0, 100).map(item => ({
       title: item.querySelector('h5.list-item-title')?.textContent,
       companyLocation: item.querySelector('p.list-item-text')?.textContent,
       metadata: item.querySelector('p.list-item-text.small')?.textContent,

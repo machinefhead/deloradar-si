@@ -14,7 +14,7 @@ permissions:
 jobs:
   pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,5 +24,5 @@ jobs:
       - run: npm ci
       - name: Preveri razčlenjevanje
         run: npm test
-      - name: Največ 20 posameznih oglasov ZRSZ, brez objave
-        run: npm run probe:portals -- --sources=zrsz --limit=20
+      - name: Največ 60 posameznih oglasov ZRSZ, brez objave
+        run: npm run probe:portals -- --sources=zrsz --limit=60
