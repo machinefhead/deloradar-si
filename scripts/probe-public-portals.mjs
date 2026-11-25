@@ -64,7 +64,10 @@ async function zrszSample(browser) {
       if (currentTitle.replace(/\s+/g, ' ').trim() !== card.title) {
         throw Error('ZRSZ: vrsten red oglasov se je med zajemom spremenil');
       }
-      await page.locator(`#vacancy-${index}`).click({ timeout: 15_000 });
+      // Seznam ima lepljive elemente, ki v brezglavem Chromu lahko prestrežejo
+      // koordinatni klik. Sprožimo običajen DOM dogodek na vidnem javnem oglasu;
+      // neposreden URL in registrsko številko nato preverimo posebej.
+      await page.locator(`#vacancy-${index}`).dispatchEvent('click', { timeout: 15_000 });
       await page.waitForURL(/\?idp=\d+\/#\/pdm\/\d+/, { timeout: 20_000 });
       await page.locator('b').filter({ hasText: 'Registrska št.:' }).first().waitFor({ state: 'visible', timeout: 30_000 });
       results.push(parseZrszPilotDetail(card, { url: page.url(), reference: await registrationFromZrsz(page) }));
