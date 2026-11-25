@@ -30,7 +30,7 @@ const SOURCES = [
   { id: 'novapriloznost', name: 'Nova Priložnost', url: 'https://novapriloznost.si/prosta-delovna-mesta/' },
 ];
 const PLANNED = [
-  ...(!ZRSZ_JSON_URL && !ZRSZ_BROWSER_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Dnevni JSON je preverjen; preverjamo samodejni prenos prek javnega gumba.' }] : []),
+  ...(!ZRSZ_JSON_URL && !ZRSZ_BROWSER_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Samodejni brskalniški zajem je izključen; način neposrednega programskega uvoza še usklajujemo.' }] : []),
   { name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.' },
   { name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?page=1&resultsPerPage=10&orderBy=BEST_MATCH&locationCodes=si&previousPageType=findJob&lang=sl', note: 'Iskanje je že omejeno na Slovenijo. Za samodejni množični izvoz še potrebujemo ustrezen partnerski dostop; številni oglasi se prekrivajo z ZRSZ.' },
 ];

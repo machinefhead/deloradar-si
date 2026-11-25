@@ -1,12 +1,7 @@
 name: DeloRadar – pilot posameznih oglasov (brez objave)
 
 on:
-  pull_request:
-    paths:
-      - 'source/portal-probe.js'
-      - 'scripts/probe-public-portals.mjs'
-      - 'scripts/test.mjs'
-      - '.github/workflows/portal-pilot.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
