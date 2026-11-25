@@ -132,7 +132,11 @@ export const page = String.raw`<!doctype html>
     .detailmain,.detailside{min-width:0;display:flex;flex-direction:column;gap:16px}
     .detailbox{min-width:0;background:#333;border:1px solid #484848;border-radius:12px;padding:20px 22px}
     .detailbox h3{font-size:15px;margin:0 0 14px;color:#eee}.detailbox h4{font-size:13px;margin:18px 0 6px;color:#d6c6ff}
-    .detailtext{font-size:14px;line-height:1.7;color:#dfdfdf;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+    .detailtext{font-size:14px;line-height:1.7;color:#dfdfdf;overflow-wrap:anywhere;margin:0}
+    .detailtext p{margin:0 0 12px}.detailtext p:last-child{margin-bottom:0}
+    .detailtext strong{color:#f4efff;font-weight:750}
+    .detailtext ul{margin:3px 0 16px;padding-left:21px}.detailtext li{padding-left:3px;margin:4px 0}
+    .detailtext ul:last-child{margin-bottom:0}
     .detailfields{display:grid;grid-template-columns:1fr;gap:15px;margin:0}.detailfields div{min-width:0}
     .detailfields dt{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:750;color:#aeaeae;margin-bottom:5px}
     .detailfields dd{margin:0;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;color:#f0f0f0}
@@ -457,6 +461,31 @@ export const page = String.raw`<!doctype html>
         if(typeof value==='object')return '';
         return String(value).trim();
       }
+      function detailReadable(value){
+        var raw=detailValue(value);
+        // Starejši posnetki lahko vsebujejo surovi ali HTML-kodirani opis.
+        // Oznak nikoli ne prikažemo kot HTML, temveč samo kot varno besedilo.
+        if(!/<\/?[a-z][^>]*>|&(?:amp;)?(?:lt|gt|#(?:x[0-9a-f]+|\d+));/i.test(raw))return raw;
+        for(var i=0;i<2;i++){
+          var next=raw.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,function(match,key){
+            if(key[0]==='#'){
+              var hex=key[1]&&key[1].toLowerCase()==='x';
+              var number=parseInt(key.slice(hex?2:1),hex?16:10);
+              return number>0&&number<=0x10ffff&&!(number>=0xd800&&number<=0xdfff)?String.fromCodePoint(number):match;
+            }
+            var named={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' ',bull:'•',ndash:'–',mdash:'—'};
+            return named[key.toLowerCase()]||match;
+          });
+          if(next===raw)break;raw=next;
+        }
+        return raw.replace(/<\s*(?:script|style|template)\b[^>]*>[\s\S]*?<\s*\/\s*(?:script|style|template)\s*>/gi,'')
+          .replace(/<\s*br\b[^>]*\/?>/gi,'\n')
+          .replace(/<\s*\/\s*(?:p|div|li|ul|ol|h[1-6]|section)\s*>/gi,'\n')
+          .replace(/<\s*li\b[^>]*>/gi,'\n• ')
+          .replace(/<\/?[a-z][a-z0-9:-]*\b[^>]*>/gi,'')
+          .replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n')
+          .replace(/\n{3,}/g,'\n\n').replace(/\n{2,}(?=• )/g,'\n').trim();
+      }
       function detailSalary(value){
         if(!value||typeof value!=='object')return detailValue(value);
         var money=function(amount){
@@ -481,17 +510,33 @@ export const page = String.raw`<!doctype html>
       function detailSection(title,rows){
         var content=detailRows(rows);return content?'<section class="detailbox"><h3>'+safe(title)+'</h3><dl class="detailfields">'+content+'</dl></section>':'';
       }
+      function detailFormatted(value){
+        var paragraphs=[],parts=[],list=[];
+        function flushParagraph(){if(paragraphs.length){parts.push('<p>'+paragraphs.map(safe).join('<br>')+'</p>');paragraphs=[]}}
+        function flushList(){if(list.length){parts.push('<ul>'+list.map(function(line){return '<li>'+safe(line)+'</li>'}).join('')+'</ul>');list=[]}}
+        detailReadable(value).split('\n').forEach(function(line){
+          line=line.trim();
+          if(line.indexOf('• ')===0){flushParagraph();list.push(line.slice(2));return}
+          flushList();
+          if(!line){flushParagraph();return}
+          if(line.length<=110&&/:$/.test(line)){
+            flushParagraph();parts.push('<p><strong>'+safe(line)+'</strong></p>');return;
+          }
+          paragraphs.push(line);
+        });
+        flushParagraph();flushList();return parts.join('');
+      }
       function detailDescription(title,value){
-        return detailValue(value)?'<section class="detailbox"><h3>'+safe(title)+'</h3><p class="detailtext">'+safe(detailValue(value))+'</p></section>':'';
+        return detailReadable(value)?'<section class="detailbox"><h3>'+safe(title)+'</h3><div class="detailtext">'+detailFormatted(value)+'</div></section>':'';
       }
       function detailMarkup(j,members){
-        var fullText=detailValue(j.description),summary=detailValue(j.summary);
+        var fullText=detailReadable(j.description),summary=detailReadable(j.summary);
         var sections=[detailDescription('Opis delovnega mesta',fullText)];
         if(summary&&summary!==fullText)sections.push(detailDescription('Povzetek oglasa',summary));
         var conditions=detailSection('Naloge, pogoji in ugodnosti',[
-          ['Delovne naloge',j.responsibilities],['Zahteve in pogoji',j.requirements],
+          ['Delovne naloge',detailReadable(j.responsibilities)],['Zahteve in pogoji',detailReadable(j.requirements)],
           ['Zahtevana izobrazba',j.education],['Delovne izkušnje',j.experience],
-          ['Znanja in veščine',j.skills],['Nudimo',j.benefits],['Dodatna plačila in ugodnosti',j.incentives]
+          ['Znanja in veščine',detailReadable(j.skills)],['Nudimo',detailReadable(j.benefits)],['Dodatna plačila in ugodnosti',detailReadable(j.incentives)]
         ]);
         if(conditions)sections.push(conditions);
         if(!sections.filter(Boolean).length)sections.push('<section class="detailbox"><h3>Opis dela</h3><p class="detailmissing">Ta vir v trenutnem zajemu še ne ponuja celotnega opisa. Spodaj so prikazani vsi drugi razpoložljivi podatki; za preostale podrobnosti odpri izvorni oglas.</p></section>');

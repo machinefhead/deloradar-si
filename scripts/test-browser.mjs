@@ -20,7 +20,10 @@ const server = createServer(async (request, response) => {
 let browser;
 try {
   await new Promise((resolve, reject) => server.listen(0, '127.0.0.1', error => error ? reject(error) : resolve()));
-  browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] });
+  browser = await chromium.launch({
+    ...(process.env.DELORADAR_CHROME_PATH ? { executablePath: process.env.DELORADAR_CHROME_PATH } : { channel: 'chrome' }),
+    headless: true, args: ['--no-sandbox'],
+  });
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     const page = await browser.newPage({ viewport, locale: 'sl-SI' });
     const errors = [];

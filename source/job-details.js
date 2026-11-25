@@ -17,13 +17,25 @@ function decodeEntities(value) {
 export function readableJobText(value) {
   if (Array.isArray(value)) return value.map(readableJobText).filter(Boolean).join('\n');
   if (typeof value !== 'string' && typeof value !== 'number') return '';
-  const raw = String(value);
-  return decodeEntities(raw
+  // Nekateri viri vrnejo HTML, drugi ga dodatno kodirajo kot &lt;p&gt;.
+  // Najprej razkodiramo največ dve plasti, šele nato odstranimo oznake.
+  let raw = String(value);
+  for (let i = 0; i < 2; i++) {
+    const decoded = decodeEntities(raw);
+    if (decoded === raw) break;
+    raw = decoded;
+  }
+  return raw
+    .replace(/<\s*(?:script|style|template)\b[^>]*>[\s\S]*?<\s*\/\s*(?:script|style|template)\s*>/gi, '')
     .replace(/<\s*br\b[^>]*\/?>/gi, '\n')
     .replace(/<\s*\/\s*(?:p|div|li|ul|ol|h[1-6]|tr|section)\s*>/gi, '\n')
     .replace(/<\s*li\b[^>]*>/gi, '\n• ')
-    .replace(/<[^>]*>/g, '')
-    .replace(/\r\n?/g, '\n'))
+    .replace(/<\/?[a-z][a-z0-9:-]*\b[^>]*>/gi, '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/\n\s*\n\s*(?=• )/g, '\n')
+    .replace(/•\s*\n/g, '• ')
+    .replace(/\n\s*• /g, '\n• ')
+    .replace(/^\n+/, '')
     .replace(/\u00a0/g, ' ')
     .replace(/[ \t]+/g, ' ')
     .replace(/ *\n */g, '\n')
