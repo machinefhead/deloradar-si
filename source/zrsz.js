@@ -1,5 +1,6 @@
 // ZRSZ: dnevni JSON. Javnega gumba se dotaknemo prek običajnega
 // brskalnika; aplikacijskega dostopnega ključa ne beremo niti ne kopiramo.
+import { readZrszPublicDetails, supplementZrszPublicDetails } from './zrsz-links.js';
 const SEARCH_PAGE = 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/';
 const MAX_BYTES = 15_000_000;
 
@@ -132,7 +133,28 @@ export async function getZrszFromPublicBrowser() {
     const jobs = parseZrszJson(payload);
     // V dnevnik zapišemo le osnovno stanje, ne vsebine ali zahtevkov.
     console.log('ZRSZ: javni JSON ' + payload.DatumObjave + ', aktualnih oglasov ' + jobs.length);
-    return jobs;
+    const linkLimit = Number(process.env.ZRSZ_DIRECT_LINK_LIMIT || 0);
+    if (!Number.isInteger(linkLimit) || linkLimit < 0 || linkLimit > 100) {
+      throw Error('ZRSZ: ZRSZ_DIRECT_LINK_LIMIT mora biti med 0 in 100');
+    }
+    if (linkLimit === 0) return jobs;
+    const startedAt = Date.now();
+    try {
+      const verified = await readZrszPublicDetails(page, linkLimit);
+      const linked = supplementZrszPublicDetails(jobs, verified);
+      const updated = linked.slice(0, jobs.length).filter((job, index) => job.url !== jobs[index].url).length;
+      const added = linked.length - jobs.length;
+      console.log(`ZRSZ: ${updated} popravljenih povezav, ${added} novih preverjenih oglasov ` +
+        `(${verified.length} pregledanih, ${Date.now() - startedAt} ms); preostali ohranijo iskanje`);
+      if (process.env.ZRSZ_LINKS_REQUIRED === '1' && updated + added < Math.min(2, linkLimit)) {
+        throw Error('ZRSZ: premajhen delež preverjenih povezav ali dodatnih oglasov');
+      }
+      return linked;
+    } catch (error) {
+      if (process.env.ZRSZ_LINKS_REQUIRED === '1') throw error;
+      console.warn('ZRSZ: neposredne povezave niso na voljo; ohranili smo popoln JSON: ' + String(error.message).slice(0, 220));
+      return jobs;
+    }
   } finally {
     await browser.close();
   }

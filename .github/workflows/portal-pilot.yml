@@ -1,0 +1,28 @@
+name: DeloRadar – pilot posameznih oglasov (brez objave)
+
+on:
+  pull_request:
+    paths:
+      - 'source/portal-probe.js'
+      - 'scripts/probe-public-portals.mjs'
+      - 'scripts/test.mjs'
+      - '.github/workflows/portal-pilot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Preveri razčlenjevanje
+        run: npm test
+      - name: Preizkus naslednjega svežnja oglasov ZRSZ (60), brez objave
+        run: npm run probe:portals -- --sources=zrsz --limit=60
