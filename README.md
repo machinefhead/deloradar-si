@@ -4,8 +4,8 @@ Osebni pregled slovenskih zaposlitvenih oglasov: [odpri DeloRadar na GitHub Page
 
 ## Zadnje preverjeno stanje (26. november 2026)
 
-- Zadnja preverjena javna objava (26. november 2026, 19:31 UTC): **11.015 oglasov iz 28/28 dosegljivih virov**; 21 reverzibilno označenih parov dvojnikov, nič podvojenih ID-jev ali neznanih virov. Vključuje Competo z 9 polnimi opisi.
-- Nov celoten strogi lokalni zajem (26. november 2026, 19:25 UTC): **11.015 oglasov iz 28/28 dosegljivih virov**; med njimi **44 Agado** in **9 Competo**. Revizija: nič podvojenih ID-jev, nič tujih krajev in 20 preverljivo označenih skupin dvojnikov. Competo je vrnil tudi vseh devet podrobnih opisov; neposredni HTML/JSON oglasi niso bili fizično odprti v brskalniku.
+- Zadnja preverjena javna objava pred priklopom Celtre (26. november 2026, 19:52 UTC): **11.014 oglasov iz 28/28 dosegljivih virov**. ZRSZ ima 3.947 objav, od tega 3.715 potrjenih neposrednih povezav. Dejanski `jobs.json` in prikaz strani sta bila preverjena po uspešni objavi GitHub Pages.
+- Lokalni strogi zajem po priklopu Celtre (26. november 2026, 20:08 UTC): **11.020 oglasov iz 29/29 dosegljivih virov**; Celtra je prispevala šest izvirnih slovenskih objav s polnimi opisi. Revizija: 0 podvojenih ID-jev, 0 izrecno tujih lokacij, 20 reverzibilno označenih skupin dvojnikov. Pri preizkusu ZRSZ ni bila potrebna nobena nova zahteva za preverjanje ID-ja.
 - **ZRSZ (izboljšana preslikava, lokalni zajem 26. 11. 2026): 3.947 aktualnih oglasov**, z besedilom del in nalog iz uradnega dnevnega JSON-a. Javni iskalnik ZRSZ je istočasno vrnil **3.796** zapisov, ker uporablja drugačen nabor. Pri **3.715 od 3.947** je številčni `idp` potrjen neposredno iz uradnega odgovora s registrsko številko; zadnji pregled je avtomatsko dodal še **58** preverjenih povezav iz strogo ujemajočih in večpomenskih kandidatov. Vseh **232** preostalih brez `idp` imajo registrsko predpono `IE`. Pri 12 kontrolnih zahtevah za poskusna ujemanja `IE` se registrske številke niso ujemale; povezav ne ugibamo. Pri njih ostane celoten opis v DeloRadarju in deljiva povezava `?oglas=zrsz%3AIE...`, izvorno iskanje pa je jasno označeno kot nepreverjeno. Za dodatne dvoumne kandidate uporabljamo omejene HTTP-zahtevke in predpomnilnik negativnih rezultatov.
 - **Adecco: 146 aktualnih oglasov** v zadnjem lokalnem zajemu. Še 15 povezav v sitemapu je vračalo odstranjene/neveljavne zapise (npr. HTTP 410), kar ni več obravnavano kot napaka portala. Dopolnilne podrobnosti se osvežujejo postopno.
 - **EURES: 25 dodatnih oglasov**, od tega 2 z navedenim krajem in 23 z državo Slovenijo, vendar brez potrjenega kraja. Vseh 25 vsebuje opis, pri 13 je objavljen tudi rok prijave. EURES je vključen v urnik; Careerjet kot agregator za zdaj ni prednostna naloga.
@@ -14,6 +14,7 @@ Osebni pregled slovenskih zaposlitvenih oglasov: [odpri DeloRadar na GitHub Page
 - **e-Študentski Servis:** **2.141 objav** iz 43 straničenih HTTP odgovorov; opis, kraj, delovnik in plačilo preberemo neposredno iz seznama, brez dodatnih zahtevkov za podrobnosti. Vneseno je kot posebno označeno študentsko delo, brez ugibanja datuma objave.
 - **Greenhouse/Lever:** pet izvirnih kariernih sistemov (Planet Labs, Wolt, Robinhood, Aleph, TSMG) je ob zajemu vrnilo skupaj **22 slovenskih razpisov**. Lever prenaša tudi ločena poglavja nalog in zahtev.
 - **Competo (nova nadgradnja):** uradni portal `portal.digi.competo.si` uporablja neposreden JSON `portal/jobs`. Ob pregledu 26. 11. je vrnil 9 objav; osem naslovov ni imelo enakega naslova v obstoječem DeloRadarju. Po eno HTTP-zahtevo za seznam in največ tri vzporedne za manjkajoče opise, z 14-dnevnim predpomnilnikom. Celoten opis vsebuje naloge, pričakovanja in ponudbo; osebnih stikov ne objavljamo.
+- **Celtra (nov vir):** uradni Trakstar RSS `/jobfeeds/celtra` vrne 9 izvirnih oglasov, od tega **6 za Slovenijo**. Vseh šest že vsebuje poln opis v istem RSS-odgovoru, stabilni ID, neposredni HTTPS URL in kraj Ljubljana. Samo **en HTTP-zahtevek na zajem**, brez obiskov posameznih oglasov. Pri preverjanju noben od šestih ni imel povsem enakega naziva pri delodajalcu Celtra v prejšnjem DeloRadarjevem posnetku.
 - **Dvojniki:** trenutni najstrožji kriteriji so označili **20 parov**, med njimi en oglas IščiDelo, ki ustreza oglasu MojeDelo po nazivu, delodajalcu in kraju. IščiDelo za zdaj ohranimo zaradi možnosti novih unikatnih objav; sami oglasi v celotnem JSON-izvozu ostanejo nedotaknjeni.
 - `dist/` vsebuje le `index.html` in `jobs.json`; zgodovinskih predogledov ZRSZ ne pakiramo več za objavo.
 
@@ -33,6 +34,8 @@ ZRSZ (`source/zrsz-official-http.js`):
 6. Ob vsakem načrtovanem zajemu uporabimo potrjene povezave iz prejšnjega objavljenega `jobs.json` in **samodejno preverimo največ 60 novih številčnih kandidatov** (do trije sočasni zahtevki s premorom). Registrska številka v odgovoru mora ustrezati današnjemu oglasu. Napačnih ujemanj ne preverjamo znova, začasne napake pa ostanejo ponovljive. Za spremembo dnevne omejitve je na voljo `ZRSZ_VERIFY_NEW_LIMIT`.
 
 Neposredno preverjanje s seznama ni dovolj za zapise `IE`: v predhodnem primerjalnem preizkusu s 3.983 rezultati uradnega iskalnika se je enolično ujemalo le 2 od 255 takšnih referenc. Zato pri manjkajočih ne prikazujemo izmišljene povezave na ZRSZ, ampak omogočamo odpiranje točnega polnega opisa na DeloRadarju in ločeno predizpolnjeno iskanje izvornega portala. Povezava DeloRadar deluje, dokler je oglas v aktualnem JSON-posnetku.
+
+Ob neposrednem ponovnem preverjanju 26. 11. 2026 je bilo med 3.947 oglasi dnevnega JSON-a 233 referenc `IE`. Za **81** od njih v 3.796 rezultatih uradnega iskalnika ni bilo niti enakega normaliziranega naziva; samo **ena** je imela hkrati enak naziv, delodajalca in rok. Javni aplikacijski JavaScript vsebuje pot za pridobitev podrobnosti po numeričnem ID-ju, ne pa povratne poizvedbe po registrski številki. Zato pri 232 `IE` ne ustvarimo ugibanih URL-jev.
 
 Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `ZRSZ_JSON_URL` je podprt kot rezervna možnost. V uporabi ni nobenega zagona Chroma ali Playwrighta za ZRSZ.
 
@@ -57,6 +60,7 @@ Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `
 | WHC Slovenija (Workforce in Heads) | Izvirni aplikacijski HTTP seznam obeh kategorij; omejene podrobnosti `JobPosting` |
 | e-Študentski Servis (študentsko delo) | Javno straničen HTML, do 50 oglasov na zahtevek; ID, opis, kraj, plačilo, trajanje in delovnik brez obiska podstrani |
 | Competo | Javni aplikacijski JSON: `/portal/jobs` in `/portal/jobs/{uid}`; postopni polni opisi in predpomnilnik |
+| Celtra | Uradni Trakstar RSS z že objavljenimi polnimi opisi, državo, krajem in stabilnimi povezavami; en HTTP-zahtevek |
 | Planet Labs, Wolt, Robinhood | Dokumentiran javni Greenhouse Job Board JSON; celotni opisi in objavljeni datumi v enem zahtevku za delodajalca |
 | Aleph, TSMG | Dokumentiran javni Lever Postings JSON s filtriranjem lokacije Slovenija že na strani strežnika |
 
