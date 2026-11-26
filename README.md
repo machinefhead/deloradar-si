@@ -48,6 +48,9 @@ Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `
 | dm Slovenija, Nova Priložnost | Javni HTML oziroma sitemap in `JobPosting` |
 | Manpower Slovenija | Straničeni javni HTML in omejene neposredne HTTP podrobnosti s predpomnilnikom |
 | WHC Slovenija (Workforce in Heads) | Izvirni aplikacijski HTTP seznam obeh kategorij; omejene podrobnosti `JobPosting` |
+| e-Študentski Servis (študentsko delo) | Javno straničen HTML, do 50 oglasov na zahtevek; ID, opis, kraj, plačilo, trajanje in delovnik brez obiska podstrani |
+| Planet Labs, Wolt, Robinhood | Dokumentiran javni Greenhouse Job Board JSON; celotni opisi in objavljeni datumi v enem zahtevku za delodajalca |
+| Aleph, TSMG | Dokumentiran javni Lever Postings JSON s filtriranjem lokacije Slovenija že na strani strežnika |
 
 Vsi viri so preverjani ločeno. Če vir trenutno odpove, je označen z napako; en neuspešen vir ne izbriše oglasov drugih portalov. EURES je dodatni HTTP-uvoz z ločevanjem oglasov ZRSZ, preverjanjem lokacij in roka prijave. `EURES_HTTP_ENABLED=1` ga vključi v zbiralnik. Ker polni EURES-ov seznam zahteva več zahtevkov, si dva zaporedna 12-urna zagona lahko delita največ 20 ur star uspešen rezultat; potekle oglase izločimo.
 
@@ -55,6 +58,9 @@ Careerjet: ker pretežno povezuje oglase izvornih portalov, ga po dogovoru **ne 
 
 ## Naslednji možni viri (še ne uvažamo)
 
+- **LinkedIn Jobs:** uradni Job Posting API omogoča pooblaščenim partnerjem predvsem *objavljanje* razpisov, ne odprtega branja vseh slovenskih oglasov. Javni `/jobs-guest/` je izrecno izključen v robots.txt; brez primernega podatkovnega dostopa ne gradimo uvoza na tem naslovu.
+- **HOFER Slovenija:** uradni `/rest/jobs/search` omogoča JSON poizvedbe brez brskalnika, a je 26. 11. 2026 vrnil `jobs: []`; ob praznem seznamu vira ne prikazujemo kot aktivnega.
+- **Pošta Slovenije:** uradna stran zaposlitve usmerja v SAP SuccessFactors, kjer je treba še prepoznati zanesljiv strojno berljiv seznam slovenskih razpisov.
 - **Bolha Zaposlitve:** prek HTTP smo pregledali 72 strani oziroma 1.728 različnih oglasov. Med 198 kandidati po nazivu ni bilo nobene potrjene registrske številke `IE`, ki bi rešila manjkajoče povezave ZRSZ. Pred priklopom je treba dokazati dodatne, res unikatne oglase in preveriti podvajanje z ZRSZ.
 - **Delaj.si:** javni `/oglasi/feed/` vrača RSS, vendar več pregledanih objav izrecno uvaža iz tujih virov (npr. Nemčija, Belgija). Trenutno ni primeren za širok samodejni zajem slovenskih originalnih oglasov brez preverjanja lokacije in izvornega izdajatelja.
 - **Zaposlitev.net:** naveden med portali v EURES-ovem pregledu slovenskega trga dela, toda ob preverjanju je HTTP vrnil 503. Za zdaj ga ne prištevamo med delujoče vire.
