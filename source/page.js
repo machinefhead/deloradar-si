@@ -257,7 +257,16 @@ export const page = String.raw`<!doctype html>
         return '';
       }
       function facetValues(j,id){
-        return id==='region'&&Array.isArray(j.regions)&&j.regions.length?j.regions:[facetValue(j,id)];
+        if(id==='city'&&Array.isArray(j.locations)&&j.locations.length)return j.locations;
+        if(id==='region'){
+          if(Array.isArray(j.regions)&&j.regions.length)return j.regions;
+          if(Array.isArray(j.locations)&&j.locations.length){
+            var regions=Array.from(new Set(j.locations.map(function(location){return regionOf({location:location})})));
+            return regions.some(function(region){return region!=='Neznana regija'})
+              ? regions.filter(function(region){return region!=='Neznana regija'}):regions;
+          }
+        }
+        return [facetValue(j,id)];
       }
       function facetCounts(id){
         var counts=new Map(),seen=new Set();
@@ -564,10 +573,12 @@ export const page = String.raw`<!doctype html>
           ['Trajanje zaposlitve',j.contractDuration],['Delovni čas',j.workHours],
           ['Način opravljanja dela',j.workplaceType],['Način prijave',j.applicationMethod],
           ['Plača',detailSalary(j.salary)],
+          ['Podatki o plačilu',j.salaryNote],
           ['Področje dela',j.jobCategory]
         ]);
         var whereAndWhen=detailSection('Kje, kdaj in pri kom',[
-          ['Kraj dela',j.location],['Dodatne lokacije',j.locations&&j.locations.length?j.locations.join(', '):''],
+          ['Naziv v slovenščini',j.localTitle],['Kraj dela',j.location],
+          ['Dodatne lokacije',j.locations&&j.locations.length?j.locations.join(', '):''],
           ['Natančnost lokacije',j.source==='EURES'&&j.locationConfidence==='country-only'?'EURES navaja Slovenijo, vendar ne določi kraja dela.':'' ],
           ['Regije',Array.isArray(j.regions)?j.regions.join(', '):''],
           ['Naslov dela',j.workplaceAddress],['Datum objave',detailDate(j.date)],
@@ -708,7 +719,8 @@ export const page = String.raw`<!doctype html>
         }
         var optionalFields=['description','summary','responsibilities','requirements','benefits','skills',
           'employmentType','contractType','contractDuration','workHours','workplaceType',
-          'workplaceAddress','education','experience','salary','incentives','jobCategory','applicationMethod'];
+          'workplaceAddress','education','experience','salary','salaryNote','localTitle',
+          'incentives','jobCategory','applicationMethod'];
         return {format:'DeloRadar-jobs',version:2,exportedAt:exportedAt,
           capturedAt:checkedAt||null,scope:scope,total:items.length,
           duplicateMode:filteredScope&&groupEnabled()?'merged':'original',
