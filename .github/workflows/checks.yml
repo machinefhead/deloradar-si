@@ -28,6 +28,8 @@ jobs:
           DETAIL_MOJEDELO_LIMIT: '30'
           DETAIL_WHC_LIMIT: '4'
           DETAIL_MANPOWER_LIMIT: '4'
+          DETAIL_SMARTRECRUITERS_LIMIT: '2'
+          DETAIL_NOVARTIS_LIMIT: '4'
         run: npm run build
       - name: Preveri podrobnosti oglasov v brskalniku in na telefonu
         run: node scripts/test-browser.mjs

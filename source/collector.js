@@ -10,6 +10,9 @@ import { getCompeto } from './competo.js';
 import { getCeltra } from './celtra.js';
 import { ATS_BOARDS, getPublicAtsBoard } from './public-ats.js';
 import { WORKABLE_BOARDS, getPublicWorkableBoard } from './workable.js';
+import { SMARTRECRUITERS_BOARDS, getPublicSmartRecruitersBoard } from './smartrecruiters.js';
+import { ASHBY_BOARDS, getPublicAshbyBoard } from './ashby.js';
+import { NOVARTIS_SOURCE, getNovartisWorkday } from './novartis-workday.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -47,6 +50,9 @@ const SOURCES = [
   { id: 'celtra', name: 'Celtra', url: 'https://celtra.hire.trakstar.com/' },
   ...ATS_BOARDS.map(board => ({ id: 'ats_' + board.id, name: board.name, url: board.url })),
   ...WORKABLE_BOARDS.map(board => ({ id: 'workable_' + board.id, name: board.name, url: board.url })),
+  ...SMARTRECRUITERS_BOARDS.map(board => ({ id: 'smart_' + board.id, name: board.name, url: board.url })),
+  ...ASHBY_BOARDS.map(board => ({ id: 'ashby_' + board.id, name: board.name, url: board.url })),
+  NOVARTIS_SOURCE,
   ...(CAREERJET_DATA_API_KEY ? [{ id: 'careerjet', name: 'Careerjet', url: 'https://www.careerjet.si/' }] : []),
   ...(EURES_HTTP_ENABLED ? [{ id: 'eures', name: 'EURES', url: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl' }] : []),
 ];
@@ -739,7 +745,12 @@ async function collect() {
     previous: oldJobs, maxDetails: detailLimit('DETAIL_WHC_LIMIT', 24),
   })), getStudentWork(), previousJobs().then(oldJobs => getCompeto({ previous: oldJobs })), getCeltra(),
   ...ATS_BOARDS.map(board => getPublicAtsBoard(board)),
-  ...WORKABLE_BOARDS.map(board => getPublicWorkableBoard(board)));
+  ...WORKABLE_BOARDS.map(board => getPublicWorkableBoard(board)),
+  ...SMARTRECRUITERS_BOARDS.map(board => previousJobs().then(previous =>
+    getPublicSmartRecruitersBoard(board, { previous, maxNewDetails: detailLimit('DETAIL_SMARTRECRUITERS_LIMIT', 100) }))),
+  ...ASHBY_BOARDS.map(board => getPublicAshbyBoard(board)),
+  previousJobs().then(previous => getNovartisWorkday({ previous,
+    maxNewDetails: detailLimit('DETAIL_NOVARTIS_LIMIT', 100) })));
   if (CAREERJET_DATA_API_KEY) collectors.push(previousJobs().then(async oldJobs => {
     const result = await fetchCareerjetDataApi({ apiKey: CAREERJET_DATA_API_KEY,
       maxPages: 1, maxDetails: 10, previous: oldJobs });

@@ -7,6 +7,7 @@ export const WORKABLE_BOARDS = [
   { id: 'dploy', name: 'D-ploy', account: 'd-ploy', url: 'https://apply.workable.com/d-ploy/' },
   { id: 'laundryheap', name: 'Laundryheap', account: 'laundryheap-2', url: 'https://apply.workable.com/laundryheap-2/' },
   { id: 'sofmedica', name: 'SOFMEDICA', account: 'sofmedica', url: 'https://apply.workable.com/sofmedica/' },
+  { id: 'moneyhub', name: 'Moneyhub', account: 'moneyhub', url: 'https://apply.workable.com/moneyhub/' },
 ];
 
 function clean(value) {
