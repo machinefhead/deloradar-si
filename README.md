@@ -2,13 +2,17 @@
 
 Osebni pregled slovenskih zaposlitvenih oglasov: [odpri DeloRadar na GitHub Pages](https://machinefhead.github.io/deloradar-si/). Podatki se posodobijo po uspešnem zajemu in objavi v GitHub Actions; sam obisk strani ne sproži novih poizvedb na zaposlitvene portale.
 
-## Zadnje preverjeno stanje (25. november 2026)
+## Zadnje preverjeno stanje (26. november 2026)
 
-- Preverjena objava GitHub Pages (25. november 2026, 21:21 UTC): **8.869 oglasov iz 19 dosegljivih virov** z vključenim EURES. Osnovnih 18 virov je v prejšnjem lokalnem zajemu pripravilo 8.841 oglasov v 41 sekundah; celoten prvi EURES-ov zajem porabi približno dve dodatni minuti. Naslednji 12-urni zagon lahko uporabi svež EURES-ov predpomnilnik.
-- **ZRSZ: 4.152 aktualnih oglasov**, vsi z opisom del in nalog iz uradnega dnevnega JSON-a. Pri **3.899 oglasih** je referenca preverjena s številčnim `idp` prek uradnega HTTP-odgovora za posamezen oglas; povezava vodi neposredno na isti oglas. V trenutnem posnetku ima 255 referenc predpono `IE`; le 2 imata ustrezni `idp` tudi v uradnem iskalniku, **253 pa nimajo preverljivega ujemanja**. Ne ugibamo ID-ja: za te oglase prikazujemo celoten opis na DeloRadarju, deljivo povezavo `?oglas=zrsz%3AIE...` in ločeno iskanje pri ZRSZ. Razmerje neposrednih povezav je v »Stanju povezav«.
-- **Adecco: 161 oglasov** v zadnjem zajemu; 143 veljavnih zapisov iz predpomnilnika in 18 novo preverjenih. Del osvežitev poteka postopoma, da ponavljajoči zajem ne pošilja vseh zahtevkov znova.
+- Zadnja preverjena javna objava (25. november 2026, 23:06 UTC): **8.367 oglasov iz 20 dosegljivih virov**. Celoten novi lokalni zajem (26. november) je vrnil **10.651 izvornih oglasov iz 27/27 dosegljivih virov** v 26 sekundah. Revizija je potrdila različne ID-je, 20 reverzibilno označenih parov dvojnikov, skladna imena virov in nič izrecno zaznanih tujih krajev. Nova različica bo javna šele po dokončnem preverjanju in uspešnem postopku objave.
+- **ZRSZ: 3.725 aktualnih oglasov**, z besedilom del in nalog iz uradnega dnevnega JSON-a. Pri **3.539 oglasih** je referenca povezana s preverjenim številčnim `idp` in neposrednim oglasom; pri preostalih **186** natančnega `idp` ni potrjenega. Zato za njih ohranimo celoten opis na DeloRadarju, deljivo povezavo `?oglas=zrsz%3AIE...` pri referencah `IE` in ločeno izvorno iskanje, ne izmišljene neposredne povezave. Delež neposrednih povezav je v »Stanju povezav«.
+- **Adecco: 146 aktualnih oglasov** v zadnjem lokalnem zajemu. Še 15 povezav v sitemapu je vračalo odstranjene/neveljavne zapise (npr. HTTP 410), kar ni več obravnavano kot napaka portala. Dopolnilne podrobnosti se osvežujejo postopno.
 - **EURES: 25 dodatnih oglasov**, od tega 2 z navedenim krajem in 23 z državo Slovenijo, vendar brez potrjenega kraja. Vseh 25 vsebuje opis, pri 13 je objavljen tudi rok prijave. EURES je vključen v urnik; Careerjet kot agregator za zdaj ni prednostna naloga.
-- **Manpower Slovenija:** nov neposreden HTTP-uvoz z več strani izvirnega seznama, celotnimi opisi podrobnosti in omejitvijo **20 novih HTTP-opisov na zagon** ter 14-dnevnim predpomnilnikom. V času priprave smo na javnem seznamu našli približno 102 razpisa. Vključen bo ob naslednji preverjeni produkcijski objavi.
+- **Manpower Slovenija:** neposreden HTTP-uvoz z več strani izvirnega seznama, postopnimi polnimi opisi podrobnosti in omejitvijo **20 novih HTTP-opisov na zagon** ter 14-dnevnim predpomnilnikom. Zadnji preverjeni seznam: **102 razpisa**.
+- **WHC Slovenija (nekdanji Workforce):** povezani sta obe izvirni kategoriji **Workforce** in **Heads**. Izvirni aplikacijski HTTP vrne straničeni HTML (97 + 31 kartic na dan preverjanja); splošne prijave v bazo kandidatov in izrecno tuje lokacije izločimo. Posamezne oglase programsko dopolnimo z uradnim `JobPosting` in podatki o nalogah, ponudbi in pričakovanjih. Največ **24 podrobnih HTTP zahtevkov na gradnjo**, do trije sočasno, s 14-dnevnim predpomnilnikom. Brez brskalniškega odpiranja kartic.
+- **e-Študentski Servis:** **2.141 objav** iz 43 straničenih HTTP odgovorov; opis, kraj, delovnik in plačilo preberemo neposredno iz seznama, brez dodatnih zahtevkov za podrobnosti. Vneseno je kot posebno označeno študentsko delo, brez ugibanja datuma objave.
+- **Greenhouse/Lever:** pet izvirnih kariernih sistemov (Planet Labs, Wolt, Robinhood, Aleph, TSMG) je ob zajemu vrnilo skupaj **22 slovenskih razpisov**. Lever prenaša tudi ločena poglavja nalog in zahtev.
+- **Dvojniki:** trenutni najstrožji kriteriji so označili **20 parov**, med njimi en oglas IščiDelo, ki ustreza oglasu MojeDelo po nazivu, delodajalcu in kraju. IščiDelo za zdaj ohranimo zaradi možnosti novih unikatnih objav; sami oglasi v celotnem JSON-izvozu ostanejo nedotaknjeni.
 - `dist/` vsebuje le `index.html` in `jobs.json`; zgodovinskih predogledov ZRSZ ne pakiramo več za objavo.
 
 ## Načelo pridobivanja podatkov
@@ -24,7 +28,7 @@ ZRSZ (`source/zrsz-official-http.js`):
 5. Pri spremembi identifikatorja ali dvoumnem ujemanju pustimo iskalno povezavo, namesto da bi prikazali napačen oglas.
 6. Ob vsakem načrtovanem zajemu uporabimo potrjene povezave iz prejšnjega objavljenega `jobs.json` in **samodejno preverimo največ 60 novih številčnih kandidatov** (do trije sočasni zahtevki s premorom). Registrska številka v odgovoru mora ustrezati današnjemu oglasu. Napačnih ujemanj ne preverjamo znova, začasne napake pa ostanejo ponovljive. Za spremembo dnevne omejitve je na voljo `ZRSZ_VERIFY_NEW_LIMIT`.
 
-Neposredno preverjanje s seznama ni dovolj za zapise `IE`: v primerjavi s 3.983 rezultati uradnega iskalnika se je enolično ujemalo le 2 od 255 takšnih referenc. Zato pri manjkajočih ne prikazujemo izmišljene povezave na ZRSZ, ampak omogočamo odpiranje točnega polnega opisa na DeloRadarju in ločeno predizpolnjeno iskanje izvornega portala. Povezava DeloRadar deluje, dokler je oglas v aktualnem JSON-posnetku.
+Neposredno preverjanje s seznama ni dovolj za zapise `IE`: v predhodnem primerjalnem preizkusu s 3.983 rezultati uradnega iskalnika se je enolično ujemalo le 2 od 255 takšnih referenc. Zato pri manjkajočih ne prikazujemo izmišljene povezave na ZRSZ, ampak omogočamo odpiranje točnega polnega opisa na DeloRadarju in ločeno predizpolnjeno iskanje izvornega portala. Povezava DeloRadar deluje, dokler je oglas v aktualnem JSON-posnetku.
 
 Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `ZRSZ_JSON_URL` je podprt kot rezervna možnost. V uporabi ni nobenega zagona Chroma ali Playwrighta za ZRSZ.
 
@@ -46,13 +50,22 @@ Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `
 | Mercator, IščiDelo | Javni seznami s straničenjem, kjer je na voljo |
 | dm Slovenija, Nova Priložnost | Javni HTML oziroma sitemap in `JobPosting` |
 | Manpower Slovenija | Straničeni javni HTML in omejene neposredne HTTP podrobnosti s predpomnilnikom |
+| WHC Slovenija (Workforce in Heads) | Izvirni aplikacijski HTTP seznam obeh kategorij; omejene podrobnosti `JobPosting` |
+| e-Študentski Servis (študentsko delo) | Javno straničen HTML, do 50 oglasov na zahtevek; ID, opis, kraj, plačilo, trajanje in delovnik brez obiska podstrani |
+| Planet Labs, Wolt, Robinhood | Dokumentiran javni Greenhouse Job Board JSON; celotni opisi in objavljeni datumi v enem zahtevku za delodajalca |
+| Aleph, TSMG | Dokumentiran javni Lever Postings JSON s filtriranjem lokacije Slovenija že na strani strežnika |
 
 Vsi viri so preverjani ločeno. Če vir trenutno odpove, je označen z napako; en neuspešen vir ne izbriše oglasov drugih portalov. EURES je dodatni HTTP-uvoz z ločevanjem oglasov ZRSZ, preverjanjem lokacij in roka prijave. `EURES_HTTP_ENABLED=1` ga vključi v zbiralnik. Ker polni EURES-ov seznam zahteva več zahtevkov, si dva zaporedna 12-urna zagona lahko delita največ 20 ur star uspešen rezultat; potekle oglase izločimo.
+
+Spodnji katalog nepovezanih virov zdaj vsebuje vse do zdaj raziskane portale, razvrščene po prednosti, s povezavo, statusom in naslednjim raziskovalnim korakom. Neuspešen prvi HTTP poskus vira trajno ne izloči. V seznamu povezanih virov so imena klikljiva, posebej je prikazano število verjetno podvojenih oglasov. Za reproducibilno revizijo lokalnega `jobs.json` je na voljo `npm run audit:snapshot`.
 
 Careerjet: ker pretežno povezuje oglase izvornih portalov, ga po dogovoru **ne prednostno vključujemo**. Javni seznam pri programskem HTTP-zahtevku vrne preverjanje prometa, običajna pot `/rss` ne obstaja, uradni `robots.txt` pa izključuje iskalni RSS-vmesnik. V rezervi ostaja preizkušena integracija `source/careerjet-data-api.js` z uradnim podatkovnim API-jem, če bi se pokazali res novi, unikatni oglasi; ključa trenutno nimamo in porabe ne sprožamo.
 
 ## Naslednji možni viri (še ne uvažamo)
 
+- **LinkedIn Jobs:** uradni Job Posting API omogoča pooblaščenim partnerjem predvsem *objavljanje* razpisov, ne odprtega branja vseh slovenskih oglasov. Javni `/jobs-guest/` je izrecno izključen v robots.txt; brez primernega podatkovnega dostopa ne gradimo uvoza na tem naslovu.
+- **HOFER Slovenija:** uradni `/rest/jobs/search` omogoča JSON poizvedbe brez brskalnika, a je 26. 11. 2026 vrnil `jobs: []`; ob praznem seznamu vira ne prikazujemo kot aktivnega.
+- **Pošta Slovenije:** uradna stran zaposlitve usmerja v SAP SuccessFactors, kjer je treba še prepoznati zanesljiv strojno berljiv seznam slovenskih razpisov.
 - **Bolha Zaposlitve:** prek HTTP smo pregledali 72 strani oziroma 1.728 različnih oglasov. Med 198 kandidati po nazivu ni bilo nobene potrjene registrske številke `IE`, ki bi rešila manjkajoče povezave ZRSZ. Pred priklopom je treba dokazati dodatne, res unikatne oglase in preveriti podvajanje z ZRSZ.
 - **Delaj.si:** javni `/oglasi/feed/` vrača RSS, vendar več pregledanih objav izrecno uvaža iz tujih virov (npr. Nemčija, Belgija). Trenutno ni primeren za širok samodejni zajem slovenskih originalnih oglasov brez preverjanja lokacije in izvornega izdajatelja.
 - **Zaposlitev.net:** naveden med portali v EURES-ovem pregledu slovenskega trga dela, toda ob preverjanju je HTTP vrnil 503. Za zdaj ga ne prištevamo med delujoče vire.
@@ -61,6 +74,7 @@ Careerjet: ker pretežno povezuje oglase izvornih portalov, ga po dogovoru **ne 
 ## Podatki in prikaz
 
 - Filtri: vir, regija, kraj, področje, delodajalec, čas, status in zaznamki; deluje združevanje verjetnih dvojnikov brez izgube izvornih zapisov.
+- Varnostna presoja dvojnikov: enak normaliziran naziv, delodajalec in kraj; pri dveh objavah datum lahko manjka največ enemu, nikoli obema. Različni roki, dvoumne skupine treh oglasov in nepotrjeni ZRSZ ostanejo ločeni. Virov ne odstranjujemo na podlagi enega samega posnetka.
 - Klik na naziv odpre podrobnosti z opisom, nalogami, pogoji, vrsto zaposlitve, roki in drugimi razpoložljivimi podatki. Izvorni HTML pretvorimo v varno besedilo.
 - Vsak oglas ima deljivo povezavo `?oglas=<ID>`, ki odpre natanko njegov opis. Pri ZRSZ brez potrjenega `idp` sta v vrstici ločeno označena opis v DeloRadarju (`▣`) in iskanje na ZRSZ (`↗`); iskalna povezava ni predstavljena kot neposredni oglas.
 - Dva JSON-izvoza neposredno na strani: filtrirani prikaz in vsi izvorni oglasi. Datoteka se ustvari in prenese **samo ob kliku ustreznega gumba**; neznana polja ostanejo neznana.

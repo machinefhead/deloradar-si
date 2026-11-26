@@ -46,6 +46,11 @@ if (process.env.DELORADAR_REQUIRE_ALL_SOURCES === '1') {
   assert.equal(unavailable.length, 0, 'Objava preklicana: nedosegljivi viri: ' +
     unavailable.map(source => source.name).join(', '));
 }
+if (process.env.DELORADAR_REQUIRE_WHC === '1') {
+  const whc = data.sources.find(source => source.id === 'whc');
+  assert.ok(whc?.status === 'live' && whc.count > 0,
+    'Razvojni preizkus prekinjen: novi vir WHC ni uspešno vrnil oglasov');
+}
 if (process.env.ZRSZ_OFFICIAL_HTTP_ENABLED === '1') {
   const zrsz = data.sources.find(s => s.id === 'zrsz');
   assert.ok(zrsz?.status === 'live' && zrsz.count > 0, 'Samodejni ZRSZ HTTP uvoz ni uspel');
@@ -55,8 +60,10 @@ if (data.jobs.length === 0) {
   throw new Error('Nobeden od povezanih portalov ni vrnil oglasov. Obdrži prejšnjo objavo.');
 }
 const seen = new Set();
+const sourceNames = new Set(data.sources.map(source => source.name));
 for (const job of data.jobs) {
   assert.ok(job.id && job.title && job.source, 'Oglas ima nepopolne osnovne podatke');
+  assert.ok(sourceNames.has(job.source), 'Oglas je pripisan neobstoječemu viru: ' + job.source);
   assert.ok(/^https:\/\//.test(job.url), 'Oglas nima varne izvorne povezave');
   assert.ok(!seen.has(job.id), 'Podvojeni ID oglasa');
   seen.add(job.id);

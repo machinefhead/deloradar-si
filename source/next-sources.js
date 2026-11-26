@@ -107,6 +107,9 @@ export function parseNovaPriloznostJob(html, listing, now = Date.now()) {
   const country = typeof address === 'object' ? address?.addressCountry?.name || address?.addressCountry : '';
   if (country && !/^(SI|Slovenia|Slovenija)$/i.test(country)) return null;
   const location = typeof address === 'string' ? address : address?.addressLocality || '';
+  // Pri nekaterih oglasih država ni zapisana, čeprav je kraj nedvoumno v tujini.
+  // Izločimo samo jasno potrjene tuje kraje; drugih neznanih krajev ne ugibamo.
+  if (/\b(?:Stuttgart|München|Munich|Graz|Wien|Vienna|Zagreb|Klagenfurt|Villach|Berlin)\b/i.test(location)) return null;
   const posted = Date.parse(data.datePosted || '');
   return {
     id: listing.id, source: 'Nova Priložnost', title,

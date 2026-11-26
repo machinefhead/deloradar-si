@@ -76,6 +76,14 @@ assert.equal(markLikelyDuplicates([
   sameVacancy('zrsz:1','ZRSZ / PoiščiDelo','2026-11-20',{reference:'ABC123'}),
   sameVacancy('mojedelo:6','MojeDelo.com','2026-11-21')
 ]).filter(j=>j.duplicateGroup).length,0,'ZRSZ brez neposrednega URL-ja oglasa ostane samostojen');
+assert.equal(markLikelyDuplicates([
+  sameVacancy('iscidelo:1','IščiDelo',''),
+  sameVacancy('mojedelo:7','MojeDelo.com','2026-11-20')
+]).filter(j=>j.duplicateGroup).length,2,'Izjemoma združimo enak naziv, podjetje in kraj, ko datum manjka le enemu viru');
+assert.equal(markLikelyDuplicates([
+  sameVacancy('iscidelo:2','IščiDelo',''),
+  sameVacancy('mojedelo:8','MojeDelo.com','')
+]).filter(j=>j.duplicateGroup).length,0,'Brez datumov obeh oglasov ne sklepamo o identiteti');
 
 assert.match(page, /<html lang="sl">/);
 assert.match(page, /href="\.\/"/);
@@ -116,11 +124,12 @@ assert.match(page, /<div class="sourceslist" id="sourceStatus">/, 'Statusi vseh 
 assert.doesNotMatch(page, /<details class="sourcedetails"|id="sourceDetails"/, 'Seznam stanja povezav ne potrebuje razširljivega menija');
 assert.match(page, /\.sidebar>\.panel:nth-of-type\(2\)\{display:block\}/, 'Stanje povezav mora ostati vidno tudi na telefonu');
 assert.match(page, /\.sourcecatalog\{display:block\}/, 'Nepovezani viri morajo biti prikazani brez klika');
-assert.match(page, /id="planned"><div class="sourcecard"><a href="https:\/\/www\.careerjet\.si\//, 'Careerjet mora ostati dosegljiv tudi, če zajem podatkov ne uspe');
+assert.match(page, /id="planned"><div class="sourcecard"><p>Pridobivam seznam nepovezanih virov/, 'Nepovezani viri morajo imeti jasen začetni prikaz');
 assert.doesNotMatch(page, /Za ta iskalnika še nimamo samodejnega izvoza/, 'Ko EURES priključimo, ne sme ostati zastarelo navodilo');
 assert.doesNotMatch(page, /id="showCatalog"|id="topSources"|function showSources\(/, 'Odvečna gumba za prikaz istih povezav morata biti odstranjena');
 assert.doesNotMatch(page, /sourcesToggle|sidebar\.sources-open/, 'Tudi mobilni seznam virov ostaja odprt');
-assert.match(script, /planned\.filter\(function\(s\)\{return s\.name==='Careerjet'\|\|s\.name==='EURES \(Slovenija\)'\}\)/, 'Na dnu prikažemo le še dejansko nepovezane iskalnike');
+assert.match(script, /planned\.filter\(function\(s\)\{return !linkedNames\.has\(s\.name\)\}\)/, 'Na dnu pokažemo vse načrtovane, a še nepovezane vire');
+assert.match(script, /safe\(s\.status\|\|'V raziskavi'\)/, 'Status raziskave vira mora biti viden');
 assert.match(script, /sources\.slice\(\)\.sort\(function\(a,b\)\{return b\.count-a\.count/, 'Seznam virov naj bo razvrščen po količini oglasov');
 assert.doesNotMatch(page, /Več oglasov na velikih portalih/, 'Povezana portala se ne smeta prikazovati kot nepovezana');
 assert.doesNotMatch(page, /class="quicklinks"/, 'Podvojene hitre povezave niso več potrebne');
@@ -132,9 +141,9 @@ const plannedBlock=collectorSource.match(/const PLANNED = \[([\s\S]*?)\n\];/)?.[
 assert.ok(plannedBlock.includes('ZRSZ / PoiščiDelo')&&plannedBlock.includes('Careerjet'),'Dostop do dveh glavnih nepovezanih iskalnikov mora ostati');
 assert.ok(!plannedBlock.includes("name: 'MojeDelo.com'")&&!plannedBlock.includes("name: 'Zaposlitev.info'"),'Že povezanih portalov ne podvajamo med dodatnimi viri');
 assert.match(plannedBlock,/EURES \(Slovenija\).*locationCodes=si/,'EURES mora odpreti iskanje, omejeno na Slovenijo');
-assert.equal((plannedBlock.match(/\{ name:/g)||[]).length,3,'V produkciji morata med nepovezanimi ostati le Careerjet in EURES (lokalno tudi ZRSZ brez aktivacije)');
-for(const name of ['SPAR Slovenija','Slovenske železnice','Prohuman']) {
-  assert.ok(!plannedBlock.includes("name: '"+name+"'"),'Že zajeti ali blokirani delodajalci ne sodijo med čakajoča iskalnika: '+name);
+assert.ok((plannedBlock.match(/\{ name:/g)||[]).length>=12,'Raziskani, a še nepovezani viri morajo ostati vidni v katalogu');
+for(const name of ['SPAR Slovenija','Slovenske železnice','Prohuman','HOFER Slovenija','Pošta Slovenije','Bolha Zaposlitve','LinkedIn Jobs']) {
+  assert.ok(plannedBlock.includes("name: '"+name+"'"),'Raziskani nepovezani vir manjka: '+name);
 }
 assert.doesNotMatch(page, /Ob odprtju preberemo zadnji objavljeni posnetek/, 'Podvojeno pojasnilo pod tabelo je odvečno');
 const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');

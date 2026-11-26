@@ -5,8 +5,9 @@
   "type": "module",
   "description": "Odprti pregledovalnik prostih delovnih mest iz slovenskih portalov",
   "scripts": {
-    "test": "node scripts/test.mjs && node scripts/test-zrsz-http.mjs && node scripts/test-zrsz-import.mjs && node scripts/test-zrsz-eures-map.mjs && node scripts/test-eures-http.mjs && node scripts/test-eures-source.mjs && node scripts/test-zrsz-eures-source.mjs && node scripts/test-zrsz-official-http.mjs && node scripts/test-careerjet-data-api.mjs && node scripts/test-manpower.mjs",
+    "test": "node scripts/test.mjs && node scripts/test-zrsz-http.mjs && node scripts/test-zrsz-import.mjs && node scripts/test-zrsz-eures-map.mjs && node scripts/test-eures-http.mjs && node scripts/test-eures-source.mjs && node scripts/test-zrsz-eures-source.mjs && node scripts/test-zrsz-official-http.mjs && node scripts/test-careerjet-data-api.mjs && node scripts/test-manpower.mjs && node scripts/test-whc.mjs && node scripts/test-new-sources.mjs",
     "build": "node scripts/build-site.mjs",
+    "audit:snapshot": "node scripts/audit-snapshot.mjs",
     "probe:portals": "node scripts/probe-public-portals.mjs"
   },
   "dependencies": {
