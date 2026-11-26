@@ -60,16 +60,28 @@ export function parseNovartisJob(raw, detail, sloveniaFacetId) {
   };
 }
 
+let lastWorkdayRequest = Promise.resolve();
+let nextWorkdayRequestAt = 0;
 async function requestJson(url, fetchImpl, timeoutMs, body) {
-  const response = await fetchImpl(url, { ...(body ? { method: 'POST', body: JSON.stringify(body) } : {}),
-    signal: AbortSignal.timeout(timeoutMs),
-    headers: { accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}),
-      'user-agent': 'DeloRadar/0.1 (personal job listing index)' } });
-  if (!response.ok) throw Error('Novartis Workday: HTTP ' + response.status);
-  if (!/json/i.test(response.headers.get('content-type') || '')) throw Error('Novartis Workday: odgovor ni JSON');
-  const data = await response.text();
-  if (Buffer.byteLength(data) > 5_000_000) throw Error('Novartis Workday: prevelik odgovor');
-  return JSON.parse(data);
+  // Workday lahko ob več zaporednih zahtevkih na GitHub Runnerju vrne 429.
+  // Razmik velja za odkrivanje države, straničenje in podrobnosti skupaj.
+  // 429 je trda napaka: zaščita objave ohrani zadnji veljavni posnetek.
+  const task = lastWorkdayRequest.then(async () => {
+    const remaining = nextWorkdayRequestAt - Date.now();
+    if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining));
+    nextWorkdayRequestAt = Date.now() + 1800;
+    const response = await fetchImpl(url, { ...(body ? { method: 'POST', body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: { accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}),
+        'user-agent': 'DeloRadar/0.1 (personal job listing index)' } });
+    if (!response.ok) throw Error('Novartis Workday: HTTP ' + response.status);
+    if (!/json/i.test(response.headers.get('content-type') || '')) throw Error('Novartis Workday: odgovor ni JSON');
+    const data = await response.text();
+    if (Buffer.byteLength(data) > 5_000_000) throw Error('Novartis Workday: prevelik odgovor');
+    return JSON.parse(data);
+  });
+  lastWorkdayRequest = task.then(() => undefined, () => undefined);
+  return task;
 }
 
 function getPrevious(previous, identity, title, now, maxDays = 14) {
