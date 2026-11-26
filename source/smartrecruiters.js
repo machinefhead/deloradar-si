@@ -8,6 +8,9 @@ export const SMARTRECRUITERS_BOARDS = [
   { id: 'boschgroup', name: 'Bosch Group', company: 'BoschGroup', url: 'https://jobs.smartrecruiters.com/BoschGroup' },
   { id: 'primark', name: 'Primark', company: 'Primark', url: 'https://jobs.smartrecruiters.com/Primark' },
   { id: 'antonpaar1', name: 'Anton Paar', company: 'antonpaar1', url: 'https://jobs.smartrecruiters.com/antonpaar1' },
+  { id: 'abbvie', name: 'AbbVie', company: 'abbvie', url: 'https://jobs.smartrecruiters.com/abbvie' },
+  { id: 'coface', name: 'Coface', company: 'Coface', url: 'https://jobs.smartrecruiters.com/Coface' },
+  { id: 'konecranes', name: 'Konecranes', company: 'Konecranes', url: 'https://jobs.smartrecruiters.com/Konecranes' },
 ];
 
 function plain(value) {
@@ -40,10 +43,16 @@ function asSlovenian(item) {
   return String(item?.location?.country || '').toLowerCase() === 'si';
 }
 
+function genuineVacancy(title) {
+  return !/^(?:send us your cv|open application|general application|talent pool|talent network|spontaneous application)\b/i
+    .test(plain(title));
+}
+
 export function parseSmartRecruitersJob(raw, detail, config, now = Date.now()) {
   if (!SMARTRECRUITERS_BOARDS.some(b => b.id === config?.id && b.company === config.company) ||
       !raw || String(raw.id) !== String(detail?.id) || !/^\d{10,16}$/.test(String(raw.id)) ||
-      !asSlovenian(raw) || !asSlovenian(detail) || detail.active === false) return null;
+      !asSlovenian(raw) || !asSlovenian(detail) || detail.active === false ||
+      !genuineVacancy(detail.name || raw.name)) return null;
   const deadline = day(raw.unpublishOn || detail.unpublishOn);
   if (deadline && Date.parse(deadline + 'T23:59:59Z') < now) return null;
   const url = postingUrl(detail.postingUrl, config, String(raw.id));
@@ -111,16 +120,17 @@ export async function getPublicSmartRecruitersBoard(config, { fetchImpl = fetch,
   const first = await readJson(base + '?country=si&limit=100&offset=0', fetchImpl, timeoutMs);
   if (!Number.isInteger(first.totalFound) || first.totalFound < 0 || first.totalFound > 500 ||
       !Array.isArray(first.content)) throw Error('SmartRecruiters: neveljavno straničenje');
-  const list = [...first.content];
+  const all = [...first.content];
   for (let offset = 100; offset < first.totalFound; offset += 100) {
     const next = await readJson(base + '?country=si&limit=100&offset=' + offset, fetchImpl, timeoutMs);
     if (next.totalFound !== first.totalFound || !Array.isArray(next.content) || !next.content.length) {
       throw Error('SmartRecruiters: nepopoln seznam');
     }
-    list.push(...next.content);
+    all.push(...next.content);
   }
-  if (list.length !== first.totalFound || new Set(list.map(job => String(job.id))).size !== list.length ||
-      list.some(job => !asSlovenian(job))) throw Error('SmartRecruiters: neskladni slovenski oglasi');
+  if (all.length !== first.totalFound || new Set(all.map(job => String(job.id))).size !== all.length ||
+      all.some(job => !asSlovenian(job))) throw Error('SmartRecruiters: neskladni slovenski oglasi');
+  const list = all.filter(job => genuineVacancy(job.name));
   const output = new Array(list.length);
   let requested = 0, reused = 0;
   for (let offset = 0; offset < list.length; offset += 3) {

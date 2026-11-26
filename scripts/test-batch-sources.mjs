@@ -3,6 +3,7 @@ import { SMARTRECRUITERS_BOARDS, getPublicSmartRecruitersBoard,
   parseSmartRecruitersJob } from '../source/smartrecruiters.js';
 import { NOVARTIS_SOURCE, getNovartisWorkday, parseNovartisJob } from '../source/novartis-workday.js';
 import { ASHBY_BOARDS, parseAshbyBoard, getPublicAshbyBoard } from '../source/ashby.js';
+import { ATS_BOARDS } from '../source/public-ats.js';
 import { WORKABLE_BOARDS } from '../source/workable.js';
 
 const now = Date.parse('2026-11-26T20:00:00Z');
@@ -31,6 +32,11 @@ assert.equal(parseSmartRecruitersJob({ ...rawSmart, location: { country: 'de' } 
   smartDetail, smart, now), null);
 assert.equal(parseSmartRecruitersJob({ ...rawSmart, unpublishOn: '2026-11-01' },
   smartDetail, smart, now), null);
+const coface = SMARTRECRUITERS_BOARDS.find(board => board.id === 'coface');
+assert.equal(parseSmartRecruitersJob({ ...rawSmart, name: 'Send us your CV' },
+  { ...smartDetail, name: 'Send us your CV', postingUrl:
+    'https://jobs.smartrecruiters.com/Coface/744000163815771-send-us-your-cv' }, coface, now), null,
+  'Splošne prijave ne obravnavamo kot konkretno razpisano delovno mesto');
 const smartUrls = [];
 const smartFetch = async url => {
   smartUrls.push(url);
@@ -119,6 +125,33 @@ await getPublicAshbyBoard(ashby, { fetchImpl: async url => {
 } });
 assert.deepEqual(ashbyRequests,
   ['https://api.ashbyhq.com/posting-api/job-board/xds?includeCompensation=true']);
+const sunrise = ASHBY_BOARDS.find(board => board.id === 'sunrise');
+const sunriseRows = [{
+  id: '1b4fb4a3-1be0-4b79-a152-887637ea7c51', title: 'QA Engineer',
+  isListed: true, location: 'CET +/- 3', workplaceType: 'Remote',
+  address: { postalAddress: { addressCountry: 'Slovenia', addressLocality: 'Ljubljana' } },
+  jobUrl: 'https://jobs.ashbyhq.com/sunrise/1b4fb4a3-1be0-4b79-a152-887637ea7c51',
+  descriptionPlain: 'Preverjanje programske opreme na robotskih celicah.',
+}, {
+  id: '1b4fb4a3-1be0-4b79-a152-887637ea7c52', title: 'Svetovalec na daljavo',
+  isListed: true, location: 'Dubai', address: { postalAddress: { addressCountry: 'United Arab Emirates' } },
+  secondaryLocations: [{ location: 'Slovenia (Remote)',
+    address: { postalAddress: { addressCountry: 'Slovenia' } } }],
+  jobUrl: 'https://jobs.ashbyhq.com/sunrise/1b4fb4a3-1be0-4b79-a152-887637ea7c52',
+  descriptionPlain: 'Delo na daljavo iz Slovenije.', workplaceType: 'Remote',
+}, {
+  id: '1b4fb4a3-1be0-4b79-a152-887637ea7c53', title: 'Tuji oglas',
+  isListed: true, location: 'Berlin', address: { postalAddress: { addressCountry: 'Germany' } },
+}];
+const sunriseParsed = parseAshbyBoard({ jobs: sunriseRows }, sunrise);
+assert.equal(sunriseParsed.length, 2, 'Slovenija iz uradnega addressCountry in sekundarne lokacije');
+assert.equal(sunriseParsed[0].location, 'Ljubljana');
+assert.equal(sunriseParsed[1].location, 'Slovenija (delo na daljavo)');
+assert.ok(ASHBY_BOARDS.some(board => board.id === 'paradox'));
+assert.ok(ASHBY_BOARDS.some(board => board.id === 'axelera'));
+assert.ok(SMARTRECRUITERS_BOARDS.some(board => board.id === 'abbvie'));
+assert.ok(SMARTRECRUITERS_BOARDS.some(board => board.id === 'konecranes'));
+assert.ok(ATS_BOARDS.some(board => board.id === 'rws'));
 assert.ok(WORKABLE_BOARDS.find(board => board.id === 'moneyhub'));
 
 console.log('OK: SmartRecruiters, Novartis Workday, Ashby, javni HTTP, zasebni stiki in predpomnilnik');
