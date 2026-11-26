@@ -719,11 +719,16 @@ async function getIscidelo() {
 }
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
+  let zrszDiagnostics;
   const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
   if (ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED) collectors.push(
-    ZRSZ_OFFICIAL_HTTP_ENABLED ? previousJobs().then(oldJobs => getZrszOfficialHttp({
-      previous: oldJobs, maxNewDetails: Math.min(250, detailLimit('ZRSZ_VERIFY_NEW_LIMIT', 60)),
-    })) : getZrszJson(ZRSZ_JSON_URL));
+    ZRSZ_OFFICIAL_HTTP_ENABLED ? previousJobs().then(async oldJobs => {
+      const result = await getZrszOfficialHttp({ previous: oldJobs, withStats: true,
+        maxNewDetails: Math.min(250, detailLimit('ZRSZ_VERIFY_NEW_LIMIT', 100)),
+      });
+      zrszDiagnostics = result.stats;
+      return result.jobs;
+    }) : getZrszJson(ZRSZ_JSON_URL));
   collectors.push(getDm(), getNovaPriloznost(), previousJobs().then(oldJobs => getManpower({
     previous: oldJobs, maxDetails: detailLimit('DETAIL_MANPOWER_LIMIT', 20),
   })), previousJobs().then(oldJobs => getWhc({
@@ -780,7 +785,8 @@ async function collect() {
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0,
-    likelyDuplicates: markedBySource.get(source.name) || 0 }));
+    likelyDuplicates: markedBySource.get(source.name) || 0,
+    ...(source.id === 'zrsz' && zrszDiagnostics ? { zrsz: zrszDiagnostics } : {}) }));
   cached = { jobs, sources, planned: PLANNED, checkedAt: new Date().toISOString(), storage: 'browser-local' };
   cachedAt = Date.now() - (sources.some(s => s.status === 'error') ? CACHE_MS - 60_000 : 0);
   return cached;

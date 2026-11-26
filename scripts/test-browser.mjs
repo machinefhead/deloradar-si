@@ -78,7 +78,7 @@ try {
     const content = await page.locator('#jobDetailBody').innerText();
     assert.match(content, /Podrobnosti razpisa/);
     assert.match(content, /Kje, kdaj in pri kom/);
-    assert.ok(/Odpri izvorni oglas|Poišči razpis na ZRSZ/.test(content));
+    assert.ok(/Odpri izvorni oglas|Preveri v iskalniku ZRSZ/.test(content));
     const bounds = await page.locator('#jobDialog').evaluate(element => ({ width: element.clientWidth, scrollWidth: element.scrollWidth }));
     assert.ok(bounds.scrollWidth <= bounds.width + 2, 'Dialog ne sme zahtevati vodoravnega drsenja');
     await page.locator('#closeJobDialog').click();
@@ -93,7 +93,7 @@ try {
           'Deljiva povezava do IE oglasa mora odpreti pravilen in ne poljuben opis');
         assert.match(await page.locator('#jobDetailBody').innerText(), new RegExp(missingZrsz.reference),
           'Pri deljivem opisu mora ostati registrska številka ZRSZ');
-        assert.match(await page.locator('#jobDetailBody .detailprimary').innerText(), /Poišči razpis na ZRSZ/,
+        assert.match(await page.locator('#jobDetailBody .detailprimary').innerText(), /Preveri v iskalniku ZRSZ/,
           'Iskanje ZRSZ mora ostati pošteno označeno, ne kot preverjena neposredna povezava');
         assert.match(await page.locator('#jobDetailBody .detailactions a').last().getAttribute('href'),
           /[?&]oglas=zrsz%3AIE\d+/, 'Iz odprtega oglasa je mogoče kopirati njegovo deljivo povezavo');
