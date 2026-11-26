@@ -66,6 +66,8 @@ try {
       assert.match(allDownload.suggestedFilename(), /^deloradar-vsi-oglasi-\d{4}-\d{2}-\d{2}\.json$/);
       assert.equal(exported.scope, 'all');
       assert.equal(exported.total, snapshot.jobs.length, 'Celoten JSON mora vsebovati vse oglase');
+      assert.deepEqual(exported.planned, snapshot.planned,
+        'Celoten JSON mora vključiti tudi stanje še nepovezanih portalov');
       if (snapshot.jobs.some(job => job.source === 'EURES')) {
         assert.equal(exported.jobs.filter(job => job.source === 'EURES').length,
           snapshot.jobs.filter(job => job.source === 'EURES').length, 'Izvoz mora vključiti tudi EURES');

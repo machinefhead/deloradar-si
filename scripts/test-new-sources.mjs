@@ -78,7 +78,7 @@ const competoFetch = async url => {
   const data = url.endsWith('/6ad20f0feb4ac')
     ? { ...competoRows[0], aboutCompany: 'Pomembna organizacija.',
       description: 'Priprava pogodbe.', expectations: 'Pravo in natančnost.',
-      offerings: 'Izobraževanja. Kontakt: ime@competo.si' }
+      offerings: 'Izobraževanja. Kontakt: ime@competo.si\nZa več informacij lahko kontaktirate vodjo projekta na 051/357 116 (Jasna Benko Živec).' }
     : competoRows;
   return new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } });
 };
@@ -89,6 +89,7 @@ assert.equal(competoJobs[0].company, 'COMPETO d.o.o.');
 assert.equal(competoJobs[0].url, 'https://portal.digi.competo.si/jobs/6ad20f0feb4ac');
 assert.match(competoJobs[0].description, /Priprava pogodbe[\s\S]*Pravo in natančnost[\s\S]*Izobraževanja/);
 assert.doesNotMatch(competoJobs[0].description, /ime@competo.si/);
+assert.doesNotMatch(competoJobs[0].description, /051\/357 116|Jasna Benko Živec|kontaktirate vodjo/i);
 assert.equal(requestedCompeto.length, 2, 'En seznam in ena podrobnost');
 const cachedCompeto = await getCompeto({ previous: competoJobs, fetchImpl: competoFetch, now: competoNow + 86_400_000 });
 assert.equal(requestedCompeto.length, 3, 'Sveže opise uporabimo iz predpomnilnika');

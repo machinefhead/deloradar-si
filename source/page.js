@@ -707,7 +707,7 @@ export const page = String.raw`<!doctype html>
         return {format:'DeloRadar-jobs',version:2,exportedAt:exportedAt,
           capturedAt:checkedAt||null,scope:scope,total:items.length,
           duplicateMode:filteredScope&&groupEnabled()?'merged':'original',
-          filters:filters,sources:sources.slice(),jobs:items.map(function(j){
+          filters:filters,sources:sources.slice(),planned:planned.slice(),jobs:items.map(function(j){
             var mark=filteredScope?mergedState(j):getState(j.id);
             var record=Object.assign({},j);
             optionalFields.forEach(function(field){if(record[field]===undefined||record[field]==='')record[field]=null});

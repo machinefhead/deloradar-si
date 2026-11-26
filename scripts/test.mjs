@@ -201,6 +201,7 @@ const exportControls = {
 const exportContext = {
   multiIds:['sourceFilter','region'],selectedValues:id=>id==='region'?['Podravska']:[],
   $:id=>exportControls[id],checkedAt:'2026-11-25T11:14:23Z',sources:[{id:'optius',status:'live',count:2}],
+  planned:[{name:'Novi portal',href:'https://example.org/',status:'V raziskavi'}],
   groupEnabled:()=>true,mergedState:()=>({saved:true,status:'contacted'}),
   getState:id=>id==='a'?{saved:true,status:'interested'}:{},
 };
@@ -213,6 +214,7 @@ assert.equal(exportFiltered.duplicateMode,'merged');
 assert.equal(exportFiltered.jobs[0].status,'contacted','Filtrirani izvoz ohrani združen uporabnikov status');
 assert.equal(exportFiltered.jobs[0].saved,true);
 assert.equal(exportFiltered.filters.facets.region[0],'Podravska','Filtrirani JSON vsebuje tudi uporabljene filtre');
+assert.equal(exportFiltered.planned[0].name,'Novi portal','Izvoz vsebuje raziskane nepovezane vire');
 assert.equal(exportFiltered.capturedAt,'2026-11-25T11:14:23Z');
 assert.equal(exportFiltered.jobs[0].description,'Vzdrževanje električnih napeljav.');
 assert.equal(exportFiltered.jobs[0].employmentType,'FULL_TIME');

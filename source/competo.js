@@ -9,8 +9,11 @@ const REFRESH_MS = 14 * 24 * 60 * 60 * 1000;
 function text(value) {
   return readableJobText(String(value || ''))
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '')
-    .replace(/(?:\+386|00386)(?:[\s./-]*\d){7,9}/g, '')
-    .replace(/[ \t]{2,}/g, ' ').trim();
+    .replace(/(?:\+386|00386|0[234567])(?:[\s./-]*\d){6,9}/g, '')
+    .replace(/\bKontakt\s*:\s*$/gim, '')
+    .split('\n')
+    .filter(line => !/(?:kontaktna oseba|za več informacij|kontaktirate|kontaktirajte|pokličite|osebni kontakt)/i.test(line))
+    .join('\n').replace(/[ \t]{2,}/g, ' ').trim();
 }
 
 function date(value) {
