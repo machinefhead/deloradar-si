@@ -68,31 +68,18 @@ const SOURCES = [
   ...(EURES_HTTP_ENABLED ? [{ id: 'eures', name: 'EURES', url: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl' }] : []),
 ];
 const PLANNED = [
-  { name: 'LILT', href: 'https://jobs.ashbyhq.com/lilt-production', priority: 2,
-    status: 'Velik podatkovni izvoz', note: 'Uradni Ashby JSON vsebuje približno 455 svetovnih razpisov in je večji od 4 MB, za Slovenijo pa trenutno le enega. Pred priklopom je treba zmanjšati redni prenos.' },
-  { name: 'SupportYourApp', href: 'https://apply.workable.com/supportyourapp/', priority: 2,
-    status: 'Brez slovenskih razpisov v API', note: 'Javni Workable JSON vrne približno 358 globalnih objav, trenutno pa nobena nima izrecno slovenske lokacije.' },
-  { name: 'DevRev', href: 'https://job-boards.greenhouse.io/devrev', priority: 2,
-    status: 'Trenutno brez slovenskih razpisov', note: 'Uradni Greenhouse JSON je dosegljiv, vendar med trenutnima dvema objavama ni slovenske lokacije.' },
+  // Samo kandidati, pri katerih je smiselno nadaljevati raziskavo uvoza.
+  // Že povezani, pretežno podvojeni in trenutno nerelevantni viri niso javni backlog.
   ...(!ZRSZ_JSON_URL && !ZRSZ_OFFICIAL_HTTP_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z ZRSZ_OFFICIAL_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
   ...(!EURES_HTTP_ENABLED ? [{ name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z EURES_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
   { name: 'HOFER Slovenija', href: 'https://kariera.hofer.si/iskanje-zaposlitve', priority: 1, status: 'JSON najden', note: 'Javni REST za iskanje zaposlitve je dosegljiv, a je ob preverjanju vrnil prazen seznam. Preveriti parametre in objave.' },
-  { name: 'Slovenske železnice', href: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/', priority: 2, status: 'Večinoma podvojeno', note: 'Izvirni javni seznam je zdaj dosegljiv z HTTP; 11 od 12 oglasov v javnem zrcalu vodi na že povezan ZRSZ, eden na LinkedIn. Pred samostojnim priklopom preveriti resnično nove izvirne razpise.' },
   { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev-spar', priority: 1, status: 'GitHub Actions HTTP 403', note: 'Z lokalnimi neposrednimi HTTP zahtevki je bilo potrjenih 58 aktivnih izvirnih razpisov s polnimi opisi. V GitHub Actions uradni SPAR odgovori vrnejo HTTP 403, zato uvoz source/spar.js ostane pripravljen, vendar ga ne prištevamo med redno povezane vire, dokler ne dobimo normalnega strojno berljivega izvoza.' },
   { name: 'Petrol', href: 'https://www.petrol.eu/sl/kariera/prosta-delovna-mesta', priority: 2, status: 'Preusmeritve izvirnih povezav', note: 'Deset izvirnih oglasov ima javne podatke JobPosting, vendar izvorni Petrolovi URL-ji trenutno preusmerijo na nedosegljivo HTTP različico. Ne objavljamo pokvarjenih povezav.' },
-  { name: 'Pošta Slovenije', href: 'https://www.posta.si/o-nas/zaposlitve', priority: 3, status: 'ZRSZ prekrivanje', note: 'Vseh 24 preverjenih objav v javnem zrcalu ima izvorni URL ZRSZ. SAP SuccessFactors še preučimo, če se pokažejo resnično novi razpisi.' },
-  { name: 'Bolha Zaposlitve', href: 'https://www.bolha.com/redne-zaposlitve', priority: 3, status: 'Vzorčno vsi ZRSZ', note: 'Od 1.787 oglasov je bilo vzorčno preverjenih 187 iz več strani, vsi so ZRSZ oglasi. Vključitev bi trenutno povečala predvsem število dvojnikov.' },
-  { name: 'Delaj.si', href: 'https://delaj.si/oglasi/?drzava=SI', priority: 3, status: 'Slovenski oglasi podvojeni', note: 'Med 64 slovenskimi oglasi je 63 povezav na GOV.SI in en samostojen oglas, katerega naziv že obstaja v DeloRadarju. Vir za zdaj ne doda novih objav.' },
   { name: 'Zaposlitev.net', href: 'https://www.zaposlitev.net/', priority: 2, status: 'Ponovni poskus', note: 'Ob zadnjem neposrednem preverjanju je portal vrnil HTTP 503.' },
-  { name: 'Prohuman', href: 'https://prohuman.si/', priority: 3, status: 'Prekrivanje', note: 'Njegovi oglasi so bili v prejšnjem posnetku prisotni na MojeDelo; preveriti morebitne dodatne izvirne objave.' },
   ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', priority: 3, status: 'Agregator', note: 'Večinoma povezuje druge vire. Raziskati ustrezen izvoz in preveriti, ali prinaša unikatne oglase.' }] : []),
-  { name: 'Zbornica VZD – Borza dela', href: 'https://zbornica-vzd.si/borzadela/', priority: 3, status: 'Zastareli ali podvojeni oglasi', note: 'V tabeli so trenutno potekli razpisi ter povezave na že povezani MojeDelo oziroma ZRSZ; ne povečuje unikatne ponudbe.' },
-  { name: 'ZPM – Borza delovnih mest', href: 'https://zpm.si/delovna-mesta/', priority: 3, status: 'Večinoma pretekli razpisi', note: 'Med 80 javnimi vnosi so bili trenutno aktivni le trije, brez neposrednih povezav na posamezni razpis.' },
   { name: 'Krka', href: 'https://www.krka.biz/employment/prosta-delovna-mesta/', priority: 2, status: 'ATS brez odprtega seznama', note: 'Stran vodi na Cornerstone OnDemand; preveriti uraden strojno berljiv izvoz razpisov.' },
-  { name: 'GEN-I', href: 'https://www.gen-i.si/o-gen-i/zaposlitev/prosta-delovna-mesta/', priority: 2, status: 'Majhen obseg', note: 'Javna stran je ob preverjanju kazala samo eno študentsko delovno mesto, zato ločen vir trenutno ne prinaša pomembne dodatne ponudbe.' },
   { name: 'Iskra', href: 'https://www.iskra.eu/sl/Prosta-delovna-mesta/', priority: 2, status: 'HTTP ni dosegljiv', note: 'Javna podstran ima neposredne oglase, pri avtomatskem HTTP preverjanju pa je povezava časovno potekla.' },
   { name: 'OTP banka', href: 'https://www.otpbanka.si/kariera', priority: 2, status: 'Nedokončana preusmeritev', note: 'Devet izvirnih povezav na FledgeHR je prepoznanih, vendar uradni HTTP za sezname in posamezne oglase trenutno vrača preusmeritev na isto pot. Nadaljujemo šele z delujočimi povezavami.' },
-  { name: 'HSG Kariera', href: 'https://www.kariera.si/', priority: 3, status: 'Prekrivanje ZRSZ in Kariera.si', note: 'Med prvimi 50 javnimi vnosi je 29 izvirnikov Kariera.si že zajetih in 21 povezav ZRSZ; za zdaj brez novih unikatnih oglasov.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
