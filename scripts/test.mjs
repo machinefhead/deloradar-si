@@ -163,7 +163,8 @@ const sourceContext = {
     { source: 'ZRSZ / PoiščiDelo', url: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/?iskalniTekst=podjetje' },
   ],
   sources: [
-    { id: 'zrsz', name: 'ZRSZ / PoiščiDelo', status: 'live', count: 4152 },
+    { id: 'zrsz', name: 'ZRSZ / PoiščiDelo', status: 'live', count: 4152,
+      zrsz: { dailyCount: 4152, searchCount: 3997, unlinked: 1 } },
     { id: 'eures', name: 'EURES', status: 'live', count: 25 },
     { id: 'adecco', name: 'Adecco', status: 'live', count: 161 },
   ],
@@ -177,6 +178,8 @@ sourceContext.sourceRender();
 assert.equal(sourceElements.get('sourceSummary').textContent, '3 od 3 virov dosegljivih');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /ZRSZ \/ PoiščiDelo/);
 assert.match(sourceElements.get('sourceStatus').innerHTML, /Neposredne povezave ZRSZ: 1 \/ 2/, 'Stanje povezav mora razlikovati preverjeni idp in iskanje');
+assert.match(sourceElements.get('sourceStatus').innerHTML, /uradni iskalnik: 3997 \(dnevni JSON: 4152\)/,
+  'Stanje povezav mora pošteno prikazati različno število iz obeh uradnih seznamov');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /opis v DeloRadarju in iskanje ZRSZ/, 'Manjkajoči uradni ID dobi pošteno označen način dostopa');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /EURES/);
 assert.match(sourceElements.get('planned').innerHTML, /Careerjet/);
@@ -368,9 +371,17 @@ assert.match(formatted,/<p><strong>Vaše naloge:<\/strong><\/p>/,'Adecco: naslov
 assert.match(formatted,/<ul><li>Vzdrževanje<\/li><li>Organizacija<\/li><\/ul>/,'Adecco: alineje so pravi HTML seznam');
 assert.doesNotMatch(formatted,/&lt;p&gt;|&lt;ul&gt;|&lt;li&gt;/,'V dialogu ne smejo ostati surove oznake');
 assert.match(detailContext.detailReadable('&amp;lt;p&amp;gt;Delo&amp;lt;/p&amp;gt;'),/Delo/,'Dvakrat HTML-kodirano besedilo se razbere');
-assert.match(detailHtml,/Poišči razpis na ZRSZ/, 'Iskalna povezava ni predstavljena kot neposredni oglas');
+assert.match(detailHtml,/Preveri v iskalniku ZRSZ/, 'Iskalna povezava ni predstavljena kot neposredni oglas');
 assert.match(detailHtml,/Povezava do opisa v DeloRadarju/, 'Vsak oglas omogoča deljenje natančno svojega opisa');
 assert.match(detailHtml,/oglas=zrsz%3A77/, 'Povezava do opisa vsebuje identifikator oglasa, ne nepreverjenega idp');
+const ieDetail=detailContext.detailMarkup({id:'zrsz:IE18067',reference:'IE18067',
+  source:'ZRSZ / PoiščiDelo',title:'Zaposlitev',company:'Primer',
+  url:'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/?iskalniTekst=Primer',
+  description:'Opis iz dnevnega ZRSZ JSON-a',applicationMethod:'kandidati naj pošljejo vlogo po e-pošti'},[]);
+assert.match(ieDetail,/Ta razpis je v dnevnem JSON-u ZRSZ/,
+  'IE brez idp mora imeti jasno pojasnilo, da izvorno iskanje ni neposreden oglas');
+assert.match(ieDetail,/Način prijave[\s\S]*kandidati naj pošljejo vlogo po e-pošti/,
+  'Izvirni način prijave mora ostati v opisu, ko je v dnevnem ZRSZ JSON-u objavljen');
 const noDescription=detailContext.detailMarkup({id:'a',title:'Operater',source:'Optius',url:'https://www.optius.com/delo/1',summary:'Kratek povzetek.'},[]);
 assert.match(noDescription,/Kratek povzetek\./, 'Povzetek je viden, tudi če ni celotnega opisa');
 const noDetails=detailContext.detailMarkup({id:'a',title:'Operater',source:'Optius',url:'https://www.optius.com/delo/1'},[]);

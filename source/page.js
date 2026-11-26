@@ -405,7 +405,9 @@ export const page = String.raw`<!doctype html>
         $('sourceStatus').innerHTML=sources.slice().sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name,'sl')}).map(function(s){
           var zrszQuality=s.id==='zrsz'&&s.status==='live'&&zrszJobs.length;
           return '<div class="sourceitem'+(zrszQuality?' has-quality':'')+'"><a class="name" target="_blank" rel="noopener noreferrer" href="'+safe(s.url)+'">'+safe(s.name)+' ↗</a><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov'+(s.likelyDuplicates?' · '+s.likelyDuplicates+' verjetno podvojenih':''):'Ni odziva')+'</span>'+
-            (zrszQuality?'<span class="sourcequality">Neposredne povezave ZRSZ: '+zrszDirect+' / '+zrszJobs.length+' · ostali: opis v DeloRadarju in iskanje ZRSZ</span>':'')+'</div>'; }).join('');
+            (zrszQuality?'<span class="sourcequality">Neposredne povezave ZRSZ: '+zrszDirect+' / '+zrszJobs.length+
+              (s.zrsz&&Number.isInteger(s.zrsz.searchCount)?' · uradni iskalnik: '+s.zrsz.searchCount+' (dnevni JSON: '+s.zrsz.dailyCount+')':'')+
+              ' · ostali: opis v DeloRadarju in iskanje ZRSZ</span>':'')+'</div>'; }).join('');
         var active=sources.filter(function(s){return s.status==='live'}).length;
         $('sourceSummary').textContent=active+' od '+sources.length+' virov dosegljivih';
         $('sourcesNum').textContent=active;
@@ -560,7 +562,8 @@ export const page = String.raw`<!doctype html>
         var employment=detailSection('Zaposlitev in plačilo',[
           ['Vrsta zaposlitve',detailEmployment(j.employmentType)],['Vrsta pogodbe',j.contractType],
           ['Trajanje zaposlitve',j.contractDuration],['Delovni čas',j.workHours],
-          ['Način opravljanja dela',j.workplaceType],['Plača',detailSalary(j.salary)],
+          ['Način opravljanja dela',j.workplaceType],['Način prijave',j.applicationMethod],
+          ['Plača',detailSalary(j.salary)],
           ['Področje dela',j.jobCategory]
         ]);
         var whereAndWhen=detailSection('Kje, kdaj in pri kom',[
@@ -572,7 +575,9 @@ export const page = String.raw`<!doctype html>
           ['Oznaka razpisa',j.reference],['ID oglasa',j.id]
         ]);
         var zrszSearch=j.source==='ZRSZ / PoiščiDelo'&&j.reference&&String(j.url||'').startsWith('https://www.ess.gov.si/')&&String(j.url||'').indexOf('?idp=')<0;
-        var url=String(j.url||'');var external=/^https:\/\/[^\s<>"']+$/i.test(url)?'<a class="detailprimary" href="'+safe(url)+'" target="_blank" rel="noopener noreferrer">'+(zrszSearch?'Poišči razpis na ZRSZ':'Odpri izvorni oglas')+' ↗</a>':'';
+        var zrszDailyOnly=zrszSearch&&/^IE\d+/.test(String(j.reference||''));
+        if(zrszDailyOnly)sections.push('<section class="detailbox"><h3>Uradni vir ZRSZ</h3><p class="detailmissing">Ta razpis je v dnevnem JSON-u ZRSZ, številčni ID za neposredno povezavo v iskalniku pa ni potrjen. Iskanje na uradni strani lahko zato pokaže druge oglase. Besedilo iz dnevnega izvoza je prikazano zgoraj.</p></section>');
+        var url=String(j.url||'');var external=/^https:\/\/[^\s<>"']+$/i.test(url)?'<a class="detailprimary" href="'+safe(url)+'" target="_blank" rel="noopener noreferrer">'+(zrszSearch?'Preveri v iskalniku ZRSZ':'Odpri izvorni oglas')+' ↗</a>':'';
         external+=' <a href="'+safe(jobPermalink(j.id))+'" target="_blank" rel="noopener noreferrer" title="Povezava do tega oglasa v DeloRadarju">Povezava do opisa v DeloRadarju ↗</a>';
         var euresCandidate=String(j.euresDetailUrlCandidate||'');
         if(/^https:\/\/europa\.eu\/eures\/portal\/jv-se\/jv-details\/[A-Za-z0-9_-]+\?lang=sl$/.test(euresCandidate)){
@@ -703,7 +708,7 @@ export const page = String.raw`<!doctype html>
         }
         var optionalFields=['description','summary','responsibilities','requirements','benefits','skills',
           'employmentType','contractType','contractDuration','workHours','workplaceType',
-          'workplaceAddress','education','experience','salary','incentives','jobCategory'];
+          'workplaceAddress','education','experience','salary','incentives','jobCategory','applicationMethod'];
         return {format:'DeloRadar-jobs',version:2,exportedAt:exportedAt,
           capturedAt:checkedAt||null,scope:scope,total:items.length,
           duplicateMode:filteredScope&&groupEnabled()?'merged':'original',

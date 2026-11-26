@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { matchZrszListingIds, attachZrszOfficialVerifiedLinks, verifyZrszFreshLinks } from '../source/zrsz-official-http.js';
+import { matchZrszListingIds, attachZrszOfficialVerifiedLinks, verifyZrszFreshLinks,
+  verifyZrszAmbiguousLinks } from '../source/zrsz-official-http.js';
 
 const daily = [{ id: 'zrsz:RE91400', source: 'ZRSZ / PoiščiDelo', reference: 'RE91400',
   title: 'DIETNI KUHAR - M/Ž', company: 'Podjetje d.o.o.', deadline: '2026-12-01',
@@ -62,4 +63,33 @@ const recovered = await verifyZrszFreshLinks([newCandidate], { previous: [], max
   client: { detail: async () => { throw Error('Temporary 503'); } } });
 assert.equal(recovered.stats.errors, 1);
 assert.equal(recovered.jobs[0].zrszIdStatus, 'matched-listing-pending-detail', 'Začasnih napak ne shranjujemo kot zavrnitev');
+const ambiguous = { ...daily[0], id: 'zrsz:RF92345', reference: 'RF92345',
+  title: 'Prodajalec - M/Ž', company: 'Podjetje d.o.o.' };
+const ambiguousListings = [
+  { idDelovnoMesto: '3509314', nazivDelovnegaMesta: 'Prodajalec m/ž',
+    delodajalec: 'Podjetje d.o.o.', datumPrijaveDo: '2026-12-01T00:00:00+01:00' },
+  { idDelovnoMesto: '3509315', nazivDelovnegaMesta: 'Prodajalec m/ž',
+    delodajalec: 'Podjetje d.o.o.', datumPrijaveDo: '2026-12-01T00:00:00+01:00' },
+];
+const unresolved = matchZrszListingIds([ambiguous], ambiguousListings).jobs;
+assert.equal(unresolved[0].zrszIdCandidate, undefined, 'Dvoumnega kandidata ne smemo pripeti brez podrobnosti');
+const ambiguousCalls = [];
+const resolved = await verifyZrszAmbiguousLinks(unresolved, { listings: ambiguousListings,
+  maxNewDetails: 5, delayMs: 0, client: { async detail(idp) {
+    ambiguousCalls.push(idp);
+    return { idDelovnoMesto: idp, registerskaStevilka: idp === '3509315' ? 'RF92345' : 'RF99999' };
+  } } });
+assert.deepEqual(ambiguousCalls.sort(), ['3509314', '3509315']);
+assert.equal(resolved.stats.verified, 1);
+assert.match(resolved.jobs[0].url, /idp=3509315/);
+assert.deepEqual(resolved.jobs[0].zrszCheckedIdps, ['3509314']);
+const repeatedAmbiguous = await verifyZrszAmbiguousLinks(resolved.jobs, { listings: ambiguousListings,
+  previous: resolved.jobs, maxNewDetails: 5, delayMs: 0,
+  client: { async detail() { throw Error('Potrjenih oglasov ne preverjamo znova'); } } });
+assert.equal(repeatedAmbiguous.stats.attempted, 0);
+const ie = { ...ambiguous, id: 'zrsz:IE19565', reference: 'IE19565' };
+const unknown = await verifyZrszAmbiguousLinks([ie], { listings: ambiguousListings,
+  maxNewDetails: 5, delayMs: 0,
+  client: { async detail() { throw Error('IE samo po naslovu ne preverjamo'); } } });
+assert.equal(unknown.stats.attempted, 0, 'IE brez potrjene ujemajoče referenčne povezave ostane na iskalnem URL-ju');
 console.log('OK: uradni ZRSZ HTTP ID-ji, varno povezovanje in zaščita dvojnikov');

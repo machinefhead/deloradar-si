@@ -208,6 +208,102 @@ export async function verifyZrszFreshLinks(jobs, {
     mismatched, errors, stoppedForErrors: stop } };
 }
 
+// Pri več oglasih z enakim nazivom, podjetjem in rokom osnovni seznam ne
+// vsebuje registrske številke. Poskusimo le majhen nabor verjetnih ID-jev,
+// toda neposredno povezavo ustvarimo IZKLJUČNO, če uradni odgovor podrobnosti
+// potrdi popolnoma enako registrsko številko. Negativne ID-je hranimo v
+// objavljenem posnetku, da jih na vsakem 12-urnem zajemu ne preverjamo znova.
+export async function verifyZrszAmbiguousLinks(jobs, {
+  client, listings = [], previous = [], maxNewDetails = 0, delayMs = 150,
+} = {}) {
+  if (!Array.isArray(jobs) || !Array.isArray(listings) || !Array.isArray(previous) ||
+      !client || typeof client.detail !== 'function' || !Number.isInteger(maxNewDetails) ||
+      maxNewDetails < 0 || maxNewDetails > 250 || !Number.isInteger(delayMs) ||
+      delayMs < 0 || delayMs > 2000) throw Error('ZRSZ: neveljavni alternativni kandidati');
+  const previousByRef = new Map(previous.filter(job => job?.source === 'ZRSZ / PoiščiDelo')
+    .map(job => [job.reference, job]));
+  const knownIdps = new Set(jobs.filter(job => job.zrszIdStatus === 'confirmed-detail')
+    .map(job => String(job.zrszIdCandidate)).filter(id => /^\d{6,10}$/.test(id)));
+  const byTitle = new Map();
+  for (const item of listings) {
+    if (!/^\d{6,10}$/.test(String(item.idDelovnoMesto))) continue;
+    const title = key(item.nazivDelovnegaMesta);
+    if (!byTitle.has(title)) byTitle.set(title, []);
+    byTitle.get(title).push(item);
+  }
+  const proposals = new Map(), skippedPreviously = new Map();
+  for (const job of jobs) {
+    if (job.source !== 'ZRSZ / PoiščiDelo' || job.zrszIdStatus === 'confirmed-detail' ||
+        job.zrszIdStatus === 'matched-listing-pending-detail' ||
+        !/^[A-Z]{2}\d{5,}$/.test(String(job.reference)) || job.reference.startsWith('IE')) continue;
+    const old = previousByRef.get(job.reference);
+    const rejected = new Set(Array.isArray(old?.zrszCheckedIdps) ? old.zrszCheckedIdps.filter(
+      value => /^\d{6,10}$/.test(String(value))).map(String) : []);
+    if (old?.zrszIdStatus === 'mismatch-detail' && /^\d{6,10}$/.test(String(old.zrszIdCandidate))) {
+      rejected.add(String(old.zrszIdCandidate));
+    }
+    skippedPreviously.set(job.reference, rejected);
+    const sameTitle = byTitle.get(key(job.title)) || [];
+    const sameCompany = sameTitle.filter(item => key(item.delodajalec) === key(job.company));
+    const sameDeadline = sameTitle.filter(item =>
+      String(item.datumPrijaveDo || '').slice(0, 10) === String(job.deadline || '').slice(0, 10));
+    const strongest = sameCompany.filter(item => sameDeadline.includes(item));
+    // Prednost imajo enaki naziv, delodajalec in rok. Če teh ni, preverimo
+    // zelo ozek nabor po nazivu/roku oziroma nazivu/delodajalcu.
+    const candidates = strongest.length > 0 && strongest.length <= 8 ? strongest
+      : sameDeadline.length > 0 && sameDeadline.length <= 3 ? sameDeadline
+        : sameCompany.length > 0 && sameCompany.length <= 3 ? sameCompany : [];
+    for (const item of candidates) {
+      const idp = String(item.idDelovnoMesto);
+      if (knownIdps.has(idp) || rejected.has(idp)) continue;
+      if (!proposals.has(idp)) proposals.set(idp, new Set());
+      proposals.get(idp).add(job.reference);
+    }
+  }
+  const queue = [...proposals.entries()].slice(0, maxNewDetails);
+  let position = 0, verified = 0, mismatched = 0, errors = 0, stop = false;
+  const newChecked = new Map(), matches = [], recentErrors = [];
+  async function worker() {
+    while (!stop && position < queue.length) {
+      const [idp, refs] = queue[position++];
+      let failed = false;
+      try {
+        const detail = await client.detail(idp);
+        const ref = String(detail.registerskaStevilka || '').trim().toUpperCase();
+        if (refs.has(ref)) { matches.push({ reference: ref, idp }); verified++; }
+        else mismatched++;
+        for (const candidateRef of refs) if (candidateRef !== ref) {
+          if (!newChecked.has(candidateRef)) newChecked.set(candidateRef, new Set());
+          newChecked.get(candidateRef).add(idp);
+        }
+      } catch {
+        failed = true;
+        errors++;
+      }
+      recentErrors.push(failed);
+      if (recentErrors.length > 20) recentErrors.shift();
+      if (recentErrors.length >= 20 && recentErrors.filter(Boolean).length >= 8) stop = true;
+      if (delayMs && !stop) await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker));
+  const annotated = jobs.map(job => {
+    const additional = newChecked.get(job.reference);
+    const old = skippedPreviously.get(job.reference);
+    if (!additional?.size && !old?.size) return { ...job };
+    const all = [...new Set([...(old || []), ...(additional || [])])].slice(-24);
+    return { ...job, zrszCheckedIdps: all };
+  });
+  // Tudi pri navideznem enoličnem ujemanju se URL potrdi šele z registrsko
+  // številko iz ločenega odgovora. Ob konfliktu dveh ID-jev ni povezave.
+  const prepared = annotated.map(job => matches.some(match => match.reference === job.reference)
+    ? { ...job, zrszIdCandidateSource: 'ZRSZ official HTTP' } : job);
+  const attached = attachZrszOfficialVerifiedLinks(prepared, matches);
+  return { jobs: attached.jobs, stats: { proposals: proposals.size, attempted: position,
+    verified: attached.stats.attached, mismatched, errors, conflicts: attached.stats.conflicts,
+    stoppedForErrors: stop } };
+}
+
 export async function getZrszOfficialHttp(options = {}) {
   const client = await discoverZrszPublicClient(options);
   const [daily, listings] = await Promise.all([client.daily(), client.listings()]);
@@ -218,5 +314,17 @@ export async function getZrszOfficialHttp(options = {}) {
   console.log(`ZRSZ HTTP: ${verified.stats.cached} neposrednih povezav iz predpomnilnika, ` +
     `${verified.stats.verified} novih preverjenih, ${verified.stats.mismatched} neskladij, ` +
     `${verified.stats.errors} napak (${verified.stats.attempted}/${verified.stats.candidates} zahtevkov).`);
-  return verified.jobs;
+  const additional = await verifyZrszAmbiguousLinks(verified.jobs, { client, listings: listings.jobs,
+    previous: options.previous || [], maxNewDetails: Math.max(0, (options.maxNewDetails ?? 0) - verified.stats.attempted) });
+  console.log(`ZRSZ HTTP: zahtevnejša ujemanja ${additional.stats.verified} potrjenih od ` +
+    `${additional.stats.attempted} dodatnih HTTP preverjanj, ` +
+    `${additional.stats.errors} napak; ${additional.stats.proposals} možnih ID-jev.`);
+  return options.withStats ? { jobs: additional.jobs, stats: {
+    dailyCount: daily.jobs.length, searchCount: listings.total,
+    strictMatched: joined.stats.matched,
+    verifiedFromCache: verified.stats.cached, verifiedNew: verified.stats.verified + additional.stats.verified,
+    unlinked: additional.jobs.filter(job => job.zrszIdStatus !== 'confirmed-detail').length,
+    unlinkedIE: additional.jobs.filter(job => job.reference?.startsWith('IE') &&
+      job.zrszIdStatus !== 'confirmed-detail').length,
+  } } : additional.jobs;
 }

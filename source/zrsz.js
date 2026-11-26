@@ -46,6 +46,7 @@ function detailsFromZrsz(item) {
     workplaceAddress: ['KrajOpravljanjaDela', 'LokacijaDelMesta'],
     salary: ['PredvidenoPlacilo'],
     benefits: ['DodatneUgodnosti'],
+    applicationMethod: ['NacinPrijave'],
   };
   const result = {};
   for (const [field, keys] of Object.entries(fields)) {

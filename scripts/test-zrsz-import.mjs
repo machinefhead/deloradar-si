@@ -10,6 +10,7 @@ const raw = (reference, extra = {}) => ({
   TrajanjeInVrstaZaposlitve: 'nedoločen čas, polni delovni čas',
   Klasius: 'srednja poklicna, elektrotehnika', DelovneIzkusnje: '1 leto',
   PredvidenoPlacilo: '1800 EUR', VozniskiIzpit: ', vozniški izpit B',
+  NacinPrijave: 'kandidati naj pošljejo vlogo po e-pošti',
   KontaktZaKandidate: 'Osebni kontakt z e-pošto in telefonom', ...extra,
 });
 const payload = { DatumObjave: '2026-11-25T00:00:00', SteviloPDM: 2,
@@ -20,6 +21,7 @@ assert.equal(first.report.added, 2);
 assert.equal(first.jobs[0].reference, 'RE91400');
 assert.equal(first.jobs[0].description, 'Elektroinštalacijska dela');
 assert.equal(first.jobs[0].salary, '1800 EUR');
+assert.equal(first.jobs[0].applicationMethod, 'kandidati naj pošljejo vlogo po e-pošti');
 assert.match(first.jobs[0].requirements, /vozniški izpit B/);
 assert.equal(JSON.stringify(first).includes('Osebni kontakt'), false, 'Brez osebnih kontaktov');
 assert.equal(first.report.directIdsVerified, 0, 'Ni lažno potrjenih idp');
