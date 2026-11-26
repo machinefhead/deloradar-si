@@ -16,7 +16,6 @@ import { getIzs, getHidria, getLthCastings, getTelkom, getPse } from './slovenia
 import { LINKEDIN_SOURCE, getLinkedinViaDelovnaMesta } from './linkedin-via-delovnamesta.js';
 import { getPublicTrenkwalder } from './trenkwalder-search.js';
 import { EMPLOYER_MIRRORS, getEmployerViaDelovnaMesta } from './employers-via-delovnamesta.js';
-import { getSpar } from './spar.js';
 import { getMerkurRecruitee } from './recruitee.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
@@ -60,7 +59,6 @@ const SOURCES = [
   { id: 'pse', name: 'PSE d.o.o.', url: 'https://www.pse.si/sl/zaposlitve/' },
   { id: 'linkedin', name: LINKEDIN_SOURCE, url: 'https://www.linkedin.com/jobs/' },
   ...EMPLOYER_MIRRORS.map(item => ({ id: 'mirror_' + item.id, name: item.name, url: item.url })),
-  { id: 'spar', name: 'SPAR Slovenija', url: 'https://www.spar.si/zaposlitev-spar' },
   { id: 'recruitee_merkur', name: 'Merkur zavarovalnica', url: 'https://merkurzavarovalnica.recruitee.com/' },
   ...ATS_BOARDS.map(board => ({ id: 'ats_' + board.id, name: board.name, url: board.url })),
   ...WORKABLE_BOARDS.map(board => ({ id: 'workable_' + board.id, name: board.name, url: board.url })),
@@ -80,6 +78,7 @@ const PLANNED = [
   ...(!EURES_HTTP_ENABLED ? [{ name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z EURES_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
   { name: 'HOFER Slovenija', href: 'https://kariera.hofer.si/iskanje-zaposlitve', priority: 1, status: 'JSON najden', note: 'Javni REST za iskanje zaposlitve je dosegljiv, a je ob preverjanju vrnil prazen seznam. Preveriti parametre in objave.' },
   { name: 'Slovenske železnice', href: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/', priority: 2, status: 'Večinoma podvojeno', note: 'Izvirni javni seznam je zdaj dosegljiv z HTTP; 11 od 12 oglasov v javnem zrcalu vodi na že povezan ZRSZ, eden na LinkedIn. Pred samostojnim priklopom preveriti resnično nove izvirne razpise.' },
+  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev-spar', priority: 1, status: 'GitHub Actions HTTP 403', note: 'Z lokalnimi neposrednimi HTTP zahtevki je bilo potrjenih 58 aktivnih izvirnih razpisov s polnimi opisi. V GitHub Actions uradni SPAR odgovori vrnejo HTTP 403, zato uvoz source/spar.js ostane pripravljen, vendar ga ne prištevamo med redno povezane vire, dokler ne dobimo normalnega strojno berljivega izvoza.' },
   { name: 'EY Slovenija', href: 'https://careers.ey.com/', priority: 2, status: 'Dodatni izvirni razpisi', note: 'Prepoznanih pet izvirnih slovenskih oglasov; preveriti uradni ATS izvoz in trajnost povezav.' },
   { name: 'SETCCE', href: 'https://www.careers-page.com/', priority: 2, status: 'Dodatni izvirni razpisi', note: 'Prepoznanih pet izvirnih slovenskih oglasov; preveriti podatkovni vir izvirnega zaposlitvenega sistema.' },
   { name: 'Decathlon Slovenija', href: 'https://www.decathlon-kariera.si/', priority: 2, status: 'Dodatni izvirni razpisi', note: 'V javnih razpisih so dodatni izvirniki; naslednji korak je preverjen samodejni izvoz.' },
@@ -784,7 +783,6 @@ async function collect() {
   }),
   ...EMPLOYER_MIRRORS.map(item => previousJobs().then(previous =>
     getEmployerViaDelovnaMesta(item, { previous }))),
-  previousJobs().then(previous => getSpar({ previous })),
   getMerkurRecruitee(),
   ...ATS_BOARDS.map(board => getPublicAtsBoard(board)),
   ...WORKABLE_BOARDS.map(board => getPublicWorkableBoard(board)),
