@@ -10,6 +10,8 @@ import { getCompeto } from './competo.js';
 import { getCeltra } from './celtra.js';
 import { ATS_BOARDS, getPublicAtsBoard } from './public-ats.js';
 import { WORKABLE_BOARDS, getPublicWorkableBoard } from './workable.js';
+import { SMARTRECRUITERS_BOARDS, getPublicSmartRecruitersBoard } from './smartrecruiters.js';
+import { ASHBY_BOARDS, getPublicAshbyBoard } from './ashby.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -47,10 +49,14 @@ const SOURCES = [
   { id: 'celtra', name: 'Celtra', url: 'https://celtra.hire.trakstar.com/' },
   ...ATS_BOARDS.map(board => ({ id: 'ats_' + board.id, name: board.name, url: board.url })),
   ...WORKABLE_BOARDS.map(board => ({ id: 'workable_' + board.id, name: board.name, url: board.url })),
+  ...SMARTRECRUITERS_BOARDS.map(board => ({ id: 'smart_' + board.id, name: board.name, url: board.url })),
+  ...ASHBY_BOARDS.map(board => ({ id: 'ashby_' + board.id, name: board.name, url: board.url })),
   ...(CAREERJET_DATA_API_KEY ? [{ id: 'careerjet', name: 'Careerjet', url: 'https://www.careerjet.si/' }] : []),
   ...(EURES_HTTP_ENABLED ? [{ id: 'eures', name: 'EURES', url: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl' }] : []),
 ];
 const PLANNED = [
+  { name: 'Novartis', href: 'https://www.novartis.com/si-en/careers/career-search', priority: 1,
+    status: 'HTTP 429 na GitHubu', note: 'Javni Workday CXS lokalno vrne vse slovenske razpise in njihove opise, GitHub Actions pa zavrne že prvo HTTP zahtevo s 429. Vir ostaja izključen iz rednega zajema, dokler ne pridobimo stabilnega dovoljenega prenosa.' },
   ...(!ZRSZ_JSON_URL && !ZRSZ_OFFICIAL_HTTP_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z ZRSZ_OFFICIAL_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
   ...(!EURES_HTTP_ENABLED ? [{ name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z EURES_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
   { name: 'HOFER Slovenija', href: 'https://kariera.hofer.si/iskanje-zaposlitve', priority: 1, status: 'JSON najden', note: 'Javni REST za iskanje zaposlitve je dosegljiv, a je ob preverjanju vrnil prazen seznam. Preveriti parametre in objave.' },
@@ -739,7 +745,10 @@ async function collect() {
     previous: oldJobs, maxDetails: detailLimit('DETAIL_WHC_LIMIT', 24),
   })), getStudentWork(), previousJobs().then(oldJobs => getCompeto({ previous: oldJobs })), getCeltra(),
   ...ATS_BOARDS.map(board => getPublicAtsBoard(board)),
-  ...WORKABLE_BOARDS.map(board => getPublicWorkableBoard(board)));
+  ...WORKABLE_BOARDS.map(board => getPublicWorkableBoard(board)),
+  ...SMARTRECRUITERS_BOARDS.map(board => previousJobs().then(previous =>
+    getPublicSmartRecruitersBoard(board, { previous, maxNewDetails: detailLimit('DETAIL_SMARTRECRUITERS_LIMIT', 100) }))),
+  ...ASHBY_BOARDS.map(board => getPublicAshbyBoard(board)));
   if (CAREERJET_DATA_API_KEY) collectors.push(previousJobs().then(async oldJobs => {
     const result = await fetchCareerjetDataApi({ apiKey: CAREERJET_DATA_API_KEY,
       maxPages: 1, maxDetails: 10, previous: oldJobs });

@@ -564,7 +564,9 @@ export const page = String.raw`<!doctype html>
         var conditions=detailSection('Naloge, pogoji in ugodnosti',[
           ['Delovne naloge',detailReadable(j.responsibilities)],['Zahteve in pogoji',detailReadable(j.requirements)],
           ['Zahtevana izobrazba',j.education],['Delovne izkušnje',j.experience],
-          ['Znanja in veščine',detailReadable(j.skills)],['Nudimo',detailReadable(j.benefits)],['Dodatna plačila in ugodnosti',detailReadable(j.incentives)]
+          ['Znanja in veščine',detailReadable(j.skills)],['Nudimo',detailReadable(j.benefits)],
+          ['Dodatne informacije',detailReadable(j.additionalInformation)],
+          ['Dodatna plačila in ugodnosti',detailReadable(j.incentives)]
         ]);
         if(conditions)sections.push(conditions);
         if(!sections.filter(Boolean).length)sections.push('<section class="detailbox"><h3>Opis dela</h3><p class="detailmissing">Ta vir v trenutnem zajemu še ne ponuja celotnega opisa. Spodaj so prikazani vsi drugi razpoložljivi podatki; za preostale podrobnosti odpri izvorni oglas.</p></section>');
@@ -717,7 +719,7 @@ export const page = String.raw`<!doctype html>
             onlySaved:$('onlySaved').checked,hideApplied:$('hideApplied').checked,
             sort:$('sort').value,groupDuplicates:groupEnabled()};
         }
-        var optionalFields=['description','summary','responsibilities','requirements','benefits','skills',
+        var optionalFields=['description','summary','responsibilities','requirements','benefits','additionalInformation','skills',
           'employmentType','contractType','contractDuration','workHours','workplaceType',
           'workplaceAddress','education','experience','salary','salaryNote','localTitle',
           'incentives','jobCategory','applicationMethod'];
