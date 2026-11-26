@@ -9,6 +9,7 @@ export const ASHBY_BOARDS = [
   { id: 'axelera', name: 'Axelera AI', board: 'axelera', url: 'https://jobs.ashbyhq.com/axelera' },
   { id: 'n8n', name: 'n8n', board: 'n8n', url: 'https://jobs.ashbyhq.com/n8n' },
   { id: 'rubylabs', name: 'Ruby Labs', board: 'ruby-labs', url: 'https://jobs.ashbyhq.com/ruby-labs' },
+  { id: 'searchapi', name: 'SearchApi', board: 'SearchApi', url: 'https://jobs.ashbyhq.com/SearchApi' },
 ];
 
 function clean(value) {

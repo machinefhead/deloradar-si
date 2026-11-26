@@ -15,6 +15,12 @@ export const EMPLOYER_MIRRORS = [
   { id: 'minor', name: 'Minor Hotels', slugs: ['minor-hotels'], hosts: ['euamcareers.minorhotels.com'], url: 'https://euamcareers.minorhotels.com/' },
   { id: 'arriva', name: 'Arriva Slovenija', slugs: ['arriva-slovenija'], hosts: ['arriva.si'], url: 'https://arriva.si/' },
   { id: 'hrm', name: 'HRM rešitve', slugs: ['hrm-resitve'], hosts: ['hrm-resitve.si'], url: 'https://hrm-resitve.si/' },
+  { id: 'eversum', name: 'eVersum', slugs: ['eversum'], hosts: ['eversum.bamboohr.com'], url: 'https://eversum.bamboohr.com/careers/list' },
+  { id: 'freudenberg', name: 'Freudenberg', slugs: ['freudenberg'], hosts: ['freudenberg.wd3.myworkdayjobs.com'], url: 'https://www.freudenberg.com/career' },
+  { id: 'litostroj', name: 'Litostroj Power', slugs: ['litostroj-power'], hosts: ['litostroj-power.breezy.hr'], url: 'https://litostroj-power.breezy.hr/' },
+  { id: 'viaduct', name: 'Viaduct', slugs: ['viaduct'], hosts: ['www.viaduct.ai'], url: 'https://www.viaduct.ai/about/careers' },
+  { id: 'kraken', name: 'Kraken', slugs: ['kraken'], hosts: ['jobs.ashbyhq.com'], pathPrefix: '/kraken.com/', url: 'https://jobs.ashbyhq.com/kraken.com' },
+  { id: 'kolektorsisteh', name: 'Kolektor Sisteh', slugs: ['kolektor-sisteh'], hosts: ['www.kolektorsisteh.si'], url: 'https://www.kolektorsisteh.si/kariera' },
 ];
 
 // Največ tri vzporedne zahteve skupaj čez vse delodajalce iz istega vira.
@@ -69,6 +75,7 @@ export function parseEmployerPosting(html, viaUrl, config, now = new Date().toIS
   try {
     const parsed = new URL(schema.url);
     if (parsed.protocol !== 'https:' || !config.hosts.includes(parsed.hostname) ||
+        (config.pathPrefix && !parsed.pathname.startsWith(config.pathPrefix)) ||
         parsed.username || parsed.password || parsed.pathname === '/') return null;
     url = parsed.href;
   } catch { return null; }
