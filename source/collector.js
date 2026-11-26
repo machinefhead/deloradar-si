@@ -12,6 +12,7 @@ import { ATS_BOARDS, getPublicAtsBoard } from './public-ats.js';
 import { WORKABLE_BOARDS, getPublicWorkableBoard } from './workable.js';
 import { SMARTRECRUITERS_BOARDS, getPublicSmartRecruitersBoard } from './smartrecruiters.js';
 import { ASHBY_BOARDS, getPublicAshbyBoard } from './ashby.js';
+import { getIzs, getHidria, getLthCastings, getTelkom, getPse } from './slovenian-portals.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -47,6 +48,11 @@ const SOURCES = [
   { id: 'studentski', name: 'e-Študentski Servis (študentsko delo)', url: 'https://www.studentski-servis.com/studenti/prosta-dela' },
   { id: 'competo', name: 'Competo', url: 'https://portal.digi.competo.si/jobs' },
   { id: 'celtra', name: 'Celtra', url: 'https://celtra.hire.trakstar.com/' },
+  { id: 'izs', name: 'IZS – Borza dela', url: 'https://www.izs.si/borza-dela/prosta-delovna-mesta/' },
+  { id: 'hidria', name: 'Hidria', url: 'https://www.hidria.com/int/sl/zaposlitev/prosta-delovna-mesta/' },
+  { id: 'lth', name: 'LTH Castings', url: 'https://www.lthcastings.com/sl/kariera/prosta-delovna-mesta' },
+  { id: 'telkom', name: 'Telkom d.o.o.', url: 'https://www.telkom.si/kariera/' },
+  { id: 'pse', name: 'PSE d.o.o.', url: 'https://www.pse.si/sl/zaposlitve/' },
   ...ATS_BOARDS.map(board => ({ id: 'ats_' + board.id, name: board.name, url: board.url })),
   ...WORKABLE_BOARDS.map(board => ({ id: 'workable_' + board.id, name: board.name, url: board.url })),
   ...SMARTRECRUITERS_BOARDS.map(board => ({ id: 'smart_' + board.id, name: board.name, url: board.url })),
@@ -76,6 +82,12 @@ const PLANNED = [
   { name: 'Prohuman', href: 'https://prohuman.si/', priority: 3, status: 'Prekrivanje', note: 'Njegovi oglasi so bili v prejšnjem posnetku prisotni na MojeDelo; preveriti morebitne dodatne izvirne objave.' },
   ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', priority: 3, status: 'Agregator', note: 'Večinoma povezuje druge vire. Raziskati ustrezen izvoz in preveriti, ali prinaša unikatne oglase.' }] : []),
   { name: 'LinkedIn Jobs', href: 'https://www.linkedin.com/jobs/', priority: 3, status: 'Podatkovni dostop', note: 'Uradni Job Posting API je predvsem za objavljanje. Potreben je primeren odobren vir za branje razpisov.' },
+  { name: 'DelovnaMesta.si', href: 'https://delovnamesta.si/', priority: 2, status: 'Prekrivanje z ZRSZ', note: 'Strojno berljiv zbirnik vključuje ZRSZ, LinkedIn in delodajalce. Pred priklopom bi morali potrditi, kateri oglasi so res novi in imajo preverjeno izvorno povezavo.' },
+  { name: 'Zbornica VZD – Borza dela', href: 'https://zbornica-vzd.si/borzadela/', priority: 3, status: 'Zastareli ali podvojeni oglasi', note: 'V tabeli so trenutno potekli razpisi ter povezave na že povezani MojeDelo oziroma ZRSZ; ne povečuje unikatne ponudbe.' },
+  { name: 'ZPM – Borza delovnih mest', href: 'https://zpm.si/delovna-mesta/', priority: 3, status: 'Večinoma pretekli razpisi', note: 'Med 80 javnimi vnosi so bili trenutno aktivni le trije, brez neposrednih povezav na posamezni razpis.' },
+  { name: 'Krka', href: 'https://www.krka.biz/employment/prosta-delovna-mesta/', priority: 2, status: 'ATS brez odprtega seznama', note: 'Stran vodi na Cornerstone OnDemand; preveriti uraden strojno berljiv izvoz razpisov.' },
+  { name: 'GEN-I', href: 'https://www.gen-i.si/o-gen-i/zaposlitev/prosta-delovna-mesta/', priority: 2, status: 'Majhen obseg', note: 'Javna stran je ob preverjanju kazala samo eno študentsko delovno mesto, zato ločen vir trenutno ne prinaša pomembne dodatne ponudbe.' },
+  { name: 'Iskra', href: 'https://www.iskra.eu/sl/Prosta-delovna-mesta/', priority: 2, status: 'HTTP ni dosegljiv', note: 'Javna podstran ima neposredne oglase, pri avtomatskem HTTP preverjanju pa je povezava časovno potekla.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
@@ -750,6 +762,7 @@ async function collect() {
   })), previousJobs().then(oldJobs => getWhc({
     previous: oldJobs, maxDetails: detailLimit('DETAIL_WHC_LIMIT', 24),
   })), getStudentWork(), previousJobs().then(oldJobs => getCompeto({ previous: oldJobs })), getCeltra(),
+  getIzs(), getHidria(), getLthCastings(), getTelkom(), getPse(),
   ...ATS_BOARDS.map(board => getPublicAtsBoard(board)),
   ...WORKABLE_BOARDS.map(board => getPublicWorkableBoard(board)),
   ...SMARTRECRUITERS_BOARDS.map(board => previousJobs().then(previous =>
