@@ -60,8 +60,10 @@ if (data.jobs.length === 0) {
   throw new Error('Nobeden od povezanih portalov ni vrnil oglasov. Obdrži prejšnjo objavo.');
 }
 const seen = new Set();
+const sourceNames = new Set(data.sources.map(source => source.name));
 for (const job of data.jobs) {
   assert.ok(job.id && job.title && job.source, 'Oglas ima nepopolne osnovne podatke');
+  assert.ok(sourceNames.has(job.source), 'Oglas je pripisan neobstoječemu viru: ' + job.source);
   assert.ok(/^https:\/\//.test(job.url), 'Oglas nima varne izvorne povezave');
   assert.ok(!seen.has(job.id), 'Podvojeni ID oglasa');
   seen.add(job.id);

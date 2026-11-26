@@ -4,12 +4,15 @@ Osebni pregled slovenskih zaposlitvenih oglasov: [odpri DeloRadar na GitHub Page
 
 ## Zadnje preverjeno stanje (26. november 2026)
 
-- Zadnja preverjena javna objava (25. november 2026, 23:06 UTC): **8.367 oglasov iz 20 dosegljivih virov**. Lokalni popolni zajem z novim WHC (26. november) je vrnil **8.523 oglasov iz 21 dosegljivih virov**; nova različica postane javna šele po preverbi in uspešnem GitHubovem postopku objave.
+- Zadnja preverjena javna objava (25. november 2026, 23:06 UTC): **8.367 oglasov iz 20 dosegljivih virov**. Celoten novi lokalni zajem (26. november) je vrnil **10.651 izvornih oglasov iz 27/27 dosegljivih virov** v 26 sekundah. Revizija je potrdila različne ID-je, 20 reverzibilno označenih parov dvojnikov, skladna imena virov in nič izrecno zaznanih tujih krajev. Nova različica bo javna šele po dokončnem preverjanju in uspešnem postopku objave.
 - **ZRSZ: 3.725 aktualnih oglasov**, z besedilom del in nalog iz uradnega dnevnega JSON-a. Pri **3.539 oglasih** je referenca povezana s preverjenim številčnim `idp` in neposrednim oglasom; pri preostalih **186** natančnega `idp` ni potrjenega. Zato za njih ohranimo celoten opis na DeloRadarju, deljivo povezavo `?oglas=zrsz%3AIE...` pri referencah `IE` in ločeno izvorno iskanje, ne izmišljene neposredne povezave. Delež neposrednih povezav je v »Stanju povezav«.
-- **Adecco: 161 oglasov** v zadnjem lokalnem zajemu; dopolnilne podrobnosti se obnovijo postopno, da ponavljajoči zajem ne pošilja vseh zahtevkov znova.
+- **Adecco: 146 aktualnih oglasov** v zadnjem lokalnem zajemu. Še 15 povezav v sitemapu je vračalo odstranjene/neveljavne zapise (npr. HTTP 410), kar ni več obravnavano kot napaka portala. Dopolnilne podrobnosti se osvežujejo postopno.
 - **EURES: 25 dodatnih oglasov**, od tega 2 z navedenim krajem in 23 z državo Slovenijo, vendar brez potrjenega kraja. Vseh 25 vsebuje opis, pri 13 je objavljen tudi rok prijave. EURES je vključen v urnik; Careerjet kot agregator za zdaj ni prednostna naloga.
 - **Manpower Slovenija:** neposreden HTTP-uvoz z več strani izvirnega seznama, postopnimi polnimi opisi podrobnosti in omejitvijo **20 novih HTTP-opisov na zagon** ter 14-dnevnim predpomnilnikom. Zadnji preverjeni seznam: **102 razpisa**.
 - **WHC Slovenija (nekdanji Workforce):** povezani sta obe izvirni kategoriji **Workforce** in **Heads**. Izvirni aplikacijski HTTP vrne straničeni HTML (97 + 31 kartic na dan preverjanja); splošne prijave v bazo kandidatov in izrecno tuje lokacije izločimo. Posamezne oglase programsko dopolnimo z uradnim `JobPosting` in podatki o nalogah, ponudbi in pričakovanjih. Največ **24 podrobnih HTTP zahtevkov na gradnjo**, do trije sočasno, s 14-dnevnim predpomnilnikom. Brez brskalniškega odpiranja kartic.
+- **e-Študentski Servis:** **2.141 objav** iz 43 straničenih HTTP odgovorov; opis, kraj, delovnik in plačilo preberemo neposredno iz seznama, brez dodatnih zahtevkov za podrobnosti. Vneseno je kot posebno označeno študentsko delo, brez ugibanja datuma objave.
+- **Greenhouse/Lever:** pet izvirnih kariernih sistemov (Planet Labs, Wolt, Robinhood, Aleph, TSMG) je ob zajemu vrnilo skupaj **22 slovenskih razpisov**. Lever prenaša tudi ločena poglavja nalog in zahtev.
+- **Dvojniki:** trenutni najstrožji kriteriji so označili **20 parov**, med njimi en oglas IščiDelo, ki ustreza oglasu MojeDelo po nazivu, delodajalcu in kraju. IščiDelo za zdaj ohranimo zaradi možnosti novih unikatnih objav; sami oglasi v celotnem JSON-izvozu ostanejo nedotaknjeni.
 - `dist/` vsebuje le `index.html` in `jobs.json`; zgodovinskih predogledov ZRSZ ne pakiramo več za objavo.
 
 ## Načelo pridobivanja podatkov
@@ -54,6 +57,8 @@ Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `
 
 Vsi viri so preverjani ločeno. Če vir trenutno odpove, je označen z napako; en neuspešen vir ne izbriše oglasov drugih portalov. EURES je dodatni HTTP-uvoz z ločevanjem oglasov ZRSZ, preverjanjem lokacij in roka prijave. `EURES_HTTP_ENABLED=1` ga vključi v zbiralnik. Ker polni EURES-ov seznam zahteva več zahtevkov, si dva zaporedna 12-urna zagona lahko delita največ 20 ur star uspešen rezultat; potekle oglase izločimo.
 
+Spodnji katalog nepovezanih virov zdaj vsebuje vse do zdaj raziskane portale, razvrščene po prednosti, s povezavo, statusom in naslednjim raziskovalnim korakom. Neuspešen prvi HTTP poskus vira trajno ne izloči. V seznamu povezanih virov so imena klikljiva, posebej je prikazano število verjetno podvojenih oglasov. Za reproducibilno revizijo lokalnega `jobs.json` je na voljo `npm run audit:snapshot`.
+
 Careerjet: ker pretežno povezuje oglase izvornih portalov, ga po dogovoru **ne prednostno vključujemo**. Javni seznam pri programskem HTTP-zahtevku vrne preverjanje prometa, običajna pot `/rss` ne obstaja, uradni `robots.txt` pa izključuje iskalni RSS-vmesnik. V rezervi ostaja preizkušena integracija `source/careerjet-data-api.js` z uradnim podatkovnim API-jem, če bi se pokazali res novi, unikatni oglasi; ključa trenutno nimamo in porabe ne sprožamo.
 
 ## Naslednji možni viri (še ne uvažamo)
@@ -69,6 +74,7 @@ Careerjet: ker pretežno povezuje oglase izvornih portalov, ga po dogovoru **ne 
 ## Podatki in prikaz
 
 - Filtri: vir, regija, kraj, področje, delodajalec, čas, status in zaznamki; deluje združevanje verjetnih dvojnikov brez izgube izvornih zapisov.
+- Varnostna presoja dvojnikov: enak normaliziran naziv, delodajalec in kraj; pri dveh objavah datum lahko manjka največ enemu, nikoli obema. Različni roki, dvoumne skupine treh oglasov in nepotrjeni ZRSZ ostanejo ločeni. Virov ne odstranjujemo na podlagi enega samega posnetka.
 - Klik na naziv odpre podrobnosti z opisom, nalogami, pogoji, vrsto zaposlitve, roki in drugimi razpoložljivimi podatki. Izvorni HTML pretvorimo v varno besedilo.
 - Vsak oglas ima deljivo povezavo `?oglas=<ID>`, ki odpre natanko njegov opis. Pri ZRSZ brez potrjenega `idp` sta v vrstici ločeno označena opis v DeloRadarju (`▣`) in iskanje na ZRSZ (`↗`); iskalna povezava ni predstavljena kot neposredni oglas.
 - Dva JSON-izvoza neposredno na strani: filtrirani prikaz in vsi izvorni oglasi. Datoteka se ustvari in prenese **samo ob kliku ustreznega gumba**; neznana polja ostanejo neznana.

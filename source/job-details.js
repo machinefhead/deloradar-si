@@ -72,7 +72,9 @@ function salaryValue(value) {
   }
   const unit = readableJobText(amount.unitText || '');
   if (unit) result.unit = unit;
-  return Object.keys(result).length ? result : null;
+  // Sama valuta ali enota brez zneska ni uporabna plača. Nekateri portali
+  // objavijo privzeto valuto, ki se celo razlikuje od besedila oglasa.
+  return ['value', 'minValue', 'maxValue'].some(key => key in result) ? result : null;
 }
 
 export function jobPostingDetails(data) {

@@ -38,16 +38,27 @@ const SOURCES = [
   { id: 'dm', name: 'dm Slovenija', url: 'https://www.dm-jobs.si/job-listing/' },
   { id: 'novapriloznost', name: 'Nova Priložnost', url: 'https://novapriloznost.si/prosta-delovna-mesta/' },
   { id: 'manpower', name: 'Manpower Slovenija', url: 'https://www.manpower.si/sl/delovna-mesta' },
-  { id: 'whc', name: 'WHC Slovenija (Workforce in Heads)', url: 'https://whc-slovenia.com/workforce/jobs' },
+  { id: 'whc', name: 'WHC Slovenija', url: 'https://whc-slovenia.com/workforce/jobs' },
   { id: 'studentski', name: 'e-Študentski Servis (študentsko delo)', url: 'https://www.studentski-servis.com/studenti/prosta-dela' },
   ...ATS_BOARDS.map(board => ({ id: 'ats_' + board.id, name: board.name, url: board.url })),
   ...(CAREERJET_DATA_API_KEY ? [{ id: 'careerjet', name: 'Careerjet', url: 'https://www.careerjet.si/' }] : []),
   ...(EURES_HTTP_ENABLED ? [{ id: 'eures', name: 'EURES', url: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl' }] : []),
 ];
 const PLANNED = [
-  ...(!ZRSZ_JSON_URL && !ZRSZ_OFFICIAL_HTTP_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', note: 'Neposredni HTTP zajem je pripravljen; za uporabo nastavi ZRSZ_OFFICIAL_HTTP_ENABLED=1.' }] : []),
-  ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Povezuje oglase drugih portalov. Trenutno ni prioriteta: prednost imajo izvirni viri, da se izognemo podvojitvam.' }] : []),
-  ...(!EURES_HTTP_ENABLED ? [{ name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?page=1&resultsPerPage=10&orderBy=BEST_MATCH&locationCodes=si&previousPageType=findJob&lang=sl', note: 'Programski HTTP uvoz je pripravljen; vključimo ga po preverjanju lokacij in podatkov.' }] : []),
+  ...(!ZRSZ_JSON_URL && !ZRSZ_OFFICIAL_HTTP_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z ZRSZ_OFFICIAL_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
+  ...(!EURES_HTTP_ENABLED ? [{ name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z EURES_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
+  { name: 'HOFER Slovenija', href: 'https://kariera.hofer.si/iskanje-zaposlitve', priority: 1, status: 'JSON najden', note: 'Javni REST za iskanje zaposlitve je dosegljiv, a je ob preverjanju vrnil prazen seznam. Preveriti parametre in objave.' },
+  { name: 'Slovenske železnice', href: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/', priority: 1, status: 'V raziskavi', note: 'Izvirni javni seznam razpisov in rokov; pri prejšnjem neposrednem zajemu je strežnik vrnil HTTP 403.' },
+  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev-spar', priority: 2, status: 'V raziskavi', note: 'Izvirna karierna stran; prejšnji neposredni HTTP zajem je vrnil 403. Ponovno preveriti dovoljen način izvoza.' },
+  { name: 'Petrol', href: 'https://www.petrol.eu/sl/kariera/prosta-delovna-mesta', priority: 2, status: 'V raziskavi', note: 'Izvirne objave so na voljo, vendar je imel neposredni HTTP zajem preusmeritveno zanko.' },
+  { name: 'Pošta Slovenije', href: 'https://www.posta.si/o-nas/zaposlitve', priority: 2, status: 'V raziskavi', note: 'Karierna stran vodi v SAP SuccessFactors. Preučiti ustrezen podatkovni vmesnik.' },
+  { name: 'Bolha Zaposlitve', href: 'https://www.bolha.com/redne-zaposlitve', priority: 2, status: 'Preveriti unikatnost', note: 'Na javnem seznamu so številni oglasi, tudi posredovani iz ZRSZ. Pred priklopom preveriti podvajanje in izvirnost.' },
+  { name: 'Delaj.si', href: 'https://delaj.si/', priority: 2, status: 'RSS najden', note: 'Javni RSS obstaja, vendar vključuje tudi tuje oglase; potreben je zanesljiv slovenski filter.' },
+  { name: 'Zaposlitev.net', href: 'https://www.zaposlitev.net/', priority: 2, status: 'Ponovni poskus', note: 'Ob zadnjem neposrednem preverjanju je portal vrnil HTTP 503.' },
+  { name: 'Competo', href: 'https://www.competo.si/', priority: 2, status: 'Preveriti unikatnost', note: 'Preveriti, ali ima izvirne oglase, ki niso že na povezanih zaposlitvenih portalih.' },
+  { name: 'Prohuman', href: 'https://prohuman.si/', priority: 3, status: 'Prekrivanje', note: 'Njegovi oglasi so bili v prejšnjem posnetku prisotni na MojeDelo; preveriti morebitne dodatne izvirne objave.' },
+  ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', priority: 3, status: 'Agregator', note: 'Večinoma povezuje druge vire. Raziskati ustrezen izvoz in preveriti, ali prinaša unikatne oglase.' }] : []),
+  { name: 'LinkedIn Jobs', href: 'https://www.linkedin.com/jobs/', priority: 3, status: 'Podatkovni dostop', note: 'Uradni Job Posting API je predvsem za objavljanje. Potreben je primeren odobren vir za branje razpisov.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
@@ -333,6 +344,9 @@ async function getAdeccoPreview(listing) {
   // Adecco podpira HTTP Range; 30 KB vsebuje strukturirane podatke JobPosting.
   const response = await fetch(listing.url, { signal: AbortSignal.timeout(12500),
     headers: { range: 'bytes=0-29999', 'user-agent': 'DeloRadar/0.1 (personal job listing index)', accept: 'text/html' } });
+  // Sitemap občasno še navaja oglase, ki so že umaknjeni (HTTP 410).
+  // To ni izpad vira in jih ne poskušamo prikazovati kot aktualne.
+  if (response.status === 404 || response.status === 410) return null;
   if (response.status !== 206) throw Error('Adecco did not honor a small range request');
   return parseAdeccoJobPreview(await response.text(), listing);
 }
@@ -363,7 +377,7 @@ async function getAdecco() {
   const listings = parseAdeccoSitemap(await getText('https://www.adecco.com/sitemap-jobs-slovenia-sl.xml'));
   if (!listings.length) throw Error('Adecco sitemap has no job listings');
   const { cached, requests } = planAdeccoIncremental(listings, await previousJobs());
-  let refreshed = 0, failed = 0;
+  let refreshed = 0, skipped = 0, failed = 0;
   for (let start = 0; start < requests.length; start += 6) {
     const batch = await Promise.allSettled(requests.slice(start, start + 6).map(getAdeccoPreview));
     for (let i = 0; i < batch.length; i++) {
@@ -371,14 +385,13 @@ async function getAdecco() {
       if (result.status === 'fulfilled' && result.value) {
         cached.set(requests[start + i].id, { ...result.value, detailsFetchedAt: new Date().toISOString() });
         refreshed++;
-      } else {
-        failed++;
-      }
+      } else if (result.status === 'fulfilled') skipped++;
+      else failed++;
     }
     if (start + 6 < requests.length) await new Promise(resolve => setTimeout(resolve, 250));
   }
   const jobs = listings.map(listing => cached.get(listing.id)).filter(Boolean);
-  console.log(`DeloRadar: Adecco ${refreshed} osveženih, ${jobs.length - refreshed} iz predpomnilnika, ${failed} neuspešnih; ${listings.length} povezav v aktualnem seznamu.`);
+  console.log(`DeloRadar: Adecco ${refreshed} osveženih, ${jobs.length - refreshed} iz predpomnilnika, ${skipped} umaknjenih/neveljavnih, ${failed} napak; ${listings.length} povezav v sitemapu.`);
   if (!jobs.length) throw Error('Adecco details unavailable');
   return jobs;
 }
@@ -539,6 +552,9 @@ export function parseMojeDeloJobs(response) {
     const published = Date.parse(item.repostingDate || item.startDate || '');
     const regions = (item.regions || []).map(r => plain(r.translation || r.name || '')).filter(Boolean);
     const town = plain(item.town?.translation || item.town?.name || item.jobLocationInput || '');
+    // Država SI v osnovnem iskalniku ni vedno enaka dejanskemu kraju dela.
+    if (/\b(?:Graz|Bad Radkersburg|Wien|Vienna|Stuttgart|München|Munich)\b/i.test(town) &&
+        !/\b(?:Slovenija|Slovenia)\b/i.test(town)) return [];
     return [{ id: 'mojedelo:' + item.id, source: 'MojeDelo.com', title: plain(item.title),
       company: plain(item.company?.name || (item.anonymizedCompany ? 'Nerazkrito podjetje' : '')),
       location: town, regions,
@@ -754,10 +770,15 @@ async function collect() {
         String(reason?.message || reason || 'Neznana napaka') + (reason?.cause?.code ? ' [' + reason.cause.code + ']' : ''));
     }
   });
+  const jobs = markLikelyDuplicates(Array.from(new Map(results.flatMap(r => r.status === 'fulfilled' ? r.value : []).map(j => [j.id, j])).values()));
+  const markedBySource = new Map();
+  for (const job of jobs) if (job.duplicateGroup) {
+    markedBySource.set(job.source, (markedBySource.get(job.source) || 0) + 1);
+  }
   const sources = SOURCES.map((source, i) => ({ ...source,
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
-    count: results[i].status === 'fulfilled' ? results[i].value.length : 0 }));
-  const jobs = markLikelyDuplicates(Array.from(new Map(results.flatMap(r => r.status === 'fulfilled' ? r.value : []).map(j => [j.id, j])).values()));
+    count: results[i].status === 'fulfilled' ? results[i].value.length : 0,
+    likelyDuplicates: markedBySource.get(source.name) || 0 }));
   cached = { jobs, sources, planned: PLANNED, checkedAt: new Date().toISOString(), storage: 'browser-local' };
   cachedAt = Date.now() - (sources.some(s => s.status === 'error') ? CACHE_MS - 60_000 : 0);
   return cached;

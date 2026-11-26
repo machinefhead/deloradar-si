@@ -34,6 +34,16 @@ try {
     await page.goto('http://127.0.0.1:' + server.address().port, { waitUntil: 'domcontentloaded' });
     await page.locator('button.jobtitle').first().waitFor({ timeout: 20000 });
     assert.equal(downloads.length, 0, 'JSON se ne sme prenesti samodejno ob odprtju strani');
+    assert.ok(await page.locator('#planned .sourcecard').count() >= 10,
+      'Na dnu morajo biti vidni vsi raziskani, a nepovezani portali');
+    assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'LinkedIn Jobs' }).count(), 1,
+      'LinkedIn mora ostati v katalogu za kasnejšo raziskavo');
+    assert.equal(await page.locator('#sourceStatus a.name').count(), snapshot.sources.length,
+      'Vsi povezani viri morajo imeti izvorno povezavo');
+    if (snapshot.sources.some(source => source.name === 'EURES')) {
+      assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'EURES (Slovenija)' }).count(), 0,
+        'EURES ne sme biti hkrati povezan in nepovezan');
+    }
     if (viewport.width === 1440) {
       const target = snapshot.jobs.find(job => job.source === 'EURES' && /Chauffeur_in/.test(job.title)) || snapshot.jobs[0];
       await page.locator('#search').fill(target.title);

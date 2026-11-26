@@ -153,6 +153,8 @@ export const page = String.raw`<!doctype html>
       .refreshbox .refreshinfo{text-align:center;max-width:none}
     }
     .sourceitem.has-quality{flex-wrap:wrap;align-items:center}
+    .sourceitem a.name{text-decoration:none;color:inherit;font-weight:700}
+    .sourceitem a.name:hover{text-decoration:underline}
     .sourcequality{flex-basis:100%;font-size:10px;line-height:1.5;color:#78867d}
   </style>
 </head>
@@ -165,7 +167,7 @@ export const page = String.raw`<!doctype html>
     <button class="backtotop" id="backToTop" type="button" aria-label="Na vrh strani" title="Na vrh strani" hidden>↑</button>
     <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="exportFiltered" type="button" title="Prenesi vse zadetke trenutnih filtrov in izbranega združevanja dvojnikov">↓ Izvozi filtrirane (JSON)</button><button class="outline" id="exportAll" type="button" title="Prenesi vse izvorne oglase iz trenutnega posnetka, ne glede na filtre">↓ Izvozi vse (JSON)</button></div></div><p class="exporthint">Klikni naziv oglasa za podrobnosti; puščica ↗ odpre izvirni portal. Filtrirani JSON upošteva filtre in združevanje dvojnikov (vse strani zadetkov). Celoten JSON vsebuje vse izvorne oglase, tudi podvojene objave. Oba ohranita tvoje oznake in statuse.</p><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Klikni naziv za podrobnosti ali ↗ za izvorno objavo.</div></div></main></div>
     <dialog id="jobDialog" class="jobdialog" aria-labelledby="detailTitle"><button id="closeJobDialog" class="detailclose" type="button" aria-label="Zapri podrobnosti">×</button><div id="jobDetailBody"></div></dialog>
-    <section id="viri" class="sourcecatalog"><h2>Še nepovezani viri</h2><p>Spodaj so portali, ki še nimajo preverjenega samodejnega uvoza. Povezave odprejo izvorno iskanje.</p><div class="sourcegrid" id="planned"><div class="sourcecard"><a href="https://www.careerjet.si/" target="_blank" rel="noopener noreferrer">Careerjet ↗</a><p>Čakamo primeren XML vir oziroma dogovorjen dostop za nekomercialni zajem.</p></div></div></section>
+    <section id="viri" class="sourcecatalog"><h2>Še nepovezani viri</h2><p>Portali, ki jih še raziskujemo za programski uvoz. Oznaka pove, kaj še manjka; neuspešen prvi poskus ne pomeni, da vira ne bomo mogli povezati. Povezave vodijo na izvorne strani.</p><div class="sourcegrid" id="planned"><div class="sourcecard"><p>Pridobivam seznam nepovezanih virov …</p></div></div></section>
     <footer class="bottom"><span>© DeloRadar · Osebni pregled prostih delovnih mest</span><span>Podatki so informativni · Veljavnost in pogoje preveri na izvornem portalu</span></footer>
   </div>
   <script>
@@ -402,13 +404,15 @@ export const page = String.raw`<!doctype html>
         var zrszDirect=zrszJobs.filter(function(j){return /^https:\/\/www\.ess\.gov\.si\//.test(String(j.url||''))&&/[?&]idp=\d{6,10}(?:\/|&|#|$)/.test(String(j.url||''))}).length;
         $('sourceStatus').innerHTML=sources.slice().sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name,'sl')}).map(function(s){
           var zrszQuality=s.id==='zrsz'&&s.status==='live'&&zrszJobs.length;
-          return '<div class="sourceitem'+(zrszQuality?' has-quality':'')+'"><span class="name">'+safe(s.name)+'</span><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov':'Ni odziva')+'</span>'+
+          return '<div class="sourceitem'+(zrszQuality?' has-quality':'')+'"><a class="name" target="_blank" rel="noopener noreferrer" href="'+safe(s.url)+'">'+safe(s.name)+' ↗</a><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov'+(s.likelyDuplicates?' · '+s.likelyDuplicates+' verjetno podvojenih':''):'Ni odziva')+'</span>'+
             (zrszQuality?'<span class="sourcequality">Neposredne povezave ZRSZ: '+zrszDirect+' / '+zrszJobs.length+' · ostali: opis v DeloRadarju in iskanje ZRSZ</span>':'')+'</div>'; }).join('');
         var active=sources.filter(function(s){return s.status==='live'}).length;
         $('sourceSummary').textContent=active+' od '+sources.length+' virov dosegljivih';
         $('sourcesNum').textContent=active;
         document.querySelector('.stats .stat:nth-child(2) .foot').textContent='od '+sources.length+' povezanih';
-        $('planned').innerHTML=planned.filter(function(s){return s.name==='Careerjet'||s.name==='EURES (Slovenija)'}).map(function(s){return '<div class="sourcecard"><a target="_blank" rel="noopener noreferrer" href="'+safe(s.href)+'">'+safe(s.name)+' ↗</a><p>'+safe(s.note)+'</p></div>'}).join('');
+        var linkedNames=new Set(sources.map(function(s){return s.name}));
+        var pending=planned.filter(function(s){return !linkedNames.has(s.name)}).slice().sort(function(a,b){return (a.priority||3)-(b.priority||3)||a.name.localeCompare(b.name,'sl')});
+        $('planned').innerHTML=pending.map(function(s){return '<div class="sourcecard"><a target="_blank" rel="noopener noreferrer" href="'+safe(s.href)+'">'+safe(s.name)+' ↗</a><p>'+safe(s.note)+'</p><span class="tag">'+safe(s.status||'V raziskavi')+'</span></div>'}).join('')||'<p>Vsi načrtovani viri so trenutno povezani.</p>';
         var broken=sources.filter(function(s){return s.status!=='live'});
         $('notice').innerHTML=broken.length?'<div class="notice">Pozor: '+broken.map(function(x){return safe(x.name)}).join(', ')+' trenutno ni dosegljiv. Spodaj so samo uspešno pridobljeni oglasi.</div>':'';
       }
