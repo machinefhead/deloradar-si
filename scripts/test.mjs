@@ -120,14 +120,15 @@ assert.match(page, /class="refreshinfo" id="updated">Zadnji zajem oglasov: —/,
 assert.match(page, /class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur\./, 'Stanje povezav mora kazati dvanajsturni urnik');
 assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približno vsakih 12 ur\./, 'Javna stran ne sme prepisati novega urnika');
 assert.match(page, /id="sourceSummary"/, 'Povzetek dosegljivosti virov mora biti viden brez odpiranja seznama');
-assert.match(page, /<div class="sourceslist" id="sourceStatus">/, 'Statusi vseh posameznih virov morajo biti vedno vidni');
-assert.doesNotMatch(page, /<details class="sourcedetails"|id="sourceDetails"/, 'Seznam stanja povezav ne potrebuje razširljivega menija');
+assert.match(page, /<details class="sourcedetails" id="sourceDetails"><summary id="sourcesToggle">Prikaži povezane vire<\/summary><div class="sourceslist" id="sourceStatus">/, 'Seznam povezanih virov mora biti privzeto zaprt, vendar dosegljiv');
+assert.doesNotMatch(page, /<details class="sourcedetails" id="sourceDetails"\s+open/, 'Seznam povezanih virov ne sme biti privzeto odprt');
+assert.match(page, /this\.open\?'Skrij povezane vire':'Prikaži povezane vire'/, 'Oznaka za odpiranje mora slediti dejanskemu stanju');
 assert.match(page, /\.sidebar>\.panel:nth-of-type\(2\)\{display:block\}/, 'Stanje povezav mora ostati vidno tudi na telefonu');
 assert.match(page, /\.sourcecatalog\{display:block\}/, 'Nepovezani viri morajo biti prikazani brez klika');
 assert.match(page, /id="planned"><div class="sourcecard"><p>Pridobivam seznam nepovezanih virov/, 'Nepovezani viri morajo imeti jasen začetni prikaz');
 assert.doesNotMatch(page, /Za ta iskalnika še nimamo samodejnega izvoza/, 'Ko EURES priključimo, ne sme ostati zastarelo navodilo');
 assert.doesNotMatch(page, /id="showCatalog"|id="topSources"|function showSources\(/, 'Odvečna gumba za prikaz istih povezav morata biti odstranjena');
-assert.doesNotMatch(page, /sourcesToggle|sidebar\.sources-open/, 'Tudi mobilni seznam virov ostaja odprt');
+assert.doesNotMatch(page, /sidebar\.sources-open/, 'Seznam virov ne sme zahtevati dodatne mobilne navigacije');
 assert.match(script, /planned\.filter\(function\(s\)\{return !linkedNames\.has\(s\.name\)\}\)/, 'Na dnu pokažemo vse načrtovane, a še nepovezane vire');
 assert.match(script, /safe\(s\.status\|\|'V raziskavi'\)/, 'Status raziskave vira mora biti viden');
 assert.match(script, /sources\.slice\(\)\.sort\(function\(a,b\)\{return b\.count-a\.count/, 'Seznam virov naj bo razvrščen po količini oglasov');
@@ -141,9 +142,12 @@ const plannedBlock=collectorSource.match(/const PLANNED = \[([\s\S]*?)\n\];/)?.[
 assert.ok(plannedBlock.includes('ZRSZ / PoiščiDelo')&&plannedBlock.includes('Careerjet'),'Dostop do dveh glavnih nepovezanih iskalnikov mora ostati');
 assert.ok(!plannedBlock.includes("name: 'MojeDelo.com'")&&!plannedBlock.includes("name: 'Zaposlitev.info'"),'Že povezanih portalov ne podvajamo med dodatnimi viri');
 assert.match(plannedBlock,/EURES \(Slovenija\).*locationCodes=si/,'EURES mora odpreti iskanje, omejeno na Slovenijo');
-assert.ok((plannedBlock.match(/\{ name:/g)||[]).length>=12,'Raziskani, a še nepovezani viri morajo ostati vidni v katalogu');
-for(const name of ['SPAR Slovenija','Slovenske železnice','Prohuman','HOFER Slovenija','Pošta Slovenije','Bolha Zaposlitve']) {
-  assert.ok(plannedBlock.includes("name: '"+name+"'"),'Raziskani nepovezani vir manjka: '+name);
+assert.ok((plannedBlock.match(/\{ name:/g)||[]).length>=6,'Katalog mora vsebovati smiselne naslednje kandidate');
+for(const name of ['SPAR Slovenija','HOFER Slovenija','OTP banka','Krka','Iskra']) {
+  assert.ok(plannedBlock.includes("name: '"+name+"'"),'Potencialni kandidat manjka: '+name);
+}
+for(const name of ['Slovenske železnice','Prohuman','Pošta Slovenije','Bolha Zaposlitve','Delaj.si','HSG Kariera','SupportYourApp','DevRev','GEN-I','ZPM – Borza delovnih mest']) {
+  assert.ok(!plannedBlock.includes("name: '"+name+"'"),'Nizkovredni ali podvojeni vir ne spada več med kandidate: '+name);
 }
 assert.doesNotMatch(collectorSource, /id: 'spar', name: 'SPAR Slovenija'/, 'SPAR HTTP 403 v GitHub Actions ne sme blokirati celotne objave');
 assert.match(plannedBlock, /GitHub Actions HTTP 403/, 'Razlog blokade SPAR mora biti viden na strani');

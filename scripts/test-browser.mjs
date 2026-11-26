@@ -34,14 +34,26 @@ try {
     await page.goto('http://127.0.0.1:' + server.address().port, { waitUntil: 'domcontentloaded' });
     await page.locator('button.jobtitle').first().waitFor({ timeout: 20000 });
     assert.equal(downloads.length, 0, 'JSON se ne sme prenesti samodejno ob odprtju strani');
-    assert.ok(await page.locator('#planned .sourcecard').count() >= 10,
-      'Na dnu morajo biti vidni vsi raziskani, a nepovezani portali');
+    assert.ok(await page.locator('#planned .sourcecard').count() >= 5,
+      'Na dnu morajo ostati samo smiselni kandidati za naslednji uvoz');
+    assert.equal(await page.locator('#sourceDetails').evaluate(element => element.open), false,
+      'Seznam povezanih virov mora biti na telefonu in računalniku privzeto zaprt');
+    assert.equal(await page.locator('#sourceStatus').isVisible(), false,
+      'Zaprt seznam ne sme podaljševati strani');
+    await page.locator('#sourcesToggle').click();
+    assert.equal(await page.locator('#sourceDetails').evaluate(element => element.open), true);
+    assert.equal(await page.locator('#sourceStatus').isVisible(), true,
+      'Gumb mora omogočiti prikaz vseh povezanih virov');
+    await page.waitForFunction(() => document.getElementById('sourcesToggle').textContent.includes('Skrij povezane vire'));
     assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'LinkedIn Jobs' }).count(), 0,
       'LinkedIn se po uspešnem posrednem JSON-LD zajemu ne sme podvajati med nepovezanimi');
     assert.equal(await page.locator('#sourceStatus .sourceitem').filter({ hasText: 'LinkedIn Jobs' }).count(), 1,
       'LinkedIn mora biti med povezanimi viri in prikazati napredek HTTP pregleda');
     assert.equal(await page.locator('#sourceStatus a.name').count(), snapshot.sources.length,
       'Vsi povezani viri morajo imeti izvorno povezavo');
+    await page.locator('#sourcesToggle').click();
+    assert.equal(await page.locator('#sourceDetails').evaluate(element => element.open), false,
+      'Seznam mora biti mogoče ponovno skriti');
     if (snapshot.sources.some(source => source.name === 'EURES')) {
       assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'EURES (Slovenija)' }).count(), 0,
         'EURES ne sme biti hkrati povezan in nepovezan');
