@@ -44,6 +44,8 @@ try {
       assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'EURES (Slovenija)' }).count(), 0,
         'EURES ne sme biti hkrati povezan in nepovezan');
     }
+    assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'Competo' }).count(), 0,
+      'Competo je povezan neposredno z JSON in ne sme ostati med nepovezanimi');
     if (viewport.width === 1440) {
       const target = snapshot.jobs.find(job => job.source === 'EURES' && /Chauffeur_in/.test(job.title)) || snapshot.jobs[0];
       await page.locator('#search').fill(target.title);

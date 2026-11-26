@@ -4,7 +4,7 @@ Osebni pregled slovenskih zaposlitvenih oglasov: [odpri DeloRadar na GitHub Page
 
 ## Zadnje preverjeno stanje (26. november 2026)
 
-- Zadnja preverjena javna objava (25. november 2026, 23:06 UTC): **8.367 oglasov iz 20 dosegljivih virov**. Celoten novi lokalni zajem (26. november) je vrnil **10.651 izvornih oglasov iz 27/27 dosegljivih virov** v 26 sekundah. Revizija je potrdila različne ID-je, 20 reverzibilno označenih parov dvojnikov, skladna imena virov in nič izrecno zaznanih tujih krajev. Nova različica bo javna šele po dokončnem preverjanju in uspešnem postopku objave.
+- Zadnja preverjena javna objava (26. november 2026, 00:41 UTC): **10.652 oglasov iz 27/27 dosegljivih virov**; 20 reverzibilno označenih parov dvojnikov, nič podvojenih ID-jev ali neznanih virov. Naslednja nadgradnja dodaja izvirne oglase Competo in jih bo objavila šele po preverjanju.
 - **ZRSZ: 3.725 aktualnih oglasov**, z besedilom del in nalog iz uradnega dnevnega JSON-a. Pri **3.539 oglasih** je referenca povezana s preverjenim številčnim `idp` in neposrednim oglasom; pri preostalih **186** natančnega `idp` ni potrjenega. Zato za njih ohranimo celoten opis na DeloRadarju, deljivo povezavo `?oglas=zrsz%3AIE...` pri referencah `IE` in ločeno izvorno iskanje, ne izmišljene neposredne povezave. Delež neposrednih povezav je v »Stanju povezav«.
 - **Adecco: 146 aktualnih oglasov** v zadnjem lokalnem zajemu. Še 15 povezav v sitemapu je vračalo odstranjene/neveljavne zapise (npr. HTTP 410), kar ni več obravnavano kot napaka portala. Dopolnilne podrobnosti se osvežujejo postopno.
 - **EURES: 25 dodatnih oglasov**, od tega 2 z navedenim krajem in 23 z državo Slovenijo, vendar brez potrjenega kraja. Vseh 25 vsebuje opis, pri 13 je objavljen tudi rok prijave. EURES je vključen v urnik; Careerjet kot agregator za zdaj ni prednostna naloga.
@@ -12,6 +12,7 @@ Osebni pregled slovenskih zaposlitvenih oglasov: [odpri DeloRadar na GitHub Page
 - **WHC Slovenija (nekdanji Workforce):** povezani sta obe izvirni kategoriji **Workforce** in **Heads**. Izvirni aplikacijski HTTP vrne straničeni HTML (97 + 31 kartic na dan preverjanja); splošne prijave v bazo kandidatov in izrecno tuje lokacije izločimo. Posamezne oglase programsko dopolnimo z uradnim `JobPosting` in podatki o nalogah, ponudbi in pričakovanjih. Največ **24 podrobnih HTTP zahtevkov na gradnjo**, do trije sočasno, s 14-dnevnim predpomnilnikom. Brez brskalniškega odpiranja kartic.
 - **e-Študentski Servis:** **2.141 objav** iz 43 straničenih HTTP odgovorov; opis, kraj, delovnik in plačilo preberemo neposredno iz seznama, brez dodatnih zahtevkov za podrobnosti. Vneseno je kot posebno označeno študentsko delo, brez ugibanja datuma objave.
 - **Greenhouse/Lever:** pet izvirnih kariernih sistemov (Planet Labs, Wolt, Robinhood, Aleph, TSMG) je ob zajemu vrnilo skupaj **22 slovenskih razpisov**. Lever prenaša tudi ločena poglavja nalog in zahtev.
+- **Competo (nova nadgradnja):** uradni portal `portal.digi.competo.si` uporablja neposreden JSON `portal/jobs`. Ob pregledu 26. 11. je vrnil 9 objav; osem naslovov ni imelo enakega naslova v obstoječem DeloRadarju. Po eno HTTP-zahtevo za seznam in največ tri vzporedne za manjkajoče opise, z 14-dnevnim predpomnilnikom. Celoten opis vsebuje naloge, pričakovanja in ponudbo; osebnih stikov ne objavljamo.
 - **Dvojniki:** trenutni najstrožji kriteriji so označili **20 parov**, med njimi en oglas IščiDelo, ki ustreza oglasu MojeDelo po nazivu, delodajalcu in kraju. IščiDelo za zdaj ohranimo zaradi možnosti novih unikatnih objav; sami oglasi v celotnem JSON-izvozu ostanejo nedotaknjeni.
 - `dist/` vsebuje le `index.html` in `jobs.json`; zgodovinskih predogledov ZRSZ ne pakiramo več za objavo.
 
@@ -52,6 +53,7 @@ Vključitev uradnega ZRSZ v zbiralnik: `ZRSZ_OFFICIAL_HTTP_ENABLED=1`. Ločeni `
 | Manpower Slovenija | Straničeni javni HTML in omejene neposredne HTTP podrobnosti s predpomnilnikom |
 | WHC Slovenija (Workforce in Heads) | Izvirni aplikacijski HTTP seznam obeh kategorij; omejene podrobnosti `JobPosting` |
 | e-Študentski Servis (študentsko delo) | Javno straničen HTML, do 50 oglasov na zahtevek; ID, opis, kraj, plačilo, trajanje in delovnik brez obiska podstrani |
+| Competo | Javni aplikacijski JSON: `/portal/jobs` in `/portal/jobs/{uid}`; postopni polni opisi in predpomnilnik |
 | Planet Labs, Wolt, Robinhood | Dokumentiran javni Greenhouse Job Board JSON; celotni opisi in objavljeni datumi v enem zahtevku za delodajalca |
 | Aleph, TSMG | Dokumentiran javni Lever Postings JSON s filtriranjem lokacije Slovenija že na strani strežnika |
 
