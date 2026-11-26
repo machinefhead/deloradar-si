@@ -11,6 +11,7 @@ export const SMARTRECRUITERS_BOARDS = [
   { id: 'abbvie', name: 'AbbVie', company: 'abbvie', url: 'https://jobs.smartrecruiters.com/abbvie' },
   { id: 'coface', name: 'Coface', company: 'Coface', url: 'https://jobs.smartrecruiters.com/Coface' },
   { id: 'konecranes', name: 'Konecranes', company: 'Konecranes', url: 'https://jobs.smartrecruiters.com/Konecranes' },
+  { id: 'frasersgroup', name: 'Frasers Group', company: 'FrasersGroup', url: 'https://jobs.smartrecruiters.com/FrasersGroup' },
 ];
 
 function plain(value) {

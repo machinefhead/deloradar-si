@@ -26,6 +26,13 @@ assert.match(parsedSmart.description, /Razvoj podatkovnih aplikacij/);
 assert.equal(parsedSmart.requirements, 'Znanje JavaScript.');
 assert.equal(parsedSmart.additionalInformation, 'Prilagodljiv urnik.');
 assert.doesNotMatch(parsedSmart.description, /zaposlitev@example\.com|<p>/);
+const frasers = SMARTRECRUITERS_BOARDS.find(board => board.id === 'frasersgroup');
+assert.ok(frasers);
+assert.equal(parseSmartRecruitersJob(rawSmart, { ...smartDetail,
+  postingUrl: 'https://jobs.smartrecruiters.com/FrasersGroup/744000163815771-prodajalec',
+  company: { name: 'Frasers Group' } }, frasers, now)?.source, 'Frasers Group');
+assert.equal(parseSmartRecruitersJob(rawSmart, smartDetail, frasers, now), null,
+  'Frasers ne sme prevzemati povezav drugih podjetij SmartRecruiters');
 assert.equal(parseSmartRecruitersJob(rawSmart,
   { ...smartDetail, postingUrl: 'https://example.com/oglas' }, smart, now), null);
 assert.equal(parseSmartRecruitersJob({ ...rawSmart, location: { country: 'de' } },
