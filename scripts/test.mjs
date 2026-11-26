@@ -145,6 +145,8 @@ assert.ok((plannedBlock.match(/\{ name:/g)||[]).length>=12,'Raziskani, a še nep
 for(const name of ['SPAR Slovenija','Slovenske železnice','Prohuman','HOFER Slovenija','Pošta Slovenije','Bolha Zaposlitve']) {
   assert.ok(plannedBlock.includes("name: '"+name+"'"),'Raziskani nepovezani vir manjka: '+name);
 }
+assert.doesNotMatch(collectorSource, /id: 'spar', name: 'SPAR Slovenija'/, 'SPAR HTTP 403 v GitHub Actions ne sme blokirati celotne objave');
+assert.match(plannedBlock, /GitHub Actions HTTP 403/, 'Razlog blokade SPAR mora biti viden na strani');
 assert.doesNotMatch(plannedBlock,/\{ name: 'LinkedIn Jobs'/,'LinkedIn iz javnega posrednega vira je med povezanimi');
 assert.match(collectorSource,/id: 'linkedin', name: LINKEDIN_SOURCE/,'Povezan LinkedIn mora biti razviden med viri');
 assert.doesNotMatch(page, /Ob odprtju preberemo zadnji objavljeni posnetek/, 'Podvojeno pojasnilo pod tabelo je odvečno');

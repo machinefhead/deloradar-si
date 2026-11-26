@@ -16,6 +16,7 @@ import { getIzs, getHidria, getLthCastings, getTelkom, getPse } from './slovenia
 import { LINKEDIN_SOURCE, getLinkedinViaDelovnaMesta } from './linkedin-via-delovnamesta.js';
 import { getPublicTrenkwalder } from './trenkwalder-search.js';
 import { EMPLOYER_MIRRORS, getEmployerViaDelovnaMesta } from './employers-via-delovnamesta.js';
+import { getMerkurRecruitee } from './recruitee.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -58,6 +59,7 @@ const SOURCES = [
   { id: 'pse', name: 'PSE d.o.o.', url: 'https://www.pse.si/sl/zaposlitve/' },
   { id: 'linkedin', name: LINKEDIN_SOURCE, url: 'https://www.linkedin.com/jobs/' },
   ...EMPLOYER_MIRRORS.map(item => ({ id: 'mirror_' + item.id, name: item.name, url: item.url })),
+  { id: 'recruitee_merkur', name: 'Merkur zavarovalnica', url: 'https://merkurzavarovalnica.recruitee.com/' },
   ...ATS_BOARDS.map(board => ({ id: 'ats_' + board.id, name: board.name, url: board.url })),
   ...WORKABLE_BOARDS.map(board => ({ id: 'workable_' + board.id, name: board.name, url: board.url })),
   ...SMARTRECRUITERS_BOARDS.map(board => ({ id: 'smart_' + board.id, name: board.name, url: board.url })),
@@ -76,7 +78,10 @@ const PLANNED = [
   ...(!EURES_HTTP_ENABLED ? [{ name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z EURES_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
   { name: 'HOFER Slovenija', href: 'https://kariera.hofer.si/iskanje-zaposlitve', priority: 1, status: 'JSON najden', note: 'Javni REST za iskanje zaposlitve je dosegljiv, a je ob preverjanju vrnil prazen seznam. Preveriti parametre in objave.' },
   { name: 'Slovenske železnice', href: 'https://www.sz.si/kariera/razpisi-za-prosta-delovna-mesta/', priority: 2, status: 'Večinoma podvojeno', note: 'Izvirni javni seznam je zdaj dosegljiv z HTTP; 11 od 12 oglasov v javnem zrcalu vodi na že povezan ZRSZ, eden na LinkedIn. Pred samostojnim priklopom preveriti resnično nove izvirne razpise.' },
-  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev-spar', priority: 2, status: 'Delno podvojeno', note: 'Uradna karierna stran je zdaj dosegljiva z HTTP; štirje oglasi v zrcalu vodijo na ZRSZ. Posamezne kategorije imajo še lastne razpise; preveriti unikatnost in morebitno skrito straničenje.' },
+  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev-spar', priority: 1, status: 'GitHub Actions HTTP 403', note: 'Z lokalnimi neposrednimi HTTP zahtevki je bilo potrjenih 58 aktivnih izvirnih razpisov s polnimi opisi. V GitHub Actions uradni SPAR odgovori vrnejo HTTP 403, zato uvoz source/spar.js ostane pripravljen, vendar ga ne prištevamo med redno povezane vire, dokler ne dobimo normalnega strojno berljivega izvoza.' },
+  { name: 'EY Slovenija', href: 'https://careers.ey.com/', priority: 2, status: 'Dodatni izvirni razpisi', note: 'Prepoznanih pet izvirnih slovenskih oglasov; preveriti uradni ATS izvoz in trajnost povezav.' },
+  { name: 'SETCCE', href: 'https://www.careers-page.com/', priority: 2, status: 'Dodatni izvirni razpisi', note: 'Prepoznanih pet izvirnih slovenskih oglasov; preveriti podatkovni vir izvirnega zaposlitvenega sistema.' },
+  { name: 'Decathlon Slovenija', href: 'https://www.decathlon-kariera.si/', priority: 2, status: 'Dodatni izvirni razpisi', note: 'V javnih razpisih so dodatni izvirniki; naslednji korak je preverjen samodejni izvoz.' },
   { name: 'Petrol', href: 'https://www.petrol.eu/sl/kariera/prosta-delovna-mesta', priority: 2, status: 'Preusmeritve izvirnih povezav', note: 'Deset izvirnih oglasov ima javne podatke JobPosting, vendar izvorni Petrolovi URL-ji trenutno preusmerijo na nedosegljivo HTTP različico. Ne objavljamo pokvarjenih povezav.' },
   { name: 'Pošta Slovenije', href: 'https://www.posta.si/o-nas/zaposlitve', priority: 3, status: 'ZRSZ prekrivanje', note: 'Vseh 24 preverjenih objav v javnem zrcalu ima izvorni URL ZRSZ. SAP SuccessFactors še preučimo, če se pokažejo resnično novi razpisi.' },
   { name: 'Bolha Zaposlitve', href: 'https://www.bolha.com/redne-zaposlitve', priority: 3, status: 'Vzorčno vsi ZRSZ', note: 'Od 1.787 oglasov je bilo vzorčno preverjenih 187 iz več strani, vsi so ZRSZ oglasi. Vključitev bi trenutno povečala predvsem število dvojnikov.' },
@@ -89,7 +94,7 @@ const PLANNED = [
   { name: 'Krka', href: 'https://www.krka.biz/employment/prosta-delovna-mesta/', priority: 2, status: 'ATS brez odprtega seznama', note: 'Stran vodi na Cornerstone OnDemand; preveriti uraden strojno berljiv izvoz razpisov.' },
   { name: 'GEN-I', href: 'https://www.gen-i.si/o-gen-i/zaposlitev/prosta-delovna-mesta/', priority: 2, status: 'Majhen obseg', note: 'Javna stran je ob preverjanju kazala samo eno študentsko delovno mesto, zato ločen vir trenutno ne prinaša pomembne dodatne ponudbe.' },
   { name: 'Iskra', href: 'https://www.iskra.eu/sl/Prosta-delovna-mesta/', priority: 2, status: 'HTTP ni dosegljiv', note: 'Javna podstran ima neposredne oglase, pri avtomatskem HTTP preverjanju pa je povezava časovno potekla.' },
-  { name: 'OTP banka', href: 'https://www.otpbanka.si/kariera', priority: 2, status: 'Preverjen dodaten vir', note: 'Na javnem zrcalu je devet izvirnih povezav na FledgeHR; dodatno preverimo neposreden izvoz in prekrivanje z obstoječimi oglasi.' },
+  { name: 'OTP banka', href: 'https://www.otpbanka.si/kariera', priority: 2, status: 'Nedokončana preusmeritev', note: 'Devet izvirnih povezav na FledgeHR je prepoznanih, vendar uradni HTTP za sezname in posamezne oglase trenutno vrača preusmeritev na isto pot. Nadaljujemo šele z delujočimi povezavami.' },
   { name: 'HSG Kariera', href: 'https://www.kariera.si/', priority: 3, status: 'Prekrivanje ZRSZ in Kariera.si', note: 'Med prvimi 50 javnimi vnosi je 29 izvirnikov Kariera.si že zajetih in 21 povezav ZRSZ; za zdaj brez novih unikatnih oglasov.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
@@ -778,6 +783,7 @@ async function collect() {
   }),
   ...EMPLOYER_MIRRORS.map(item => previousJobs().then(previous =>
     getEmployerViaDelovnaMesta(item, { previous }))),
+  getMerkurRecruitee(),
   ...ATS_BOARDS.map(board => getPublicAtsBoard(board)),
   ...WORKABLE_BOARDS.map(board => getPublicWorkableBoard(board)),
   ...SMARTRECRUITERS_BOARDS.map(board => previousJobs().then(previous =>

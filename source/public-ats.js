@@ -18,6 +18,8 @@ export const ATS_BOARDS = [
     url: 'https://www.plume.com/career-opportunities/' },
   { id: 'teads1', name: 'Teads', provider: 'greenhouse', board: 'teads1',
     url: 'https://job-boards.eu.greenhouse.io/teads1' },
+  { id: 'infuse', name: 'INFUSE', provider: 'greenhouse', board: 'infuse',
+    url: 'https://job-boards.greenhouse.io/infuse' },
   { id: 'aleph', name: 'Aleph', provider: 'lever', board: 'aleph', location: 'Ljubljana, Slovenia',
     url: 'https://jobs.lever.co/aleph' },
   { id: 'tsmg', name: 'TSMG', provider: 'lever', board: 'tsmg', location: 'Ljubljana',
