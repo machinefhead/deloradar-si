@@ -142,9 +142,11 @@ assert.ok(plannedBlock.includes('ZRSZ / PoiščiDelo')&&plannedBlock.includes('C
 assert.ok(!plannedBlock.includes("name: 'MojeDelo.com'")&&!plannedBlock.includes("name: 'Zaposlitev.info'"),'Že povezanih portalov ne podvajamo med dodatnimi viri');
 assert.match(plannedBlock,/EURES \(Slovenija\).*locationCodes=si/,'EURES mora odpreti iskanje, omejeno na Slovenijo');
 assert.ok((plannedBlock.match(/\{ name:/g)||[]).length>=12,'Raziskani, a še nepovezani viri morajo ostati vidni v katalogu');
-for(const name of ['SPAR Slovenija','Slovenske železnice','Prohuman','HOFER Slovenija','Pošta Slovenije','Bolha Zaposlitve','LinkedIn Jobs']) {
+for(const name of ['SPAR Slovenija','Slovenske železnice','Prohuman','HOFER Slovenija','Pošta Slovenije','Bolha Zaposlitve']) {
   assert.ok(plannedBlock.includes("name: '"+name+"'"),'Raziskani nepovezani vir manjka: '+name);
 }
+assert.doesNotMatch(plannedBlock,/\{ name: 'LinkedIn Jobs'/,'LinkedIn iz javnega posrednega vira je med povezanimi');
+assert.match(collectorSource,/id: 'linkedin', name: LINKEDIN_SOURCE/,'Povezan LinkedIn mora biti razviden med viri');
 assert.doesNotMatch(page, /Ob odprtju preberemo zadnji objavljeni posnetek/, 'Podvojeno pojasnilo pod tabelo je odvečno');
 const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
 assert.match(workflow, /cron: '17 5,17 \* \* \*'/, 'Samodejno osveževanje mora teči dvakrat dnevno (na 12 ur)');
