@@ -59,6 +59,39 @@ assert.equal(parseEmployerPosting(posting({ ...schema, url: 'https://www.ess.gov
 assert.equal(parseEmployerPosting(posting({ ...schema, jobLocation: { address: { addressCountry: 'AT' } } }), viaUrl, novartis), null);
 assert.equal(parseEmployerPosting(posting({ ...schema, validThrough: '2026-11-01' }), viaUrl, novartis, '2026-11-26'), null);
 
+// Deljena ATS domena brez preverjene poti ni zadosten dokaz izvora.
+const newEmployers = [
+  ['ey', 'https://careers.ey.com/ey/job/Ljubljana-Razvijalec-1000/12345/'],
+  ['setcce', 'https://www.careers-page.com/setcce-careers/job/7X7Y95RX'],
+  ['decathlon', 'https://jobs.decathlon.net/sl/open-roles-detail/252477'],
+  ['mahle', 'https://careers.mahle.com/job/Sempeter-Commercial-Costing-Planner/1410275933/'],
+  ['gitlab', 'https://job-boards.greenhouse.io/gitlab/jobs/8937275002'],
+  ['supabase', 'https://jobs.ashbyhq.com/supabase/a069c886-1107-408e-88b4-e1aa8d33d4bc'],
+  ['posthog', 'https://jobs.ashbyhq.com/PostHog/db808740-242e-4a40-ad43-d41f26c049d7'],
+  ['pivovarna', 'https://theheinekencompany-rmk.jobs.hr.cloud.sap/Slovenia/job/Lasko-operater/1460148933/'],
+];
+for (const [id, url] of newEmployers) {
+  const config = EMPLOYER_MIRRORS.find(employer => employer.id === id);
+  assert.ok(config?.pathPrefix, `Za ${id} je obvezna izvirna pot`);
+  const source = { ...schema, url, hiringOrganization: { name: config.name } };
+  const current = parseEmployerPosting(posting(source), viaUrl, config, '2026-11-26');
+  assert.equal(current?.url, url);
+  assert.equal(current?.source, config.name);
+  const parsed = new URL(url);
+  parsed.pathname = '/other-company/job/aabbcc';
+  assert.equal(parseEmployerPosting(posting({ ...source, url: parsed.href }), viaUrl, config), null);
+  assert.equal(parseEmployerPosting(posting({ ...source, url: 'https://different.example/job/aabbcc' }), viaUrl, config), null);
+}
+for (const id of ['gitlab', 'supabase', 'posthog']) {
+  const config = EMPLOYER_MIRRORS.find(employer => employer.id === id);
+  const original = newEmployers.find(item => item[0] === id)[1];
+  const remote = { ...schema, url: original, jobLocation: null,
+    applicantLocationRequirements: { name: 'Slovenia' } };
+  assert.equal(parseEmployerPosting(posting(remote), viaUrl, config)?.location,
+    'Slovenija (delo na daljavo)');
+  assert.equal(parseEmployerPosting(posting({ ...remote, applicantLocationRequirements: { name: 'Austria' } }), viaUrl, config), null);
+}
+
 let requested = [];
 const mockEmployer = async url => {
   requested.push(url);

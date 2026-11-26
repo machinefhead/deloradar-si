@@ -21,6 +21,14 @@ export const EMPLOYER_MIRRORS = [
   { id: 'viaduct', name: 'Viaduct', slugs: ['viaduct'], hosts: ['www.viaduct.ai'], url: 'https://www.viaduct.ai/about/careers' },
   { id: 'kraken', name: 'Kraken', slugs: ['kraken'], hosts: ['jobs.ashbyhq.com'], pathPrefix: '/kraken.com/', url: 'https://jobs.ashbyhq.com/kraken.com' },
   { id: 'kolektorsisteh', name: 'Kolektor Sisteh', slugs: ['kolektor-sisteh'], hosts: ['www.kolektorsisteh.si'], url: 'https://www.kolektorsisteh.si/kariera' },
+  { id: 'ey', name: 'EY', slugs: ['ey'], hosts: ['careers.ey.com'], pathPrefix: '/ey/job/', url: 'https://careers.ey.com/' },
+  { id: 'setcce', name: 'SETCCE', slugs: ['setcce'], hosts: ['www.careers-page.com'], pathPrefix: '/setcce-careers/job/', url: 'https://www.careers-page.com/setcce-careers' },
+  { id: 'decathlon', name: 'Decathlon Slovenija', slugs: ['decathlon'], hosts: ['jobs.decathlon.net'], pathPrefix: '/sl/open-roles-detail/', url: 'https://jobs.decathlon.net/sl/' },
+  { id: 'mahle', name: 'MAHLE', slugs: ['mahle'], hosts: ['careers.mahle.com'], pathPrefix: '/job/', url: 'https://careers.mahle.com/' },
+  { id: 'gitlab', name: 'GitLab', slugs: ['gitlab'], hosts: ['job-boards.greenhouse.io'], pathPrefix: '/gitlab/jobs/', url: 'https://job-boards.greenhouse.io/gitlab' },
+  { id: 'supabase', name: 'Supabase', slugs: ['supabase'], hosts: ['jobs.ashbyhq.com'], pathPrefix: '/supabase/', url: 'https://jobs.ashbyhq.com/supabase' },
+  { id: 'posthog', name: 'PostHog', slugs: ['posthog'], hosts: ['jobs.ashbyhq.com'], pathPrefix: '/PostHog/', url: 'https://jobs.ashbyhq.com/PostHog' },
+  { id: 'pivovarna', name: 'Pivovarna Laško Union', slugs: ['pivovarna-lasko-union'], hosts: ['theheinekencompany-rmk.jobs.hr.cloud.sap'], pathPrefix: '/Slovenia/job/', url: 'https://careers.theheinekencompany.com/' },
 ];
 
 // Največ tri vzporedne zahteve skupaj čez vse delodajalce iz istega vira.
