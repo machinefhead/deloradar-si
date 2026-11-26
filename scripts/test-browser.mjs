@@ -36,8 +36,10 @@ try {
     assert.equal(downloads.length, 0, 'JSON se ne sme prenesti samodejno ob odprtju strani');
     assert.ok(await page.locator('#planned .sourcecard').count() >= 10,
       'Na dnu morajo biti vidni vsi raziskani, a nepovezani portali');
-    assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'LinkedIn Jobs' }).count(), 1,
-      'LinkedIn mora ostati v katalogu za kasnejšo raziskavo');
+    assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'LinkedIn Jobs' }).count(), 0,
+      'LinkedIn se po uspešnem posrednem JSON-LD zajemu ne sme podvajati med nepovezanimi');
+    assert.equal(await page.locator('#sourceStatus .sourceitem').filter({ hasText: 'LinkedIn Jobs' }).count(), 1,
+      'LinkedIn mora biti med povezanimi viri in prikazati napredek HTTP pregleda');
     assert.equal(await page.locator('#sourceStatus a.name').count(), snapshot.sources.length,
       'Vsi povezani viri morajo imeti izvorno povezavo');
     if (snapshot.sources.some(source => source.name === 'EURES')) {

@@ -13,6 +13,7 @@ import { WORKABLE_BOARDS, getPublicWorkableBoard } from './workable.js';
 import { SMARTRECRUITERS_BOARDS, getPublicSmartRecruitersBoard } from './smartrecruiters.js';
 import { ASHBY_BOARDS, getPublicAshbyBoard } from './ashby.js';
 import { getIzs, getHidria, getLthCastings, getTelkom, getPse } from './slovenian-portals.js';
+import { LINKEDIN_SOURCE, getLinkedinViaDelovnaMesta } from './linkedin-via-delovnamesta.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -53,6 +54,7 @@ const SOURCES = [
   { id: 'lth', name: 'LTH Castings', url: 'https://www.lthcastings.com/sl/kariera/prosta-delovna-mesta' },
   { id: 'telkom', name: 'Telkom d.o.o.', url: 'https://www.telkom.si/kariera/' },
   { id: 'pse', name: 'PSE d.o.o.', url: 'https://www.pse.si/sl/zaposlitve/' },
+  { id: 'linkedin', name: LINKEDIN_SOURCE, url: 'https://www.linkedin.com/jobs/' },
   ...ATS_BOARDS.map(board => ({ id: 'ats_' + board.id, name: board.name, url: board.url })),
   ...WORKABLE_BOARDS.map(board => ({ id: 'workable_' + board.id, name: board.name, url: board.url })),
   ...SMARTRECRUITERS_BOARDS.map(board => ({ id: 'smart_' + board.id, name: board.name, url: board.url })),
@@ -81,8 +83,6 @@ const PLANNED = [
   { name: 'Zaposlitev.net', href: 'https://www.zaposlitev.net/', priority: 2, status: 'Ponovni poskus', note: 'Ob zadnjem neposrednem preverjanju je portal vrnil HTTP 503.' },
   { name: 'Prohuman', href: 'https://prohuman.si/', priority: 3, status: 'Prekrivanje', note: 'Njegovi oglasi so bili v prejšnjem posnetku prisotni na MojeDelo; preveriti morebitne dodatne izvirne objave.' },
   ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', priority: 3, status: 'Agregator', note: 'Večinoma povezuje druge vire. Raziskati ustrezen izvoz in preveriti, ali prinaša unikatne oglase.' }] : []),
-  { name: 'LinkedIn Jobs', href: 'https://www.linkedin.com/jobs/', priority: 3, status: 'Podatkovni dostop', note: 'Uradni Job Posting API je predvsem za objavljanje. Potreben je primeren odobren vir za branje razpisov.' },
-  { name: 'DelovnaMesta.si', href: 'https://delovnamesta.si/', priority: 2, status: 'Prekrivanje z ZRSZ', note: 'Strojno berljiv zbirnik vključuje ZRSZ, LinkedIn in delodajalce. Pred priklopom bi morali potrditi, kateri oglasi so res novi in imajo preverjeno izvorno povezavo.' },
   { name: 'Zbornica VZD – Borza dela', href: 'https://zbornica-vzd.si/borzadela/', priority: 3, status: 'Zastareli ali podvojeni oglasi', note: 'V tabeli so trenutno potekli razpisi ter povezave na že povezani MojeDelo oziroma ZRSZ; ne povečuje unikatne ponudbe.' },
   { name: 'ZPM – Borza delovnih mest', href: 'https://zpm.si/delovna-mesta/', priority: 3, status: 'Večinoma pretekli razpisi', note: 'Med 80 javnimi vnosi so bili trenutno aktivni le trije, brez neposrednih povezav na posamezni razpis.' },
   { name: 'Krka', href: 'https://www.krka.biz/employment/prosta-delovna-mesta/', priority: 2, status: 'ATS brez odprtega seznama', note: 'Stran vodi na Cornerstone OnDemand; preveriti uraden strojno berljiv izvoz razpisov.' },
@@ -101,20 +101,23 @@ let cached = null;
 let cachedAt = 0;
 const CACHE_MS = 15 * 60 * 1000;
 const DETAIL_CACHE_URL = 'https://machinefhead.github.io/deloradar-si/jobs.json';
-let previousJobsPromise;
-async function previousJobs() {
-  if (!previousJobsPromise) previousJobsPromise = (async () => {
+let previousSnapshotPromise;
+async function previousSnapshot() {
+  if (!previousSnapshotPromise) previousSnapshotPromise = (async () => {
     try {
       const response = await fetch(DETAIL_CACHE_URL, { signal: AbortSignal.timeout(20000), headers: { accept: 'application/json' } });
-      if (!response.ok || Number(response.headers.get('content-length')) > 35_000_000) return [];
+      if (!response.ok || Number(response.headers.get('content-length')) > 35_000_000) return {};
       const snapshot = await response.json();
-      return Array.isArray(snapshot?.jobs) ? snapshot.jobs : [];
+      return Array.isArray(snapshot?.jobs) ? snapshot : {};
     } catch (error) {
       console.warn('DeloRadar: predhodni opisi začasno niso dosegljivi: ' + String(error?.message || error));
-      return [];
+      return {};
     }
   })();
-  return previousJobsPromise;
+  return previousSnapshotPromise;
+}
+async function previousJobs() {
+  return (await previousSnapshot()).jobs || [];
 }
 function detailLimit(name, fallback) {
   const candidate = Number(process.env[name]);
@@ -747,7 +750,7 @@ async function getIscidelo() {
 }
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  let zrszDiagnostics;
+  let zrszDiagnostics, linkedinResult;
   const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
   if (ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED) collectors.push(
     ZRSZ_OFFICIAL_HTTP_ENABLED ? previousJobs().then(async oldJobs => {
@@ -763,6 +766,13 @@ async function collect() {
     previous: oldJobs, maxDetails: detailLimit('DETAIL_WHC_LIMIT', 24),
   })), getStudentWork(), previousJobs().then(oldJobs => getCompeto({ previous: oldJobs })), getCeltra(),
   getIzs(), getHidria(), getLthCastings(), getTelkom(), getPse(),
+  previousSnapshot().then(async snapshot => {
+    linkedinResult = await getLinkedinViaDelovnaMesta({
+      previous: snapshot.jobs || [],
+      previousState: snapshot.discovery?.delovnamestaLinkedin || {},
+    });
+    return linkedinResult.jobs;
+  }),
   ...ATS_BOARDS.map(board => getPublicAtsBoard(board)),
   ...WORKABLE_BOARDS.map(board => getPublicWorkableBoard(board)),
   ...SMARTRECRUITERS_BOARDS.map(board => previousJobs().then(previous =>
@@ -819,8 +829,10 @@ async function collect() {
     status: results[i].status === 'fulfilled' ? 'live' : 'error',
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0,
     likelyDuplicates: markedBySource.get(source.name) || 0,
-    ...(source.id === 'zrsz' && zrszDiagnostics ? { zrsz: zrszDiagnostics } : {}) }));
-  cached = { jobs, sources, planned: PLANNED, checkedAt: new Date().toISOString(), storage: 'browser-local' };
+    ...(source.id === 'zrsz' && zrszDiagnostics ? { zrsz: zrszDiagnostics } : {}),
+    ...(source.id === 'linkedin' && linkedinResult ? { scanProgress: linkedinResult.progress } : {}) }));
+  cached = { jobs, sources, planned: PLANNED, checkedAt: new Date().toISOString(), storage: 'browser-local',
+    discovery: { delovnamestaLinkedin: linkedinResult?.state || {} } };
   cachedAt = Date.now() - (sources.some(s => s.status === 'error') ? CACHE_MS - 60_000 : 0);
   return cached;
 }

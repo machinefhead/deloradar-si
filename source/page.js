@@ -413,10 +413,12 @@ export const page = String.raw`<!doctype html>
         var zrszDirect=zrszJobs.filter(function(j){return /^https:\/\/www\.ess\.gov\.si\//.test(String(j.url||''))&&/[?&]idp=\d{6,10}(?:\/|&|#|$)/.test(String(j.url||''))}).length;
         $('sourceStatus').innerHTML=sources.slice().sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name,'sl')}).map(function(s){
           var zrszQuality=s.id==='zrsz'&&s.status==='live'&&zrszJobs.length;
-          return '<div class="sourceitem'+(zrszQuality?' has-quality':'')+'"><a class="name" target="_blank" rel="noopener noreferrer" href="'+safe(s.url)+'">'+safe(s.name)+' ↗</a><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov'+(s.likelyDuplicates?' · '+s.likelyDuplicates+' verjetno podvojenih':''):'Ni odziva')+'</span>'+
+          var linkedinQuality=s.id==='linkedin'&&s.status==='live'&&s.scanProgress;
+          return '<div class="sourceitem'+(zrszQuality||linkedinQuality?' has-quality':'')+'"><a class="name" target="_blank" rel="noopener noreferrer" href="'+safe(s.url)+'">'+safe(s.name)+' ↗</a><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov'+(s.likelyDuplicates?' · '+s.likelyDuplicates+' verjetno podvojenih':''):'Ni odziva')+'</span>'+
             (zrszQuality?'<span class="sourcequality">Neposredne povezave ZRSZ: '+zrszDirect+' / '+zrszJobs.length+
               (s.zrsz&&Number.isInteger(s.zrsz.searchCount)?' · uradni iskalnik: '+s.zrsz.searchCount+' (dnevni JSON: '+s.zrsz.dailyCount+')':'')+
-              ' · ostali: opis v DeloRadarju in iskanje ZRSZ</span>':'')+'</div>'; }).join('');
+              ' · ostali: opis v DeloRadarju in iskanje ZRSZ</span>':'')+
+            (linkedinQuality?'<span class="sourcequality">Preverjeni LinkedIn oglasi: '+s.count+' · preverjenih '+s.scanProgress.checked+' od '+s.scanProgress.total+' javnih kandidatov · '+(s.scanProgress.pending?'preostali se dodajajo postopno':'vsi trenutno objavljeni kandidati so pregledani')+' · brez zahtevkov na LinkedIn</span>':'')+'</div>'; }).join('');
         var active=sources.filter(function(s){return s.status==='live'}).length;
         $('sourceSummary').textContent=active+' od '+sources.length+' virov dosegljivih';
         $('sourcesNum').textContent=active;

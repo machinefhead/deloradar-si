@@ -43,6 +43,7 @@ jobs:
           DETAIL_ZAPOSLITEV_LIMIT: '20'
           DETAIL_MANPOWER_LIMIT: '20'
           DETAIL_WHC_LIMIT: '24'
+          LINKEDIN_DM_SCAN_LIMIT: '480'
         run: npm run build
       - name: Preveri dejansko stran in deljive povezave
         run: node scripts/test-browser.mjs
