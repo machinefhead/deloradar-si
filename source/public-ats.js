@@ -10,6 +10,14 @@ export const ATS_BOARDS = [
     url: 'https://job-boards.greenhouse.io/wolt' },
   { id: 'robinhood', name: 'Robinhood', provider: 'greenhouse', board: 'robinhood',
     url: 'https://job-boards.greenhouse.io/robinhood' },
+  { id: 'speechify', name: 'Speechify', provider: 'greenhouse', board: 'speechify',
+    url: 'https://job-boards.greenhouse.io/speechify' },
+  { id: 'outfit7', name: 'Outfit7', provider: 'greenhouse', board: 'outfit7',
+    url: 'https://outfit7.com/careers/' },
+  { id: 'plume', name: 'Plume', provider: 'greenhouse', board: 'plume',
+    url: 'https://www.plume.com/career-opportunities/' },
+  { id: 'teads1', name: 'Teads', provider: 'greenhouse', board: 'teads1',
+    url: 'https://job-boards.eu.greenhouse.io/teads1' },
   { id: 'aleph', name: 'Aleph', provider: 'lever', board: 'aleph', location: 'Ljubljana, Slovenia',
     url: 'https://jobs.lever.co/aleph' },
   { id: 'tsmg', name: 'TSMG', provider: 'lever', board: 'tsmg', location: 'Ljubljana',
@@ -50,33 +58,74 @@ function isSlovenian(value) {
   return /\b(?:Slovenia|Slovenija|Ljubljana|Maribor|Celje|Koper|Novo mesto)\b/i.test(String(value || ''));
 }
 
-function validUrl(href, provider, board) {
+function jobMetadata(job, name) {
+  const found = Array.isArray(job.metadata) ? job.metadata.find(item => item?.name === name) : null;
+  return publicText(found?.value);
+}
+
+function validUrl(href, provider, board, id) {
   try {
     const url = new URL(href);
-    if (url.protocol !== 'https:') return '';
-    if (provider === 'greenhouse') return ['job-boards.greenhouse.io', 'boards.greenhouse.io'].includes(url.hostname) &&
-      url.pathname.startsWith('/' + board + '/jobs/') ? url.href : '';
+    if (url.protocol !== 'https:' || url.username || url.password || url.hash) return '';
+    if (provider === 'greenhouse') {
+      if (['job-boards.greenhouse.io', 'boards.greenhouse.io', 'job-boards.eu.greenhouse.io'].includes(url.hostname) &&
+          url.pathname.replace(/\/$/, '') === '/' + board + '/jobs/' + id) return url.href;
+      // Greenhouse dopušča podjetjem lasten javni naslov oglasa. Preverimo
+      // točno domeno, pot in GH ID, zato ne sprejmemo poljubnih preusmeritev.
+      const custom = { outfit7: ['outfit7.com', '/careers/jobs'],
+        plume: ['www.plume.com', '/career-opportunities'] }[board];
+      return custom && url.hostname === custom[0] && url.pathname.replace(/\/$/, '') === custom[1] &&
+        [...url.searchParams.keys()].length === 1 && url.searchParams.get('gh_jid') === String(id)
+        ? url.href : '';
+    }
     return url.hostname === 'jobs.lever.co' && url.pathname.startsWith('/' + board + '/') ? url.href : '';
   } catch { return ''; }
 }
 
 function greenhouseJob(job, config, now) {
   if (!Number.isInteger(job?.id) || !publicText(job.title)) return null;
+  if (/\b(?:talent network|talent pool|open application|general application|spontaneous application)\b/i.test(job.title)) return null;
   const location = publicText(job.location?.name || '');
   if (!isSlovenian(location)) return null;
-  const url = validUrl(job.absolute_url, 'greenhouse', config.board);
+  const url = validUrl(job.absolute_url, 'greenhouse', config.board, job.id);
   if (!url) return null;
+  const places = [...new Set(location.split(/\s*;\s*/).filter(isSlovenian)
+    .map(item => item.replace(/,?\s*Slovenia\s*$/i, '').trim()).filter(Boolean))];
   const deadline = dateDay(job.application_deadline);
   if (deadline && Date.parse(deadline + 'T23:59:59Z') < now) return null;
-  const description = publicText(job.content);
-  const department = (job.departments || []).map(item => publicText(item.name)).filter(Boolean).join(' / ');
+  const intro = jobMetadata(job, 'Publish - Description (Recruiter)');
+  const responsibilities = jobMetadata(job, 'Publish - Responsibilities (Recruiter)');
+  const skills = jobMetadata(job, 'Publish - Required Skills (Recruiter)');
+  const experience = jobMetadata(job, 'Publish - Required Experience (Recruiter)');
+  const benefits = jobMetadata(job, 'Pubish - What Do We Offer');
+  const fallbackDescription = [intro, responsibilities, skills, experience, benefits]
+    .filter(Boolean).join('\n\n');
+  const content = publicText(job.content);
+  // Nekateri delodajalci vrnejo prazno HTML telo (<p>/</p>), vendar
+  // v istem uradnem JSON-odgovoru objavijo popolne razdelke v metadata.
+  const description = content.length > 20 ? content : fallbackDescription;
+  const department = jobMetadata(job, 'Job category (area)') ||
+    (job.departments || []).map(item => publicText(item.name)).filter(Boolean).join(' / ');
+  const employmentType = jobMetadata(job, 'Employment Type');
+  const workplaceType = jobMetadata(job, 'Work Type');
+  const localTitle = jobMetadata(job, 'Publish - SLO Title (Recruiter)');
+  const salaryNote = jobMetadata(job, 'Publish - Compensation');
   const company = publicText(job.company_name || config.name);
   return {
     id: 'greenhouse:' + config.board + ':' + job.id, source: config.name, company,
-    title: publicText(job.title), location: location.replace(/,?\s*Slovenia\s*$/i, '').trim(),
+    title: publicText(job.title), location: places.join(' / ') || location,
+    ...(places.length > 1 ? { locations: places } : {}),
     date: dateDay(job.first_published), deadline, url,
     ...(description ? { description } : {}),
+    ...(responsibilities ? { responsibilities } : {}),
+    ...(skills ? { skills } : {}),
+    ...(experience ? { experience } : {}),
+    ...(benefits ? { benefits } : {}),
     ...(department ? { jobCategory: department } : {}),
+    ...(employmentType ? { employmentType } : {}),
+    ...(workplaceType ? { workplaceType } : {}),
+    ...(localTitle ? { localTitle } : {}),
+    ...(salaryNote ? { salaryNote } : {}),
     ...(job.updated_at ? { lastModifiedAt: job.updated_at } : {}),
   };
 }
