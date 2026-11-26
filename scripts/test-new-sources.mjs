@@ -4,6 +4,39 @@ import { ATS_BOARDS, getPublicAtsBoard } from '../source/public-ats.js';
 import { jobPostingDetails } from '../source/job-details.js';
 import { parseNovaPriloznostJob } from '../source/next-sources.js';
 import { getCompeto } from '../source/competo.js';
+import { getCeltra, parseCeltraFeed } from '../source/celtra.js';
+
+function celtraItem(id, country, deadline = '', url = `http://celtra.hire.trakstar.com/jobs/${id}`) {
+  return `<item><title>Inženir &amp; razvijalec</title><link>${url}</link>
+    <description>&lt;p&gt;Razvoj&amp;nbsp;aplikacij&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Priprava projektov&lt;/li&gt;&lt;/ul&gt;
+    Kontakt: test@celtra.si</description>
+    <pubDate>Thu, 26 Nov 2026 00:00:00 +0530</pubDate>
+    <job:locationCity>Ljubljana</job:locationCity><job:locationCountry>${country}</job:locationCountry>
+    <job:closeDte>${deadline}</job:closeDte><job:positionType>full_time</job:positionType>
+    <job:team>Engineering</job:team></item>`;
+}
+const celtraFeed = `<rss version="2.0"><channel><title>Jobs at Celtra, Inc.</title>
+  ${celtraItem('fk01abc', 'Slovenia')}
+  ${celtraItem('fk01abd', 'United States')}
+  ${celtraItem('fk01abe', 'Slovenia', '2026-11-01')}
+  </channel></rss>`;
+const parsedCeltra = parseCeltraFeed(celtraFeed, Date.parse('2026-11-26T12:00:00Z'));
+assert.equal(parsedCeltra.length, 1);
+assert.equal(parsedCeltra[0].id, 'celtra:fk01abc');
+assert.equal(parsedCeltra[0].url, 'https://celtra.hire.trakstar.com/jobs/fk01abc/');
+assert.equal(parsedCeltra[0].employmentType, 'Polni delovni čas');
+assert.equal(parsedCeltra[0].jobCategory, 'Engineering');
+assert.match(parsedCeltra[0].description, /Razvoj aplikacij[\s\S]*Priprava projektov/);
+assert.doesNotMatch(parsedCeltra[0].description, /test@celtra\.si|<p>/);
+assert.throws(() => parseCeltraFeed(celtraFeed.replace(
+  'http://celtra.hire.trakstar.com/jobs/fk01abc', 'https://example.com/jobs/fk01abc')));
+const celtraRequests = [];
+const fetchedCeltra = await getCeltra({ fetchImpl: async url => {
+  celtraRequests.push(url);
+  return new Response(celtraFeed, { status: 200, headers: { 'content-type': 'application/rss+xml' } });
+} });
+assert.equal(fetchedCeltra.length, 1, 'Tuji in potekli razpisi ne sodijo med slovenske oglase');
+assert.deepEqual(celtraRequests, ['https://celtra.hire.trakstar.com/jobfeeds/celtra']);
 
 function studentPage(page, id) {
   return `<div id="results"><article class="job-item" data-jobid="${id}">
