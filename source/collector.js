@@ -6,6 +6,7 @@ import { getDm, getNovaPriloznost } from './next-sources.js';
 import { getManpower } from './manpower.js';
 import { getWhc } from './whc.js';
 import { getStudentWork } from './student-work.js';
+import { getCompeto } from './competo.js';
 import { ATS_BOARDS, getPublicAtsBoard } from './public-ats.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
@@ -40,6 +41,7 @@ const SOURCES = [
   { id: 'manpower', name: 'Manpower Slovenija', url: 'https://www.manpower.si/sl/delovna-mesta' },
   { id: 'whc', name: 'WHC Slovenija', url: 'https://whc-slovenia.com/workforce/jobs' },
   { id: 'studentski', name: 'e-Študentski Servis (študentsko delo)', url: 'https://www.studentski-servis.com/studenti/prosta-dela' },
+  { id: 'competo', name: 'Competo', url: 'https://portal.digi.competo.si/jobs' },
   ...ATS_BOARDS.map(board => ({ id: 'ats_' + board.id, name: board.name, url: board.url })),
   ...(CAREERJET_DATA_API_KEY ? [{ id: 'careerjet', name: 'Careerjet', url: 'https://www.careerjet.si/' }] : []),
   ...(EURES_HTTP_ENABLED ? [{ id: 'eures', name: 'EURES', url: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl' }] : []),
@@ -55,7 +57,6 @@ const PLANNED = [
   { name: 'Bolha Zaposlitve', href: 'https://www.bolha.com/redne-zaposlitve', priority: 2, status: 'Preveriti unikatnost', note: 'Na javnem seznamu so številni oglasi, tudi posredovani iz ZRSZ. Pred priklopom preveriti podvajanje in izvirnost.' },
   { name: 'Delaj.si', href: 'https://delaj.si/', priority: 2, status: 'RSS najden', note: 'Javni RSS obstaja, vendar vključuje tudi tuje oglase; potreben je zanesljiv slovenski filter.' },
   { name: 'Zaposlitev.net', href: 'https://www.zaposlitev.net/', priority: 2, status: 'Ponovni poskus', note: 'Ob zadnjem neposrednem preverjanju je portal vrnil HTTP 503.' },
-  { name: 'Competo', href: 'https://www.competo.si/', priority: 2, status: 'Preveriti unikatnost', note: 'Preveriti, ali ima izvirne oglase, ki niso že na povezanih zaposlitvenih portalih.' },
   { name: 'Prohuman', href: 'https://prohuman.si/', priority: 3, status: 'Prekrivanje', note: 'Njegovi oglasi so bili v prejšnjem posnetku prisotni na MojeDelo; preveriti morebitne dodatne izvirne objave.' },
   ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', priority: 3, status: 'Agregator', note: 'Večinoma povezuje druge vire. Raziskati ustrezen izvoz in preveriti, ali prinaša unikatne oglase.' }] : []),
   { name: 'LinkedIn Jobs', href: 'https://www.linkedin.com/jobs/', priority: 3, status: 'Podatkovni dostop', note: 'Uradni Job Posting API je predvsem za objavljanje. Potreben je primeren odobren vir za branje razpisov.' },
@@ -727,7 +728,8 @@ async function collect() {
     previous: oldJobs, maxDetails: detailLimit('DETAIL_MANPOWER_LIMIT', 20),
   })), previousJobs().then(oldJobs => getWhc({
     previous: oldJobs, maxDetails: detailLimit('DETAIL_WHC_LIMIT', 24),
-  })), getStudentWork(), ...ATS_BOARDS.map(board => getPublicAtsBoard(board)));
+  })), getStudentWork(), previousJobs().then(oldJobs => getCompeto({ previous: oldJobs })),
+  ...ATS_BOARDS.map(board => getPublicAtsBoard(board)));
   if (CAREERJET_DATA_API_KEY) collectors.push(previousJobs().then(async oldJobs => {
     const result = await fetchCareerjetDataApi({ apiKey: CAREERJET_DATA_API_KEY,
       maxPages: 1, maxDetails: 10, previous: oldJobs });

@@ -44,6 +44,8 @@ try {
       assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'EURES (Slovenija)' }).count(), 0,
         'EURES ne sme biti hkrati povezan in nepovezan');
     }
+    assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'Competo' }).count(), 0,
+      'Competo je povezan neposredno z JSON in ne sme ostati med nepovezanimi');
     if (viewport.width === 1440) {
       const target = snapshot.jobs.find(job => job.source === 'EURES' && /Chauffeur_in/.test(job.title)) || snapshot.jobs[0];
       await page.locator('#search').fill(target.title);
@@ -64,6 +66,8 @@ try {
       assert.match(allDownload.suggestedFilename(), /^deloradar-vsi-oglasi-\d{4}-\d{2}-\d{2}\.json$/);
       assert.equal(exported.scope, 'all');
       assert.equal(exported.total, snapshot.jobs.length, 'Celoten JSON mora vsebovati vse oglase');
+      assert.deepEqual(exported.planned, snapshot.planned,
+        'Celoten JSON mora vključiti tudi stanje še nepovezanih portalov');
       if (snapshot.jobs.some(job => job.source === 'EURES')) {
         assert.equal(exported.jobs.filter(job => job.source === 'EURES').length,
           snapshot.jobs.filter(job => job.source === 'EURES').length, 'Izvoz mora vključiti tudi EURES');
