@@ -22,6 +22,8 @@ export const ATS_BOARDS = [
     url: 'https://jobs.lever.co/aleph' },
   { id: 'tsmg', name: 'TSMG', provider: 'lever', board: 'tsmg', location: 'Ljubljana',
     url: 'https://jobs.lever.co/tsmg' },
+  { id: 'rws', name: 'RWS TrainAI', provider: 'lever', board: 'rws', location: 'Ljubljana',
+    url: 'https://jobs.lever.co/rws' },
 ];
 
 function publicText(value) {

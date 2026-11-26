@@ -4,6 +4,9 @@ import { readableJobText } from './job-details.js';
 // istem odgovoru, zato ne potrebujemo dodatnih obiskov posameznih oglasov.
 export const ASHBY_BOARDS = [
   { id: 'xds', name: 'XDS', board: 'xds', url: 'https://jobs.ashbyhq.com/xds' },
+  { id: 'sunrise', name: 'Sunrise Robotics', board: 'sunrise', url: 'https://jobs.ashbyhq.com/sunrise' },
+  { id: 'paradox', name: 'Paradox', board: 'paradox', url: 'https://jobs.ashbyhq.com/paradox' },
+  { id: 'axelera', name: 'Axelera AI', board: 'axelera', url: 'https://jobs.ashbyhq.com/axelera' },
 ];
 
 function clean(value) {
@@ -17,6 +20,28 @@ function clean(value) {
 
 function isSlovenia(value) {
   return /\b(?:Slovenia|Slovenija)\b/i.test(String(value || ''));
+}
+
+function slovenianPlaces(raw) {
+  // Ashby pri slovenskih mestih pogosto zapiše samo »Ljubljana« ali »CET +/- 3«.
+  // Uradni strukturirani addressCountry je močnejši dokaz od ugibanja iz naslova.
+  const locations = [{ location: raw.location, address: raw.address },
+    ...(Array.isArray(raw.secondaryLocations) ? raw.secondaryLocations.map(item =>
+      typeof item === 'string' ? { location: item } : item) : [])];
+  const places = [];
+  for (const item of locations) {
+    const country = String(item?.address?.postalAddress?.addressCountry || '').trim();
+    const label = String(item?.location || '').trim();
+    if (!/^(?:SI|Slovenia|Slovenija)$/i.test(country) && !isSlovenia(label)) continue;
+    const locality = clean(item?.address?.postalAddress?.addressLocality || '');
+    const isRemote = /\bremote\b/i.test(label) || /\bremote\b/i.test(raw.workplaceType || '');
+    const city = locality || (label.match(/\b(?:Ljubljana|Maribor|Celje|Koper|Kranj|Ptuj|Novo mesto)\b/i) || [])[0];
+    const place = city || (isRemote ? 'Slovenija (delo na daljavo)' : 'Slovenija (kraj ni naveden)');
+    if (!places.includes(place)) places.push(place);
+  }
+  // Če je naveden tudi konkreten slovenski kraj, izločimo splošno oznako države.
+  return places.some(place => !place.startsWith('Slovenija ('))
+    ? places.filter(place => !place.startsWith('Slovenija (')) : places;
 }
 
 function directUrl(value, board, id) {
@@ -36,9 +61,7 @@ export function parseAshbyBoard(payload, config) {
   const jobs = [];
   for (const raw of payload.jobs) {
     if (raw?.isListed !== true || /\b(?:talent pool|open application|general application)\b/i.test(raw.title || '')) continue;
-    const locations = [raw.location, ...(raw.secondaryLocations || []).map(item =>
-      typeof item === 'string' ? item : item.location)].filter(isSlovenia)
-      .map(item => clean(item).replace(/,?\s*Slovenia\s*$/i, '').trim());
+    const locations = slovenianPlaces(raw);
     if (!locations.length) continue;
     const id = String(raw.id || ''), title = clean(raw.title);
     const url = directUrl(raw.jobUrl, config.board, id);
@@ -48,12 +71,12 @@ export function parseAshbyBoard(payload, config) {
     }
     const date = typeof raw.publishedAt === 'string' && /^\d{4}-\d\d-\d\d/.test(raw.publishedAt) &&
       Number.isFinite(Date.parse(raw.publishedAt)) ? raw.publishedAt.slice(0, 10) : '';
-    const places = [...new Set(locations.filter(Boolean))];
+    const places = locations;
     const employment = clean(raw.employmentType);
     const department = clean(raw.department || raw.team);
     const workplace = clean(raw.workplaceType);
     jobs.push({ id: 'ashby:' + config.board + ':' + id, source: config.name, company: config.name,
-      title, url, description, location: places.join(' / ') || 'Slovenija (kraj ni naveden)',
+      title, url, description, location: places.join(' / '),
       ...(places.length > 1 ? { locations: places } : {}), date, deadline: '',
       ...(employment ? { employmentType: employment } : {}),
       ...(department ? { jobCategory: department } : {}),
