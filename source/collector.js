@@ -19,6 +19,7 @@ import { EMPLOYER_MIRRORS, getEmployerViaDelovnaMesta } from './employers-via-de
 import { getIskraemeco } from './iskraemeco.js';
 import { getMerkurRecruitee } from './recruitee.js';
 import { getFirstJob, getCinkarna } from './new-sources.js';
+import { getMjob, MJOB_SOURCE, MJOB_URL } from './mjob.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -62,6 +63,7 @@ const SOURCES = [
   { id: 'iskraemeco', name: 'Iskraemeco', url: 'https://iskraemeco.com/sl/kariera/odprta-delovna-mesta/' },
   { id: 'firstjob', name: 'FirstJob (študentsko delo)', url: 'https://firstjob.si/prosta-dela-za-studente-in-dijake/' },
   { id: 'cinkarna', name: 'Cinkarna Celje', url: 'https://www.cinkarna.si/karierna-tocka' },
+  { id: 'mjob', name: MJOB_SOURCE, url: MJOB_URL },
   { id: 'linkedin', name: LINKEDIN_SOURCE, url: 'https://www.linkedin.com/jobs/' },
   ...EMPLOYER_MIRRORS.map(item => ({ id: 'mirror_' + item.id, name: item.name, url: item.url })),
   { id: 'recruitee_merkur', name: 'Merkur zavarovalnica', url: 'https://merkurzavarovalnica.recruitee.com/' },
@@ -746,7 +748,7 @@ async function getIscidelo() {
 }
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  let zrszDiagnostics, linkedinResult;
+  let zrszDiagnostics, linkedinResult, mjobResult;
   const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getPublicTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
   if (ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED) collectors.push(
     ZRSZ_OFFICIAL_HTTP_ENABLED ? previousJobs().then(async oldJobs => {
@@ -762,6 +764,11 @@ async function collect() {
     previous: oldJobs, maxDetails: detailLimit('DETAIL_WHC_LIMIT', 24),
   })), getStudentWork(), previousJobs().then(oldJobs => getCompeto({ previous: oldJobs })), getCeltra(),
   getIzs(), getHidria(), getLthCastings(), getTelkom(), getPse(), getIskraemeco(), getFirstJob(), getCinkarna(),
+  previousSnapshot().then(async snapshot => {
+    mjobResult = await getMjob({ previous: snapshot.jobs || [], previousState: snapshot.discovery?.mjob || {},
+      maxDetails: Math.min(50, detailLimit('MJOB_NEW_LIMIT', 8)) });
+    return mjobResult.jobs;
+  }),
   previousSnapshot().then(async snapshot => {
     linkedinResult = await getLinkedinViaDelovnaMesta({
       previous: snapshot.jobs || [],
@@ -829,9 +836,11 @@ async function collect() {
     count: results[i].status === 'fulfilled' ? results[i].value.length : 0,
     likelyDuplicates: markedBySource.get(source.name) || 0,
     ...(source.id === 'zrsz' && zrszDiagnostics ? { zrsz: zrszDiagnostics } : {}),
+    ...(source.id === 'mjob' && mjobResult ? { mjob: mjobResult.progress } : {}),
     ...(source.id === 'linkedin' && linkedinResult ? { scanProgress: linkedinResult.progress } : {}) }));
   cached = { jobs, sources, planned: PLANNED, checkedAt: new Date().toISOString(), storage: 'browser-local',
-    discovery: { delovnamestaLinkedin: linkedinResult?.state || {} } };
+    discovery: { delovnamestaLinkedin: linkedinResult?.state || {}, mjob: mjobResult?.state || {} },
+    captureMode: 'full' };
   cachedAt = Date.now() - (sources.some(s => s.status === 'error') ? CACHE_MS - 60_000 : 0);
   return cached;
 }

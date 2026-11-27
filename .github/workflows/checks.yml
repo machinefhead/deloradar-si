@@ -21,5 +21,11 @@ jobs:
         run: npm test
       - name: Preveri videz z zadnjim javnim posnetkom brez obiska portalov
         run: npm run build:ui
+      - name: Preveri novi Mjob v GitHub okolju (samo tri podrobnosti)
+        if: contains(github.event.pull_request.title, '[import:mjob]')
+        env:
+          INCREMENTAL_SOURCE: mjob
+          MJOB_NEW_LIMIT: '3'
+        run: npm run build:incremental
       - name: Preveri podrobnosti oglasov v brskalniku in na telefonu
         run: node scripts/test-browser.mjs

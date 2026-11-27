@@ -4,17 +4,30 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '17 5,17 * * *'
+    - cron: '17 5 * * *'
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Način objave (UI brez zajema ali celoten zajem)'
+        description: 'Način objave (videz, ciljni ali celoten zajem)'
         required: true
         default: full
         type: choice
         options:
           - full
           - ui
+          - incremental
+      source_id:
+        description: 'Vir pri ciljnem zajemu'
+        required: true
+        default: mjob
+        type: choice
+        options:
+          - mjob
+      mjob_limit:
+        description: 'Največ Mjob podrobnosti na zagon (1–50)'
+        required: true
+        default: '12'
+        type: string
 
 permissions:
   contents: read
@@ -40,8 +53,14 @@ jobs:
       - name: Preveri kodo
         run: npm test
       - name: Pripravi samo videz iz zadnjega javnega posnetka
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'ui')
+        if: (github.event_name == 'push' && !contains(github.event.head_commit.message, '[import:mjob]')) || (github.event_name == 'workflow_dispatch' && inputs.mode == 'ui')
         run: npm run build:ui
+      - name: Ciljno preveri in objavi samo izbrani novi vir
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[import:mjob]')) || (github.event_name == 'workflow_dispatch' && inputs.mode == 'incremental')
+        env:
+          INCREMENTAL_SOURCE: ${{ github.event_name == 'push' && 'mjob' || inputs.source_id }}
+          MJOB_NEW_LIMIT: ${{ github.event_name == 'push' && '12' || inputs.mjob_limit }}
+        run: npm run build:incremental
       - name: Pridobi oglase in zgradi stran
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'full')
         env:
@@ -57,6 +76,7 @@ jobs:
           DETAIL_MANPOWER_LIMIT: '20'
           DETAIL_WHC_LIMIT: '24'
           LINKEDIN_DM_SCAN_LIMIT: '480'
+          MJOB_NEW_LIMIT: '8'
         run: npm run build
       - name: Preveri dejansko stran in deljive povezave
         run: node scripts/test-browser.mjs

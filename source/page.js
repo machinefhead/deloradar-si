@@ -194,7 +194,7 @@ export const page = String.raw`<!doctype html>
     <section class="intro"><div><div class="eyebrow">Tvoj pregled slovenskega trga dela</div><h1>Vsa zanimiva dela.<br>Na enem mestu.</h1></div></section>
     <section class="stats" aria-label="Statistika"><div class="stat highlight"><span class="kicker">Zajeti oglasi</span><span class="n" id="total">—</span><span class="lightdot"></span><span class="foot">v povezanih virih</span></div><div class="stat"><span class="kicker">Povezani viri</span><span class="n" id="sourcesNum">—</span><span class="foot">od 2 začetnih</span></div><div class="stat"><span class="kicker">Shranjeni</span><span class="n" id="savedNum">0</span><span class="foot">v tem brskalniku</span></div><div class="stat"><span class="kicker">Kontaktirani</span><span class="n" id="appliedNum">0</span><span class="foot">označeno ročno</span></div></section>
     <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" type="search" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div>
-      <div class="panel sourcespanel"><div class="sectionlabel">Stanje povezav</div><details class="sourcedetails" id="sourceDetails"><summary id="sourcesToggle"><span id="sourceSummary" class="sourcesummary" role="status">Preverjam povezave …</span><span class="combo-chevron" aria-hidden="true"></span></summary><div class="sourceslist" id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><details class="sourceinsights" id="sourceInsights"><summary>Podrobnosti zajema in dvojniki</summary><div id="sourceInsightsBody" class="sourceinsights-body"></div></details><div class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur.</div></details></div></aside>
+      <div class="panel sourcespanel"><div class="sectionlabel">Stanje povezav</div><details class="sourcedetails" id="sourceDetails"><summary id="sourcesToggle"><span id="sourceSummary" class="sourcesummary" role="status">Preverjam povezave …</span><span class="combo-chevron" aria-hidden="true"></span></summary><div class="sourceslist" id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><details class="sourceinsights" id="sourceInsights"><summary>Podrobnosti zajema in dvojniki</summary><div id="sourceInsightsBody" class="sourceinsights-body"></div></details><div class="srcfooter">Polni zajem poteka enkrat dnevno. Ciljni uvozi preverijo samo izbrane nove vire.</div></details></div></aside>
     <button class="backtotop" id="backToTop" type="button" aria-label="Na vrh strani" title="Na vrh strani" hidden>↑</button>
     <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="exportFiltered" type="button" title="Prenesi vse zadetke trenutnih filtrov in izbranega združevanja dvojnikov">↓ Izvozi filtrirane (JSON)</button><button class="outline" id="exportAll" type="button" title="Prenesi vse izvorne oglase iz trenutnega posnetka, ne glede na filtre">↓ Izvozi vse (JSON)</button></div></div><div id="activeFilters" class="activefilters" aria-label="Aktivni filtri" hidden></div><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Klikni naziv za podrobnosti ali ↗ za izvorno objavo.</div></div></main></div>
     <dialog id="jobDialog" class="jobdialog" aria-labelledby="detailTitle"><button id="closeJobDialog" class="detailclose" type="button" aria-label="Zapri podrobnosti">×</button><div id="jobDetailBody"></div></dialog>
@@ -204,7 +204,7 @@ export const page = String.raw`<!doctype html>
   <script>
     (function(){
       'use strict';
-      var jobs=[], sources=[], planned=[], checkedAt='', state={};
+      var jobs=[], sources=[], planned=[], checkedAt='', captureMode='', lastFullCheckedAt='', state={};
       var key='deloradar-status-v1';
       try {state=JSON.parse(localStorage.getItem(key)||'{}')||{}}catch(e){state={}}
       var $=function(id){return document.getElementById(id)};
@@ -418,7 +418,7 @@ export const page = String.raw`<!doctype html>
         $('refresh').textContent='↻ Preberi testni posnetek';
         $('refresh').title='Lokalni ZIP se brez novega paketa ne osvežuje';
       }else{
-        document.querySelector('.srcfooter').textContent='Oglasi se posodabljajo približno vsakih 12 ur.';
+        document.querySelector('.srcfooter').textContent='Polni zajem poteka enkrat dnevno. Ciljni uvozi preverijo samo izbrane nove vire.';
         var manualLink=document.createElement('a');manualLink.className='refresh';
         manualLink.href='https://github.com/machinefhead/deloradar-si/actions/workflows/pages.yml';
         manualLink.target='_blank';manualLink.rel='noopener noreferrer';manualLink.textContent='↻ Osveži';
@@ -429,8 +429,7 @@ export const page = String.raw`<!doctype html>
       function nextPlannedCapture(now){
         var year=now.getUTCFullYear(),month=now.getUTCMonth(),day=now.getUTCDate();
         var morning=new Date(Date.UTC(year,month,day,5,17));
-        var evening=new Date(Date.UTC(year,month,day,17,17));
-        return now<morning?morning:now<evening?evening:new Date(Date.UTC(year,month,day+1,5,17));
+        return now<morning?morning:new Date(Date.UTC(year,month,day+1,5,17));
       }
       function updateNextCapture(){
         $('nextUpdate').textContent=offline?'Naslednji zajem: samo z novim lokalnim paketom':'Naslednji predvideni zajem: '+localDateTime(nextPlannedCapture(new Date()));
@@ -483,6 +482,8 @@ export const page = String.raw`<!doctype html>
           ' · ostali: opis v DeloRadarju in iskanje ZRSZ.</p>');
         var linkedinSource=sources.find(function(s){return s.id==='linkedin'&&s.status==='live'&&s.scanProgress});
         if(linkedinSource)insights.push('<p><strong>LinkedIn:</strong> '+linkedinSource.count+' preverjenih oglasov · pregledanih '+linkedinSource.scanProgress.checked+' od '+linkedinSource.scanProgress.total+' javnih kandidatov · '+(linkedinSource.scanProgress.pending?'pregled se nadaljuje postopno':'trenutno objavljeni kandidati so pregledani')+' · brez zahtevkov na LinkedIn.</p>');
+        var mjobSource=sources.find(function(s){return s.id==='mjob'&&s.status==='live'&&s.mjob});
+        if(mjobSource)insights.push('<p><strong>Mjob:</strong> '+mjobSource.count+' zajetih študentskih del · pregledanih '+mjobSource.mjob.checked+' od '+mjobSource.mjob.total+' javnih povezav · '+(mjobSource.mjob.pending?'zajem je še nepopoln in se nadaljuje postopno':'vsi kandidati preverjeni')+'.</p>');
         $('sourceInsightsBody').innerHTML=insights.join('');
         $('sourceInsights').hidden=!insights.length;
         var active=sources.filter(function(s){return s.status==='live'}).length;
@@ -736,7 +737,7 @@ export const page = String.raw`<!doctype html>
         if(offline){$('refresh').disabled=true;$('refresh').textContent='↻   Nalagam posnetek …'}
         $('progress').style.display='block';
         (offline?Promise.resolve(window.__DELORADAR_OFFLINE_DATA__):fetch((window.__DELORADAR_DATA_URL__||'./jobs.json')+'?v='+Date.now(),{cache:'no-store',headers:{accept:'application/json'}}).then(function(r){if(!r.ok)throw Error('Strežnik ni dosegljiv');return r.json()})).then(function(data){
-          jobs=(data.jobs||[]).map(function(j){var link=resolvedLink(j);return link===j.url?j:Object.assign({},j,{url:link})});sources=data.sources||[];planned=data.planned||[];checkedAt=data.checkedAt||'';
+          jobs=(data.jobs||[]).map(function(j){var link=resolvedLink(j);return link===j.url?j:Object.assign({},j,{url:link})});sources=data.sources||[];planned=data.planned||[];checkedAt=data.checkedAt||'';captureMode=data.captureMode||'full';lastFullCheckedAt=data.lastFullCheckedAt||'';
           indexDuplicateGroups();updateStats();
           configureMulti('sourceFilter',sources.map(function(s){return s.name}),'Vsi portali');
           configureMulti('city',Array.from(new Set(jobs.map(function(j){return j.location}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'sl')}),'Vsi kraji');
@@ -748,7 +749,7 @@ export const page = String.raw`<!doctype html>
             noticeMessage('LOKALNI PREIZKUS: Posnetek resničnih oglasov. Ni samodejnega osveževanja; za aktualne oglase preveri povezave pri izvornih portalih.');
             $('updated').textContent='Posnetek zbran: '+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+'. Kategorije so ocenjene iz nazivov; neznane regije so označene.';
           }else{
-            $('updated').textContent='Zadnji zajem oglasov: '+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—');
+            $('updated').textContent=(captureMode==='incremental'?'Zadnji ciljni zajem (Mjob): ':'Zadnji zajem oglasov: ')+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+(captureMode==='incremental'&&lastFullCheckedAt?' · celoten: '+localDateTime(new Date(lastFullCheckedAt)):'');
           }
         }).catch(function(){noticeMessage('Oglasov trenutno ni mogoče pridobiti. Preveri povezavo in poskusi znova.');$('jobRows').innerHTML='<tr><td colspan="6" class="empty">Napaka pri pridobivanju podatkov.</td></tr>'}).finally(function(){$('progress').style.display='none';if(offline){$('refresh').disabled=false;$('refresh').textContent='↻   Preberi testni posnetek'}});
       }
