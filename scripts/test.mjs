@@ -110,6 +110,8 @@ assert.doesNotMatch(page, /class="exporthint"/, 'Odvečno besedilo pod JSON izvo
 assert.match(script, /function drawActiveFilters\(/, 'Aktivni filtri morajo biti povezani s trenutnim izborom');
 assert.match(script, /data-remove-filter=/, 'Posamezen aktivni filter mora imeti gumb za odstranitev');
 assert.match(page, /select\.field,select\.state,select\.sortselect,\.pager select\{appearance:none;background-image:var\(--select-chevron\)/, 'Datumi, roki, statusi, razvrščanje in straničenje morajo imeti enako puščico');
+assert.match(page, /\.combo-chevron\{[^}]*background:var\(--select-chevron\) center \/ 14px 14px no-repeat/, 'Vsi večizbirni in enostavni filtri naj uporabljajo isti 14px SVG');
+assert.match(page, /background-size:14px 14px;padding-right:35px/, 'Puščice izbirnikov morajo imeti enake mere');
 assert.match(page, /class="combo-chevron" aria-hidden="true"/, 'Večizbirni filtri in viri naj imajo enotno puščico navzdol');
 assert.match(page, /<dialog id="jobDialog" class="jobdialog"/, 'Podrobnosti oglasa morajo biti na voljo na isti strani');
 assert.match(page, /data-detail-id=/, 'Klik na naziv oglasa mora odpreti podrobnosti');
@@ -122,7 +124,7 @@ assert.match(script, /scope==='filtered'\?displayed\(\):jobs/, 'Filtrirani JSON 
 assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passive:true\}\)/, 'Gumb za vrh se mora prilagajati drsenju');
 assert.match(page, /manualLink\.textContent='↻ Osveži'/, 'Osveži mora biti povezava na ročni zajem v GitHub Actions');
 assert.match(page, /\$\('refresh'\)\.replaceWith\(manualLink\)/, 'Podvojeni gumb za branje istega posnetka ne sme ostati na javni strani');
-assert.match(page, /<header class="topbar">[\s\S]*?id="refresh"[\s\S]*?id="updated"[\s\S]*?id="nextUpdate"[\s\S]*?<\/header>/, 'Ročni zajem in oba časa morajo biti v glavi strani');
+assert.match(page, /<header class="topbar">[\s\S]*?id="updated"[\s\S]*?id="nextUpdate"[\s\S]*?id="refresh"[\s\S]*?<\/header>/, 'V glavi morata biti časa levo, gumb Osveži pa desno');
 assert.match(script, /function nextPlannedCapture\(now\)/, 'Naslednji predvideni zajem mora temeljiti na urniku GitHub Actions');
 assert.match(script, /Date\.UTC\(year,month,day,5,17\)/, 'Jutranji termin je 05:17 UTC');
 assert.match(script, /Date\.UTC\(year,month,day,17,17\)/, 'Večerni termin je 17:17 UTC');
@@ -134,6 +136,8 @@ assert.match(page, /<details class="sourcedetails" id="sourceDetails"><summary i
 assert.doesNotMatch(page, /<details class="sourcedetails" id="sourceDetails"\s+open/, 'Seznam povezanih virov ne sme biti privzeto odprt');
 assert.doesNotMatch(page, /this\.open\?'Skrij povezane vire':'Prikaži povezane vire'/, 'Veliki gumb in zastareli napis za razpiranje virov se ne smeta vrniti');
 assert.match(page, /<div class="panel sourcespanel"><div class="sectionlabel">Stanje povezav<\/div><details class="sourcedetails"/, 'Stanje virov je v prejšnjem uokvirjenem panelu');
+assert.match(page, /\.sourceslist\{[^}]*max-height:none;overflow:visible\}/, 'Odprt seznam virov ne sme imeti notranjega drsnika');
+assert.match(page, /id="sourceInsights"/, 'Tehnične podrobnosti o zajemu naj bodo ločene od poravnanih vrstic virov');
 assert.match(page, /\.sidebar>\.sourcespanel\{display:block\}/, 'Panel virov mora ostati viden tudi na telefonu');
 assert.match(page, /\.sourcecatalog\{display:block\}/, 'Nepovezani viri morajo biti prikazani brez klika');
 assert.match(page, /id="planned"><div class="sourcecard"><p>Pridobivam seznam nepovezanih virov/, 'Nepovezani viri morajo imeti jasen začetni prikaz');
@@ -177,7 +181,7 @@ const extract = (start, end) => {
   assert.ok(a >= 0 && b > a, `Manjka odsek ${start}`);
   return script.slice(a, b);
 };
-const sourceElements = new Map(['sourceStatus', 'sourceSummary', 'sourcesNum', 'planned', 'notice']
+const sourceElements = new Map(['sourceStatus', 'sourceInsights', 'sourceInsightsBody', 'sourceSummary', 'sourcesNum', 'planned', 'notice']
   .map(id => [id, { innerHTML: '', textContent: '' }]));
 const sourceFooter = { textContent: '' };
 const sourceContext = {
@@ -200,10 +204,13 @@ runInNewContext(extract('function sourceRender(', 'function matchesJob('), sourc
 sourceContext.sourceRender();
 assert.equal(sourceElements.get('sourceSummary').textContent, '3 virov dosegljivih');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /ZRSZ \/ PoiščiDelo/);
-assert.match(sourceElements.get('sourceStatus').innerHTML, /Neposredne povezave ZRSZ: 1 \/ 2/, 'Stanje povezav mora razlikovati preverjeni idp in iskanje');
-assert.match(sourceElements.get('sourceStatus').innerHTML, /uradni iskalnik: 3997 \(dnevni JSON: 4152\)/,
+assert.match(sourceElements.get('sourceStatus').innerHTML, /<div class="sourceshead"><span>Vir<\/span><span>Oglasi<\/span>/, 'Seznam virov ima enotno desno kolono za število oglasov');
+assert.match(sourceElements.get('sourceStatus').innerHTML, /title="4152 oglasov">4\.?152<\/span>/, 'Kartica kaže samo desno poravnano število oglasov');
+assert.doesNotMatch(sourceElements.get('sourceStatus').innerHTML, /Neposredne povezave ZRSZ:|verjetno podvojenih/, 'Tehnična pojasnila in dvojniki ne smejo spreminjati poravnave vrstic');
+assert.match(sourceElements.get('sourceInsightsBody').innerHTML, /Neposredne povezave ZRSZ: 1 \/ 2/, 'Podrobnosti zajema razlikujejo preverjeni idp in iskanje');
+assert.match(sourceElements.get('sourceInsightsBody').innerHTML, /uradni iskalnik: 3997 \(dnevni JSON: 4152\)/,
   'Stanje povezav mora pošteno prikazati različno število iz obeh uradnih seznamov');
-assert.match(sourceElements.get('sourceStatus').innerHTML, /opis v DeloRadarju in iskanje ZRSZ/, 'Manjkajoči uradni ID dobi pošteno označen način dostopa');
+assert.match(sourceElements.get('sourceInsightsBody').innerHTML, /opis v DeloRadarju in iskanje ZRSZ/, 'Manjkajoči uradni ID dobi pošteno označen način dostopa');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /EURES/);
 assert.match(sourceElements.get('planned').innerHTML, /Careerjet/);
 assert.doesNotMatch(sourceElements.get('planned').innerHTML, /EURES/, 'Povezanega EURES ne smemo prikazati kot nepovezan vir');

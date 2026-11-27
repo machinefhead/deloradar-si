@@ -46,12 +46,35 @@ try {
       'Uokvirjeno stanje povezav mora ohraniti prejšnji naslov');
     assert.match(await page.locator('#nextUpdate').innerText(), /Naslednji predvideni zajem:/,
       'Glava mora kazati predvideni naslednji termin');
+    const headerLayout = await page.evaluate(() => ({
+      refresh: document.querySelector('#refresh').getBoundingClientRect().toJSON(),
+      metadata: document.querySelector('.refreshmeta').getBoundingClientRect().toJSON(),
+      topbar: document.querySelector('.topbar').getBoundingClientRect().toJSON(),
+    }));
+    assert.ok(headerLayout.refresh.left > headerLayout.metadata.left,
+      'Gumb Osveži mora biti na desni strani obeh podatkov o zajemu');
+    assert.ok(Math.abs(headerLayout.refresh.right - headerLayout.topbar.right) < 3,
+      'Gumb Osveži mora biti poravnan čisto na desni rob glave');
     assert.equal(await page.locator('#sourcesToggle .combo-chevron').count(), 1,
       'Povzetek virov mora imeti eno puščico za razpiranje');
     await page.locator('#sourcesToggle').click();
     assert.equal(await page.locator('#sourceDetails').evaluate(element => element.open), true);
     assert.equal(await page.locator('#sourceStatus').isVisible(), true,
       'Gumb mora omogočiti prikaz vseh povezanih virov');
+    const sourceLayout = await page.locator('#sourceStatus').evaluate(element => ({
+      height: element.clientHeight, fullHeight: element.scrollHeight,
+      badges: [...element.querySelectorAll('.sourceitem .pill')].slice(0, 12).map(badge => badge.getBoundingClientRect().right),
+    }));
+    assert.ok(sourceLayout.fullHeight <= sourceLayout.height + 1,
+      'Celoten seznam se mora odpreti brez notranjega drsnika');
+    assert.ok(sourceLayout.badges.every(right => Math.abs(right - sourceLayout.badges[0]) < 2),
+      'Število oglasov mora biti pri vseh virih poravnano v isti desni koloni');
+    assert.equal(await page.locator('#sourceInsights').evaluate(element => element.open), false,
+      'Podrobnosti in dvojniki so privzeto ločeni in zaprti');
+    await page.locator('#sourceInsights > summary').click();
+    assert.match(await page.locator('#sourceInsightsBody').innerText(), /ZRSZ|LinkedIn|Verjetni dvojniki/,
+      'Razširljive tehnične podrobnosti zajema morajo ostati dostopne');
+    await page.locator('#sourceInsights > summary').click();
     assert.equal(await page.locator('#sourcesToggle .combo-chevron').evaluate(element => getComputedStyle(element).transform === 'none'), false,
       'Puščica se mora ob razširitvi obrniti');
     assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'LinkedIn Jobs' }).count(), 0,
@@ -100,6 +123,13 @@ try {
         assert.equal(look.appearance, 'none', 'Izbirnik ' + id + ' mora uporabljati poenoteno puščico');
         assert.notEqual(look.backgroundImage, 'none', 'Puščica mora biti vidna pri ' + id);
       }
+      const arrowLook = await page.evaluate(() => ['#published', '#deadline', '#myStatus', '#sort', '#sourcesToggle .combo-chevron']
+        .map(selector => {
+          const style = getComputedStyle(document.querySelector(selector));
+          return { image: style.backgroundImage, size: style.backgroundSize };
+        }));
+      assert.ok(arrowLook.every(item => item.size === '14px 14px' && item.image === arrowLook[0].image),
+        'Vse puščice morajo uporabljati isti SVG in identično velikost 14 × 14 px');
       await page.locator('select.state').first().selectOption('interested');
       assert.notEqual(await page.locator('select.state').first().evaluate(element => getComputedStyle(element).backgroundImage), 'none',
         'Puščica mora ostati vidna tudi pri označenem statusu oglasa');
