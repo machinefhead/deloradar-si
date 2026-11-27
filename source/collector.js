@@ -16,6 +16,7 @@ import { getIzs, getHidria, getLthCastings, getTelkom, getPse } from './slovenia
 import { LINKEDIN_SOURCE, getLinkedinViaDelovnaMesta } from './linkedin-via-delovnamesta.js';
 import { getPublicTrenkwalder } from './trenkwalder-search.js';
 import { EMPLOYER_MIRRORS, getEmployerViaDelovnaMesta } from './employers-via-delovnamesta.js';
+import { getIskraemeco } from './iskraemeco.js';
 import { getMerkurRecruitee } from './recruitee.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
@@ -57,6 +58,7 @@ const SOURCES = [
   { id: 'lth', name: 'LTH Castings', url: 'https://www.lthcastings.com/sl/kariera/prosta-delovna-mesta' },
   { id: 'telkom', name: 'Telkom d.o.o.', url: 'https://www.telkom.si/kariera/' },
   { id: 'pse', name: 'PSE d.o.o.', url: 'https://www.pse.si/sl/zaposlitve/' },
+  { id: 'iskraemeco', name: 'Iskraemeco', url: 'https://iskraemeco.com/sl/kariera/odprta-delovna-mesta/' },
   { id: 'linkedin', name: LINKEDIN_SOURCE, url: 'https://www.linkedin.com/jobs/' },
   ...EMPLOYER_MIRRORS.map(item => ({ id: 'mirror_' + item.id, name: item.name, url: item.url })),
   { id: 'recruitee_merkur', name: 'Merkur zavarovalnica', url: 'https://merkurzavarovalnica.recruitee.com/' },
@@ -79,7 +81,6 @@ const PLANNED = [
   ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', priority: 3, status: 'Agregator', note: 'Večinoma povezuje druge vire. Raziskati ustrezen izvoz in preveriti, ali prinaša unikatne oglase.' }] : []),
   { name: 'Krka', href: 'https://www.krka.biz/employment/prosta-delovna-mesta/', priority: 2, status: 'ATS brez odprtega seznama', note: 'Stran vodi na Cornerstone OnDemand; preveriti uraden strojno berljiv izvoz razpisov.' },
   { name: 'Iskra', href: 'https://www.iskra.eu/sl/Prosta-delovna-mesta/', priority: 2, status: 'HTTP ni dosegljiv', note: 'Javna podstran ima neposredne oglase, pri avtomatskem HTTP preverjanju pa je povezava časovno potekla.' },
-  { name: 'OTP banka', href: 'https://www.otpbanka.si/kariera', priority: 2, status: 'Nedokončana preusmeritev', note: 'Devet izvirnih povezav na FledgeHR je prepoznanih, vendar uradni HTTP za sezname in posamezne oglase trenutno vrača preusmeritev na isto pot. Nadaljujemo šele z delujočimi povezavami.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
 // saj posamezni RSS-oglas ne navaja kraja in je lahko v več regijah.
@@ -757,7 +758,7 @@ async function collect() {
   })), previousJobs().then(oldJobs => getWhc({
     previous: oldJobs, maxDetails: detailLimit('DETAIL_WHC_LIMIT', 24),
   })), getStudentWork(), previousJobs().then(oldJobs => getCompeto({ previous: oldJobs })), getCeltra(),
-  getIzs(), getHidria(), getLthCastings(), getTelkom(), getPse(),
+  getIzs(), getHidria(), getLthCastings(), getTelkom(), getPse(), getIskraemeco(),
   previousSnapshot().then(async snapshot => {
     linkedinResult = await getLinkedinViaDelovnaMesta({
       previous: snapshot.jobs || [],

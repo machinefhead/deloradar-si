@@ -105,6 +105,12 @@ assert.match(script, /values\.groupDuplicates=\$\('groupDuplicates'\)\.checked/,
 assert.match(page, /Objavljeno tudi na:/, 'Združeni oglas mora ohraniti povezavo do drugega vira');
 assert.match(page, /id="exportFiltered"[^>]*>↓ Izvozi filtrirane \(JSON\)/, 'Obstoječi izvoz mora biti filtrirani JSON');
 assert.match(page, /id="exportAll"[^>]*>↓ Izvozi vse \(JSON\)/, 'Na voljo mora biti izvoz vseh izvornih oglasov');
+assert.match(page, /id="activeFilters" class="activefilters"/, 'Aktivni filtri morajo biti neposredno pod izvoznima gumboma');
+assert.doesNotMatch(page, /class="exporthint"/, 'Odvečno besedilo pod JSON izvozi ne sme prekrivati aktivnih filtrov');
+assert.match(script, /function drawActiveFilters\(/, 'Aktivni filtri morajo biti povezani s trenutnim izborom');
+assert.match(script, /data-remove-filter=/, 'Posamezen aktivni filter mora imeti gumb za odstranitev');
+assert.match(page, /select\.field,select\.state\{appearance:auto;background-image:none/, 'Datumi, roki in statusi naj imajo enako izvorno puščico kot razvrščanje');
+assert.match(page, /class="combo-chevron" aria-hidden="true"/, 'Večizbirni filtri in viri naj imajo enotno puščico navzdol');
 assert.match(page, /<dialog id="jobDialog" class="jobdialog"/, 'Podrobnosti oglasa morajo biti na voljo na isti strani');
 assert.match(page, /data-detail-id=/, 'Klik na naziv oglasa mora odpreti podrobnosti');
 assert.match(page, /jobDialog\.showModal\(\)/, 'Podrobnosti se odprejo v dostopnem dialogu');
@@ -120,10 +126,10 @@ assert.match(page, /class="refreshinfo" id="updated">Zadnji zajem oglasov: —/,
 assert.match(page, /class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur\./, 'Stanje povezav mora kazati dvanajsturni urnik');
 assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približno vsakih 12 ur\./, 'Javna stran ne sme prepisati novega urnika');
 assert.match(page, /id="sourceSummary"/, 'Povzetek dosegljivosti virov mora biti viden brez odpiranja seznama');
-assert.match(page, /<details class="sourcedetails" id="sourceDetails"><summary id="sourcesToggle">Prikaži povezane vire<\/summary><div class="sourceslist" id="sourceStatus">/, 'Seznam povezanih virov mora biti privzeto zaprt, vendar dosegljiv');
+assert.match(page, /<details class="sourcedetails" id="sourceDetails"><summary id="sourcesToggle"><span id="sourceSummary" class="sourcesummary" role="status">/, 'Povzetek dosegljivosti mora biti gumb za razširitev skritega seznama');
 assert.doesNotMatch(page, /<details class="sourcedetails" id="sourceDetails"\s+open/, 'Seznam povezanih virov ne sme biti privzeto odprt');
-assert.match(page, /this\.open\?'Skrij povezane vire':'Prikaži povezane vire'/, 'Oznaka za odpiranje mora slediti dejanskemu stanju');
-assert.match(page, /\.sidebar>\.panel:nth-of-type\(2\)\{display:block\}/, 'Stanje povezav mora ostati vidno tudi na telefonu');
+assert.doesNotMatch(page, /this\.open\?'Skrij povezane vire':'Prikaži povezane vire'/, 'Veliki gumb in zastareli napis za razpiranje virov se ne smeta vrniti');
+assert.match(page, /\.sidebar>\.sourcedetails\{display:block\}/, 'Kompakten prikaz virov mora ostati viden tudi na telefonu');
 assert.match(page, /\.sourcecatalog\{display:block\}/, 'Nepovezani viri morajo biti prikazani brez klika');
 assert.match(page, /id="planned"><div class="sourcecard"><p>Pridobivam seznam nepovezanih virov/, 'Nepovezani viri morajo imeti jasen začetni prikaz');
 assert.doesNotMatch(page, /Za ta iskalnika še nimamo samodejnega izvoza/, 'Ko EURES priključimo, ne sme ostati zastarelo navodilo');
@@ -143,9 +149,11 @@ assert.ok(plannedBlock.includes('ZRSZ / PoiščiDelo')&&plannedBlock.includes('C
 assert.ok(!plannedBlock.includes("name: 'MojeDelo.com'")&&!plannedBlock.includes("name: 'Zaposlitev.info'"),'Že povezanih portalov ne podvajamo med dodatnimi viri');
 assert.match(plannedBlock,/EURES \(Slovenija\).*locationCodes=si/,'EURES mora odpreti iskanje, omejeno na Slovenijo');
 assert.ok((plannedBlock.match(/\{ name:/g)||[]).length>=6,'Katalog mora vsebovati smiselne naslednje kandidate');
-for(const name of ['SPAR Slovenija','HOFER Slovenija','OTP banka','Krka','Iskra']) {
+for(const name of ['SPAR Slovenija','HOFER Slovenija','Krka','Iskra']) {
   assert.ok(plannedBlock.includes("name: '"+name+"'"),'Potencialni kandidat manjka: '+name);
 }
+assert.ok(!plannedBlock.includes("name: 'OTP banka'"),'Povezana OTP banka ne sme ostati v katalogu nepovezanih');
+assert.match(collectorSource,/EMPLOYER_MIRRORS\.map\(item => \(\{ id: 'mirror_' \+ item\.id, name: item\.name, url: item\.url \}\)\)/, 'Posredni izvor delodajalcev mora biti v seznamu povezanih virov');
 for(const name of ['Slovenske železnice','Prohuman','Pošta Slovenije','Bolha Zaposlitve','Delaj.si','HSG Kariera','SupportYourApp','DevRev','GEN-I','ZPM – Borza delovnih mest']) {
   assert.ok(!plannedBlock.includes("name: '"+name+"'"),'Nizkovredni ali podvojeni vir ne spada več med kandidate: '+name);
 }
@@ -183,7 +191,7 @@ const sourceContext = {
 };
 runInNewContext(extract('function sourceRender(', 'function matchesJob('), sourceContext);
 sourceContext.sourceRender();
-assert.equal(sourceElements.get('sourceSummary').textContent, '3 od 3 virov dosegljivih');
+assert.equal(sourceElements.get('sourceSummary').textContent, '3 virov dosegljivih');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /ZRSZ \/ PoiščiDelo/);
 assert.match(sourceElements.get('sourceStatus').innerHTML, /Neposredne povezave ZRSZ: 1 \/ 2/, 'Stanje povezav mora razlikovati preverjeni idp in iskanje');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /uradni iskalnik: 3997 \(dnevni JSON: 4152\)/,
