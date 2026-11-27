@@ -121,18 +121,4 @@ const second = await getEmployerViaDelovnaMesta(novartis, {
 });
 assert.equal(second.length, 1);
 assert.equal(requested.length, 3); // Opis ostane veljaven iz predpomnilnika.
-const ey = EMPLOYER_MIRRORS.find(item => item.id === 'ey');
-const linkedinEy = posting({ ...schema, url: 'https://www.linkedin.com/jobs/view/4493430694',
-  hiringOrganization: { name: 'EY' } });
-// Če dosegljivi javni indeks vsebuje samo LinkedInov oglas, EY nima izvirnega
-// zadetka. To ni pokvarjen zajem: isti oglas lahko že zajame vir LinkedIn.
-const noOriginalEy = await getEmployerViaDelovnaMesta(ey, {
-  fetchText: async url => url === viaUrl ? linkedinEy : companyHtml,
-  now: '2026-11-27T10:00:00Z',
-});
-assert.deepEqual(noOriginalEy, []);
-await assert.rejects(getEmployerViaDelovnaMesta(ey, {
-  fetchText: async url => url === viaUrl ? '<html>nepopolna objava</html>' : companyHtml,
-  now: '2026-11-27T10:00:00Z',
-}), /nepopoln javni HTTP zajem/, 'Nedosegljive podrobnosti morajo še vedno ustaviti strogo objavo');
 console.log('Večji manjkajoči delodajalci: popolni opisi, javni JSON, preverjene izvorne povezave in predpomnilnik uspešni.');

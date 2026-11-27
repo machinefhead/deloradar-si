@@ -120,7 +120,7 @@ export async function getEmployerViaDelovnaMesta(config, { previous = [], fetchT
   const cached = new Map(previous.filter(item => item.source === config.name && item.viaUrl)
     .map(item => [item.viaUrl, item]));
   const refreshed = [];
-  let failures = 0, requested = 0, excluded = 0;
+  let failures = 0, requested = 0;
   for (const viaUrl of listing) {
     const old = cached.get(viaUrl);
     const age = old?.mirrorVerifiedAt ? Date.parse(now) - Date.parse(old.mirrorVerifiedAt) : Infinity;
@@ -132,7 +132,6 @@ export async function getEmployerViaDelovnaMesta(config, { previous = [], fetchT
       requested++;
       const job = parseEmployerPosting(await fetchText(viaUrl), viaUrl, config, now.slice(0, 10));
       if (job) refreshed.push(job);
-      else excluded++;
     } catch (error) {
       failures++;
       if (old && age >= 0 && age < 30 * 86400_000 &&
@@ -140,14 +139,11 @@ export async function getEmployerViaDelovnaMesta(config, { previous = [], fetchT
       console.warn(`${config.name}: podrobnosti niso dosegljive: ${String(error?.message || error)}`);
     }
   }
-  // Dosegljive objave, ki so dejansko iz drugega vira (npr. LinkedIn namesto
-  // uradnega EY ATS), ali že potekle objave niso napaka HTTP zajema. Vir sme
-  // legitimno vrniti 0 potrjenih izvirnih oglasov; napak pridobivanja ne skrivaj.
   if (failures > Math.max(2, Math.floor(listing.length * 0.15)) ||
-      (listing.length && !refreshed.length && failures > 0)) {
+      (listing.length && !refreshed.length)) {
     throw Error(`${config.name}: nepopoln javni HTTP zajem (${failures}/${listing.length})`);
   }
   const unique = [...new Map(refreshed.map(job => [job.id, job])).values()];
-  console.log(`${config.name}: ${unique.length} izvirnih oglasov, ${requested} podrobnih HTTP preverjanj, ${excluded} izločenih, ${failures} napak.`);
+  console.log(`${config.name}: ${unique.length} izvirnih oglasov, ${requested} podrobnih HTTP preverjanj, ${failures} napak.`);
   return unique;
 }
