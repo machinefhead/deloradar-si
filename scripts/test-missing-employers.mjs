@@ -113,8 +113,11 @@ const first = await getEmployerViaDelovnaMesta(novartis, { fetchText: mockEmploy
 assert.equal(first.length, 1);
 assert.equal(requested.length, 4); // Tri aliasi delodajalca in en sam opis.
 requested = [];
+// Čas v predpomnilniku zapiše dejanska ura teka. Test naj zato za primerjavo
+// uporabi uro preverjenega opisa, ne datuma, ki lahko med dnevom mine.
+const secondNow = new Date(Date.parse(first[0].mirrorVerifiedAt) + 86400_000).toISOString();
 const second = await getEmployerViaDelovnaMesta(novartis, {
-  previous: first, fetchText: mockEmployer, now: '2026-11-27T10:00:00Z',
+  previous: first, fetchText: mockEmployer, now: secondNow,
 });
 assert.equal(second.length, 1);
 assert.equal(requested.length, 3); // Opis ostane veljaven iz predpomnilnika.

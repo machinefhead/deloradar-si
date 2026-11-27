@@ -81,14 +81,24 @@ export const page = String.raw`<!doctype html>
     .jobalternatives a{color:var(--accent);font-weight:700;text-decoration:none}
     .jobalternatives a:hover{text-decoration:underline}
     .sourcesummary{color:var(--muted);font-size:14px;line-height:1.4;margin:0;font-weight:700}
-    .sourceslist{border-top:1px solid var(--line);margin-top:10px;padding:4px 5px 0 0;max-height:360px;overflow-y:auto;overscroll-behavior:contain}
-    .sourceslist .sourceitem:last-child{margin-bottom:0}
+    .sourceslist{border-top:1px solid var(--line);margin-top:10px;padding:7px 0 0;max-height:none;overflow:visible}
+    .sourceshead,.sourceitem{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+    .sourceshead{padding:5px 0 9px;color:var(--muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px}
+    .sourceshead span:last-child{text-align:right}
+    .sourceslist .sourceitem{margin:0;padding:9px 0;border-bottom:1px solid var(--line)}
+    .sourceitem .name{min-width:0;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+    .sourceitem .pill{justify-self:end;min-width:47px;text-align:center;white-space:nowrap;padding:5px 8px;font-size:11px;font-variant-numeric:tabular-nums}
+    .sourceinsights{margin-top:13px;border-top:1px solid var(--line);padding-top:11px;color:var(--muted)}
+    .sourceinsights>summary{cursor:pointer;font-size:12px;font-weight:750;line-height:1.5;list-style:revert}
+    .sourceinsights-body{font-size:11px;line-height:1.55;padding-top:9px;overflow-wrap:anywhere}
+    .sourceinsights-body p{margin:0 0 9px}.sourceinsights-body p:last-child{margin-bottom:0}
+    .sourceinsights-body ul{margin:4px 0 10px;padding-left:17px}
     .sourcespanel .sectionlabel{margin-bottom:11px}
     .sourcedetails{margin:0;padding:0;min-width:0}
     .sourcedetails>summary{display:inline-flex;align-items:center;gap:8px;cursor:pointer;list-style:none;padding:4px 1px;border:0;background:transparent;color:var(--muted);font-size:14px;font-weight:750}
     .sourcedetails>summary::-webkit-details-marker{display:none}
-    .combo-chevron{display:inline-block;flex:none;width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);opacity:.86}
-    .sourcedetails[open]>summary .combo-chevron,.multi-trigger[aria-expanded="true"] .combo-chevron{transform:translateY(2px) rotate(225deg)}
+    .combo-chevron{display:inline-block;flex:0 0 14px;width:14px;height:14px;background:var(--select-chevron) center / 14px 14px no-repeat;transform:none}
+    .sourcedetails[open]>summary .combo-chevron,.multi-trigger[aria-expanded="true"] .combo-chevron{transform:rotate(180deg)}
     .sourcedetails>summary:focus-visible{outline:3px solid #b3a4ff;outline-offset:2px}
     .sourcedetails .srcfooter{margin-top:10px}
     .asidecallout,.explain{background:#35313d;border-color:#504858;color:#e5deed}
@@ -130,12 +140,12 @@ export const page = String.raw`<!doctype html>
     .activefilters[hidden]{display:none}
     .activefilters .multi-chip{font-size:12px;padding:6px 9px;max-width:100%;overflow-wrap:anywhere}
     .activefilters .multi-chip button{margin-left:2px;font-size:16px;line-height:1;min-width:20px;min-height:20px;cursor:pointer}
-    :root{--select-chevron:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='m2.5 4.5 3.5 3.5 3.5-3.5' stroke='%23b2b2b2' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
-    select.field,select.state,select.sortselect,.pager select{appearance:none;background-image:var(--select-chevron);background-repeat:no-repeat;background-position:right 12px center;background-size:12px 12px;padding-right:33px}
-    select.state{min-width:114px;background-position:right 7px center;padding-right:23px}
+    :root{--select-chevron:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='m3.5 5 3.5 3.5L10.5 5' stroke='%23b2b2b2' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+    select.field,select.state,select.sortselect,.pager select{appearance:none;background-image:var(--select-chevron);background-repeat:no-repeat;background-position:right 11px center;background-size:14px 14px;padding-right:35px}
+    select.state{min-width:114px;background-position:right 8px center;padding-right:28px}
     select.state:hover,select.state.applied,select.state.saved,select.field:disabled{background-image:var(--select-chevron)}
     @media(max-width:770px){.actions{justify-content:flex-start;gap:8px}.actions .sortselect{flex:1 1 100%;min-width:0}.actions .outline{flex:1 1 auto;white-space:normal}.topbar{flex-wrap:wrap}.refreshbox{width:100%;justify-content:space-between;align-items:center}.refreshbox .refresh{width:auto;margin:0;flex:none}.refreshmeta{align-items:flex-end}.refreshbox .refreshinfo{text-align:right;max-width:none;font-size:11px}}
-    @media(max-width:430px){.refreshbox{flex-wrap:wrap;gap:10px}.refreshbox .refresh{width:100%}.refreshmeta{align-items:flex-start}.refreshbox .refreshinfo{text-align:left}}
+    @media(max-width:430px){.refreshbox{flex-direction:column;gap:9px;align-items:stretch}.refreshbox .refresh{align-self:flex-end;width:auto;margin:0}.refreshmeta{align-items:flex-start}.refreshbox .refreshinfo{text-align:left}}
     /* Podrobnosti so dostopne neposredno iz seznama, brez obiska zunanjega portala. */
     button.jobtitle{padding:0;border:0;background:transparent;text-align:left;cursor:pointer;width:100%;font:inherit;font-size:13px;font-weight:800;line-height:1.5;color:#f5f5f5}
     button.jobtitle:hover{text-decoration:underline;color:var(--accent)}
@@ -171,21 +181,20 @@ export const page = String.raw`<!doctype html>
       .listtable tr,.listtable tbody tr:hover{background:var(--panel);border-color:var(--line)}
       .more{border-color:var(--line)}
       .refreshbox{width:100%;align-items:stretch}
-      .refreshbox .refreshinfo{text-align:center;max-width:none}
+      .refreshbox .refreshinfo{max-width:none}
     }
-    .sourceitem.has-quality{flex-wrap:wrap;align-items:center}
     .sourceitem a.name{text-decoration:none;color:inherit;font-weight:700}
     .sourceitem a.name:hover{text-decoration:underline}
-    .sourcequality{flex-basis:100%;font-size:10px;line-height:1.5;color:#78867d}
+    @media(max-width:430px){.refreshbox .refreshinfo{text-align:left}}
   </style>
 </head>
 <body>
   <div class="shell">
-    <header class="topbar"><a class="brand" href="./"><span class="mark">⌁</span><span>Delo<span>Radar</span></span></a><div class="refreshbox"><button id="refresh" class="refresh" type="button">↻ &nbsp; Osveži oglase</button><div class="refreshmeta"><p class="refreshinfo" id="updated">Zadnji zajem oglasov: —</p><p class="refreshinfo" id="nextUpdate">Naslednji predvideni zajem: —</p></div></div></header>
+    <header class="topbar"><a class="brand" href="./"><span class="mark">⌁</span><span>Delo<span>Radar</span></span></a><div class="refreshbox"><div class="refreshmeta"><p class="refreshinfo" id="updated">Zadnji zajem oglasov: —</p><p class="refreshinfo" id="nextUpdate">Naslednji predvideni zajem: —</p></div><button id="refresh" class="refresh" type="button">↻ &nbsp; Osveži oglase</button></div></header>
     <section class="intro"><div><div class="eyebrow">Tvoj pregled slovenskega trga dela</div><h1>Vsa zanimiva dela.<br>Na enem mestu.</h1></div></section>
     <section class="stats" aria-label="Statistika"><div class="stat highlight"><span class="kicker">Zajeti oglasi</span><span class="n" id="total">—</span><span class="lightdot"></span><span class="foot">v povezanih virih</span></div><div class="stat"><span class="kicker">Povezani viri</span><span class="n" id="sourcesNum">—</span><span class="foot">od 2 začetnih</span></div><div class="stat"><span class="kicker">Shranjeni</span><span class="n" id="savedNum">0</span><span class="foot">v tem brskalniku</span></div><div class="stat"><span class="kicker">Kontaktirani</span><span class="n" id="appliedNum">0</span><span class="foot">označeno ročno</span></div></section>
     <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" type="search" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div>
-      <div class="panel sourcespanel"><div class="sectionlabel">Stanje povezav</div><details class="sourcedetails" id="sourceDetails"><summary id="sourcesToggle"><span id="sourceSummary" class="sourcesummary" role="status">Preverjam povezave …</span><span class="combo-chevron" aria-hidden="true"></span></summary><div class="sourceslist" id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><div class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur.</div></details></div></aside>
+      <div class="panel sourcespanel"><div class="sectionlabel">Stanje povezav</div><details class="sourcedetails" id="sourceDetails"><summary id="sourcesToggle"><span id="sourceSummary" class="sourcesummary" role="status">Preverjam povezave …</span><span class="combo-chevron" aria-hidden="true"></span></summary><div class="sourceslist" id="sourceStatus"><div class="sourceitem"><span class="name">Preverjam vire …</span></div></div><details class="sourceinsights" id="sourceInsights"><summary>Podrobnosti zajema in dvojniki</summary><div id="sourceInsightsBody" class="sourceinsights-body"></div></details><div class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur.</div></details></div></aside>
     <button class="backtotop" id="backToTop" type="button" aria-label="Na vrh strani" title="Na vrh strani" hidden>↑</button>
     <main class="mainpanel"><div class="tablehead"><h2>Aktualna delovna mesta <span class="countsub" id="found">Pridobivam oglase …</span></h2><div class="actions"><select id="sort" class="sortselect" aria-label="Razvrščanje"><option value="new">Najnovejši najprej</option><option value="title">Po nazivu A–Ž</option><option value="source">Po viru</option></select><button class="outline" id="exportFiltered" type="button" title="Prenesi vse zadetke trenutnih filtrov in izbranega združevanja dvojnikov">↓ Izvozi filtrirane (JSON)</button><button class="outline" id="exportAll" type="button" title="Prenesi vse izvorne oglase iz trenutnega posnetka, ne glede na filtre">↓ Izvozi vse (JSON)</button></div></div><div id="activeFilters" class="activefilters" aria-label="Aktivni filtri" hidden></div><div id="notice" role="status" aria-live="polite"></div><div class="tablewrap"><div id="progress" class="loader"></div><table class="listtable"><thead><tr><th style="width:35%">Delovno mesto</th><th style="width:15%">Lokacija</th><th style="width:14%">Portal</th><th style="width:12%">Objava</th><th style="width:12%">Status</th><th style="width:12%">Oglas</th></tr></thead><tbody id="jobRows"><tr><td colspan="6" class="empty">Povezujem se s portali …</td></tr></tbody></table><div class="more" id="summary">Klikni naziv za podrobnosti ali ↗ za izvorno objavo.</div></div></main></div>
     <dialog id="jobDialog" class="jobdialog" aria-labelledby="detailTitle"><button id="closeJobDialog" class="detailclose" type="button" aria-label="Zapri podrobnosti">×</button><div id="jobDetailBody"></div></dialog>
@@ -459,14 +468,23 @@ export const page = String.raw`<!doctype html>
       function sourceRender(){
         var zrszJobs=jobs.filter(function(j){return j.source==='ZRSZ / PoiščiDelo'});
         var zrszDirect=zrszJobs.filter(function(j){return /^https:\/\/www\.ess\.gov\.si\//.test(String(j.url||''))&&/[?&]idp=\d{6,10}(?:\/|&|#|$)/.test(String(j.url||''))}).length;
-        $('sourceStatus').innerHTML=sources.slice().sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name,'sl')}).map(function(s){
-          var zrszQuality=s.id==='zrsz'&&s.status==='live'&&zrszJobs.length;
-          var linkedinQuality=s.id==='linkedin'&&s.status==='live'&&s.scanProgress;
-          return '<div class="sourceitem'+(zrszQuality||linkedinQuality?' has-quality':'')+'"><a class="name" target="_blank" rel="noopener noreferrer" href="'+safe(s.url)+'">'+safe(s.name)+' ↗</a><span class="pill '+(s.status!=='live'?'err':'')+'">'+(s.status==='live'?s.count+' oglasov'+(s.likelyDuplicates?' · '+s.likelyDuplicates+' verjetno podvojenih':''):'Ni odziva')+'</span>'+
-            (zrszQuality?'<span class="sourcequality">Neposredne povezave ZRSZ: '+zrszDirect+' / '+zrszJobs.length+
-              (s.zrsz&&Number.isInteger(s.zrsz.searchCount)?' · uradni iskalnik: '+s.zrsz.searchCount+' (dnevni JSON: '+s.zrsz.dailyCount+')':'')+
-              ' · ostali: opis v DeloRadarju in iskanje ZRSZ</span>':'')+
-            (linkedinQuality?'<span class="sourcequality">Preverjeni LinkedIn oglasi: '+s.count+' · preverjenih '+s.scanProgress.checked+' od '+s.scanProgress.total+' javnih kandidatov · '+(s.scanProgress.pending?'preostali se dodajajo postopno':'vsi trenutno objavljeni kandidati so pregledani')+' · brez zahtevkov na LinkedIn</span>':'')+'</div>'; }).join('');
+        $('sourceStatus').innerHTML='<div class="sourceshead"><span>Vir</span><span>Oglasi</span></div>'+sources.slice().sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name,'sl')}).map(function(s){
+          var statusText=s.status==='live'?s.count+' oglasov':'Ni odziva';
+          return '<div class="sourceitem"><a class="name" target="_blank" rel="noopener noreferrer" href="'+safe(s.url)+'">'+safe(s.name)+' ↗</a><span class="pill '+(s.status!=='live'?'err':'')+'" aria-label="'+safe(statusText)+'" title="'+safe(statusText)+'">'+(s.status==='live'?s.count.toLocaleString('sl-SI'):'—')+'</span></div>'; }).join('');
+        var insights=[];
+        var duplicateSources=sources.filter(function(s){return s.likelyDuplicates>0}).sort(function(a,b){return b.likelyDuplicates-a.likelyDuplicates});
+        if(duplicateSources.length){
+          var duplicateRecords=duplicateSources.reduce(function(sum,s){return sum+s.likelyDuplicates},0);
+          insights.push('<p><strong>Verjetni dvojniki:</strong> '+duplicateRecords+' izvornih zapisov v '+duplicateSources.length+' virih. Oglasi ostanejo v celotnem izvozu; v tabeli jih lahko združiš ali ločiš.</p><ul>'+duplicateSources.map(function(s){return '<li>'+safe(s.name)+': '+s.likelyDuplicates+'</li>'}).join('')+'</ul>');
+        }
+        var zrszSource=sources.find(function(s){return s.id==='zrsz'&&s.status==='live'});
+        if(zrszSource&&zrszJobs.length)insights.push('<p><strong>ZRSZ:</strong> Neposredne povezave ZRSZ: '+zrszDirect+' / '+zrszJobs.length+
+          (zrszSource.zrsz&&Number.isInteger(zrszSource.zrsz.searchCount)?' · uradni iskalnik: '+zrszSource.zrsz.searchCount+' (dnevni JSON: '+zrszSource.zrsz.dailyCount+')':'')+
+          ' · ostali: opis v DeloRadarju in iskanje ZRSZ.</p>');
+        var linkedinSource=sources.find(function(s){return s.id==='linkedin'&&s.status==='live'&&s.scanProgress});
+        if(linkedinSource)insights.push('<p><strong>LinkedIn:</strong> '+linkedinSource.count+' preverjenih oglasov · pregledanih '+linkedinSource.scanProgress.checked+' od '+linkedinSource.scanProgress.total+' javnih kandidatov · '+(linkedinSource.scanProgress.pending?'pregled se nadaljuje postopno':'trenutno objavljeni kandidati so pregledani')+' · brez zahtevkov na LinkedIn.</p>');
+        $('sourceInsightsBody').innerHTML=insights.join('');
+        $('sourceInsights').hidden=!insights.length;
         var active=sources.filter(function(s){return s.status==='live'}).length;
         $('sourceSummary').textContent=active===sources.length?active+' virov dosegljivih':active+' od '+sources.length+' virov dosegljivih';
         $('sourcesNum').textContent=active;

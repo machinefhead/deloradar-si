@@ -6,6 +6,15 @@ on:
   schedule:
     - cron: '17 5,17 * * *'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Način objave (UI brez zajema ali celoten zajem)'
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - ui
 
 permissions:
   contents: read
@@ -30,7 +39,11 @@ jobs:
         run: npm ci
       - name: Preveri kodo
         run: npm test
+      - name: Pripravi samo videz iz zadnjega javnega posnetka
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'ui')
+        run: npm run build:ui
       - name: Pridobi oglase in zgradi stran
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'full')
         env:
           ZRSZ_OFFICIAL_HTTP_ENABLED: '1'
           ZRSZ_VERIFY_NEW_LIMIT: '60'
