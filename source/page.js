@@ -488,6 +488,8 @@ export const page = String.raw`<!doctype html>
         if(krkaSource)insights.push('<p><strong>Krka:</strong> '+krkaSource.count+' aktualnih razpisov · pregledanih '+krkaSource.krka.checked+' od '+krkaSource.krka.total+' javnih objav · '+krkaSource.krka.general+' splošnih prijav izločenih · brez dodatnega obiskovanja posameznih oglasov.</p>');
         var telekomSource=sources.find(function(s){return s.id==='telekom'&&s.status==='live'&&s.telekom});
         if(telekomSource)insights.push('<p><strong>Telekom Slovenije:</strong> '+telekomSource.count+' aktualnih razpisov · pregledanih '+telekomSource.telekom.checked+' od '+telekomSource.telekom.total+' uradnih objav.</p>');
+        var a1Source=sources.find(function(s){return s.id==='a1'&&s.status==='live'&&s.a1});
+        if(a1Source)insights.push('<p><strong>A1 Slovenija:</strong> '+a1Source.count+' aktualnih razpisov · '+a1Source.a1.foreign+' razpisov tujih družb skupine in '+a1Source.a1.general+' splošnih prijav izločenih.</p>');
         $('sourceInsightsBody').innerHTML=insights.join('');
         $('sourceInsights').hidden=!insights.length;
         var active=sources.filter(function(s){return s.status==='live'}).length;

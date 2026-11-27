@@ -37,5 +37,10 @@ jobs:
         env:
           INCREMENTAL_SOURCE: telekom
         run: npm run build:incremental
+      - name: Preveri dva izvirna oglasa A1 Slovenija (samo ta vir)
+        if: contains(github.event.pull_request.title, '[import:a1]')
+        env:
+          INCREMENTAL_SOURCE: a1
+        run: npm run build:incremental
       - name: Preveri podrobnosti oglasov v brskalniku in na telefonu
         run: node scripts/test-browser.mjs
