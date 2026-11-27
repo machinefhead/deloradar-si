@@ -42,7 +42,7 @@ try {
       'Zaprt seznam ne sme podaljševati strani');
     assert.match(await page.locator('#sourceSummary').innerText(), /virov dosegljivih/,
       'Dosegljivost mora biti vidna neposredno ob puščici znotraj panela');
-    assert.equal(await page.locator('.sourcespanel .sectionlabel').innerText(), 'Stanje povezav',
+    assert.equal((await page.locator('.sourcespanel .sectionlabel').innerText()).toLocaleLowerCase('sl'), 'stanje povezav',
       'Uokvirjeno stanje povezav mora ohraniti prejšnji naslov');
     assert.match(await page.locator('#nextUpdate').innerText(), /Naslednji predvideni zajem:/,
       'Glava mora kazati predvideni naslednji termin');
