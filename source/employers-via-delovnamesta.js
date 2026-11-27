@@ -29,6 +29,7 @@ export const EMPLOYER_MIRRORS = [
   { id: 'supabase', name: 'Supabase', slugs: ['supabase'], hosts: ['jobs.ashbyhq.com'], pathPrefix: '/supabase/', url: 'https://jobs.ashbyhq.com/supabase' },
   { id: 'posthog', name: 'PostHog', slugs: ['posthog'], hosts: ['jobs.ashbyhq.com'], pathPrefix: '/PostHog/', url: 'https://jobs.ashbyhq.com/PostHog' },
   { id: 'pivovarna', name: 'Pivovarna Laško Union', slugs: ['pivovarna-lasko-union'], hosts: ['theheinekencompany-rmk.jobs.hr.cloud.sap'], pathPrefix: '/Slovenia/job/', url: 'https://careers.theheinekencompany.com/' },
+  { id: 'otp', name: 'OTP banka', slugs: ['otp'], hosts: ['otpbanka.fledgehr.com', 'nkbm.fledgehr.com'], pathPrefix: '/jobs/', url: 'https://otpbanka.fledgehr.com/jobs' },
 ];
 
 // Največ tri vzporedne zahteve skupaj čez vse delodajalce iz istega vira.

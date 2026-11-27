@@ -69,6 +69,7 @@ const newEmployers = [
   ['supabase', 'https://jobs.ashbyhq.com/supabase/a069c886-1107-408e-88b4-e1aa8d33d4bc'],
   ['posthog', 'https://jobs.ashbyhq.com/PostHog/db808740-242e-4a40-ad43-d41f26c049d7'],
   ['pivovarna', 'https://theheinekencompany-rmk.jobs.hr.cloud.sap/Slovenia/job/Lasko-operater/1460148933/'],
+  ['otp', 'https://otpbanka.fledgehr.com/jobs/4461'],
 ];
 for (const [id, url] of newEmployers) {
   const config = EMPLOYER_MIRRORS.find(employer => employer.id === id);
@@ -91,6 +92,17 @@ for (const id of ['gitlab', 'supabase', 'posthog']) {
     'Slovenija (delo na daljavo)');
   assert.equal(parseEmployerPosting(posting({ ...remote, applicantLocationRequirements: { name: 'Austria' } }), viaUrl, config), null);
 }
+
+const otp = EMPLOYER_MIRRORS.find(item => item.id === 'otp');
+assert.ok(otp, 'OTP banka mora biti vključena med izvirne delodajalce');
+const otpSchema = { ...schema, url: 'https://otpbanka.fledgehr.com/jobs/4461',
+  hiringOrganization: { name: 'OTP banka' } };
+assert.equal(parseEmployerPosting(posting(otpSchema), viaUrl, otp)?.source, 'OTP banka');
+assert.equal(parseEmployerPosting(posting({ ...otpSchema, url: 'https://nkbm.fledgehr.com/jobs/4452' }), viaUrl, otp)?.url,
+  'https://nkbm.fledgehr.com/jobs/4452');
+assert.equal(parseEmployerPosting(posting({ ...otpSchema, url: 'https://www.linkedin.com/jobs/view/4490456491' }), viaUrl, otp), null,
+  'LinkedInov oglas ni izvirni FledgeHR oglas OTP');
+assert.equal(parseEmployerPosting(posting({ ...otpSchema, url: 'https://otpbanka.fledgehr.com/other/4461' }), viaUrl, otp), null);
 
 let requested = [];
 const mockEmployer = async url => {

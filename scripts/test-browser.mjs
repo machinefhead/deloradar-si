@@ -40,11 +40,16 @@ try {
       'Seznam povezanih virov mora biti na telefonu in računalniku privzeto zaprt');
     assert.equal(await page.locator('#sourceStatus').isVisible(), false,
       'Zaprt seznam ne sme podaljševati strani');
+    assert.match(await page.locator('#sourceSummary').innerText(), /virov dosegljivih/,
+      'Dosegljivost mora biti vidna neposredno ob puščici, brez velikega okvirja');
+    assert.equal(await page.locator('#sourcesToggle .combo-chevron').count(), 1,
+      'Povzetek virov mora imeti eno puščico za razpiranje');
     await page.locator('#sourcesToggle').click();
     assert.equal(await page.locator('#sourceDetails').evaluate(element => element.open), true);
     assert.equal(await page.locator('#sourceStatus').isVisible(), true,
       'Gumb mora omogočiti prikaz vseh povezanih virov');
-    await page.waitForFunction(() => document.getElementById('sourcesToggle').textContent.includes('Skrij povezane vire'));
+    assert.equal(await page.locator('#sourcesToggle .combo-chevron').evaluate(element => getComputedStyle(element).transform === 'none'), false,
+      'Puščica se mora ob razširitvi obrniti');
     assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'LinkedIn Jobs' }).count(), 0,
       'LinkedIn se po uspešnem posrednem JSON-LD zajemu ne sme podvajati med nepovezanimi');
     assert.equal(await page.locator('#sourceStatus .sourceitem').filter({ hasText: 'LinkedIn Jobs' }).count(), 1,
@@ -63,6 +68,8 @@ try {
     if (viewport.width === 1440) {
       const target = snapshot.jobs.find(job => job.source === 'EURES' && /Chauffeur_in/.test(job.title)) || snapshot.jobs[0];
       await page.locator('#search').fill(target.title);
+      assert.match(await page.locator('#activeFilters').innerText(), /Iskanje:/,
+        'Izbrano iskanje mora biti kot odstranljiv čip pod gumbi JSON');
       await page.locator('button.jobtitle').first().waitFor({ timeout: 10000 });
       const [filteredDownload] = await Promise.all([
         page.waitForEvent('download'), page.locator('#exportFiltered').click(),
@@ -72,7 +79,27 @@ try {
       assert.equal(filtered.scope, 'filtered');
       assert.ok(filtered.jobs.some(job => job.id === target.id), 'Filtrirani JSON mora vsebovati poiskan oglas');
       assert.ok(filtered.total <= snapshot.jobs.length, 'Filtrirani JSON mora upoštevati izbor na strani');
-      await page.locator('#search').fill('');
+      await page.locator('#activeFilters [data-remove-filter="search"]').click();
+      assert.equal(await page.locator('#search').inputValue(), '',
+        'X na zgornjem čipu mora odstraniti iskanje v osnovnem filtru');
+      await page.locator('#published').selectOption('7');
+      assert.match(await page.locator('#activeFilters').innerText(), /Objava:/,
+        'Čip za datum objave mora biti na voljo nad tabelo');
+      await page.locator('#activeFilters [data-remove-filter="published"]').click();
+      assert.equal(await page.locator('#published').inputValue(), '',
+        'X na datumu objave mora ponastaviti prvotni combobox');
+      for (const id of ['published', 'deadline', 'myStatus']) {
+        const appearance = await page.locator('#' + id).evaluate(element => getComputedStyle(element).appearance);
+        assert.notEqual(appearance, 'none', 'Izbirnik ' + id + ' mora imeti vidno izvorno puščico');
+      }
+      await page.locator('#multi-sourceFilter .multi-trigger').click();
+      const firstOption = page.locator('#multi-sourceFilter .multi-option input[type="checkbox"]').first();
+      await firstOption.check();
+      assert.equal(await page.locator('#activeFilters [data-remove-filter="sourceFilter"]').count(), 1,
+        'Izbrani portal mora biti prikazan kot odstranljiv čip nad tabelo');
+      await page.locator('#activeFilters [data-remove-filter="sourceFilter"]').click();
+      assert.equal(await page.locator('#activeFilters [data-remove-filter="sourceFilter"]').count(), 0,
+        'X pri portalu mora odstraniti samo označeni portal');
       const [allDownload] = await Promise.all([
         page.waitForEvent('download'), page.locator('#exportAll').click(),
       ]);

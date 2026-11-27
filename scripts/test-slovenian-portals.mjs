@@ -3,6 +3,7 @@ import {
   parseIzsList, parseIzsDetail, parseHidriaList, parseHidriaDetail,
   parseLthList, parseLthDetail, parseTelkomList, parseTelkomDetail, parsePseList,
 } from '../source/slovenian-portals.js';
+import { parseIskraemecoList, parseIskraemecoDetail, getIskraemeco } from '../source/iskraemeco.js';
 
 const now = '2026-11-26';
 const izs = `<table id="jobsList"><tr><th>Naslov</th></tr>
@@ -67,4 +68,30 @@ assert.equal(pseJobs.length, 1);
 assert.equal(pseJobs[0].date, '2026-10-07');
 assert.ok(pseJobs[0].description.includes('Servisiranje'));
 
-console.log('Slovenski portali: parserji IZS, Hidria, LTH, Telkom in PSE uspešni.');
+const iskraemecoHtml = `<div class="vacancy-card"><div class="vacancy-card__title"><h4>Inženir elektronike (m/ž)</h4></div>
+  <div class="vacancy-card__text">Rok prijave 30. 11. 2026</div>
+  <a href="https://iskraemeco.com/sl/career-position/inzenir-elektronike/">Preberi več</a></div>
+<div class="margin : margin--40"></div>
+<div class="vacancy-card"><h4>Potekel razpis</h4><div>Rok prijave 12. 11. 2026</div>
+  <a href="https://iskraemeco.com/sl/career-position/poteklo/">Preberi več</a></div>
+<div class="margin : margin--40"></div>
+<div class="vacancy-card"><h4>Neznan izvirnik</h4><a href="https://neznano.example/sl/career-position/x/">Preberi več</a></div>
+<div class="margin : margin--40"></div>`;
+const iskraJobs = parseIskraemecoList(iskraemecoHtml, now);
+assert.equal(iskraJobs.length, 1, 'Ohranimo samo veljavne uradne povezave in nepretečene razpise');
+assert.equal(iskraJobs[0].deadline, '2026-11-30');
+assert.equal(iskraJobs[0].url, 'https://iskraemeco.com/sl/career-position/inzenir-elektronike/');
+const iskraDetail = `<link rel="canonical" href="https://iskraemeco.com/sl/career-position/inzenir-elektronike/"/>
+<meta property="og:title" content="Inženir elektronike (m/ž)"/>
+<div class="editor-text"><h5>Lokacija: Kranj, Slovenija</h5></div>
+<section class="sc-general : sc-two-col-module : p-0"><h3>Odgovornosti</h3>
+<div class="editor-text"><ul><li>Razvoj in preverjanje elektronskih sistemov.</li>
+<li>Odgovornost za testne postopke.</li></ul></div></section>`;
+const enrichedIskra = parseIskraemecoDetail(iskraDetail, iskraJobs[0]);
+assert.equal(enrichedIskra.location, 'Kranj');
+assert.match(enrichedIskra.description, /Razvoj in preverjanje/);
+assert.deepEqual(await getIskraemeco({ now, fetchText: async url => url.endsWith('/odprta-delovna-mesta/') ? iskraemecoHtml : iskraDetail }), [enrichedIskra]);
+assert.throws(() => parseIskraemecoDetail(iskraDetail, { ...iskraJobs[0], title: 'Drug oglas' }), /ne ustrezajo/);
+assert.throws(() => parseIskraemecoList('<p>Stran se je spremenila</p>'), /ni prepoznan/);
+
+console.log('Slovenski portali: IZS, Hidria, LTH, Telkom, PSE in Iskraemeco uspešni.');
