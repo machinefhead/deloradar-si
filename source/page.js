@@ -204,7 +204,7 @@ export const page = String.raw`<!doctype html>
   <script>
     (function(){
       'use strict';
-      var jobs=[], sources=[], planned=[], checkedAt='', captureMode='', lastFullCheckedAt='', state={};
+      var jobs=[], sources=[], planned=[], checkedAt='', captureMode='', lastFullCheckedAt='', lastUpdatedSources=[], state={};
       var key='deloradar-status-v1';
       try {state=JSON.parse(localStorage.getItem(key)||'{}')||{}}catch(e){state={}}
       var $=function(id){return document.getElementById(id)};
@@ -484,6 +484,8 @@ export const page = String.raw`<!doctype html>
         if(linkedinSource)insights.push('<p><strong>LinkedIn:</strong> '+linkedinSource.count+' preverjenih oglasov · pregledanih '+linkedinSource.scanProgress.checked+' od '+linkedinSource.scanProgress.total+' javnih kandidatov · '+(linkedinSource.scanProgress.pending?'pregled se nadaljuje postopno':'trenutno objavljeni kandidati so pregledani')+' · brez zahtevkov na LinkedIn.</p>');
         var mjobSource=sources.find(function(s){return s.id==='mjob'&&s.status==='live'&&s.mjob});
         if(mjobSource)insights.push('<p><strong>Mjob:</strong> '+mjobSource.count+' zajetih študentskih del · pregledanih '+mjobSource.mjob.checked+' od '+mjobSource.mjob.total+' javnih povezav · '+(mjobSource.mjob.pending?'zajem je še nepopoln in se nadaljuje postopno':'vsi kandidati preverjeni')+'.</p>');
+        var krkaSource=sources.find(function(s){return s.id==='krka'&&s.status==='live'&&s.krka});
+        if(krkaSource)insights.push('<p><strong>Krka:</strong> '+krkaSource.count+' aktualnih razpisov · pregledanih '+krkaSource.krka.checked+' od '+krkaSource.krka.total+' javnih objav · '+krkaSource.krka.general+' splošnih prijav izločenih · brez dodatnega obiskovanja posameznih oglasov.</p>');
         $('sourceInsightsBody').innerHTML=insights.join('');
         $('sourceInsights').hidden=!insights.length;
         var active=sources.filter(function(s){return s.status==='live'}).length;
@@ -737,7 +739,7 @@ export const page = String.raw`<!doctype html>
         if(offline){$('refresh').disabled=true;$('refresh').textContent='↻   Nalagam posnetek …'}
         $('progress').style.display='block';
         (offline?Promise.resolve(window.__DELORADAR_OFFLINE_DATA__):fetch((window.__DELORADAR_DATA_URL__||'./jobs.json')+'?v='+Date.now(),{cache:'no-store',headers:{accept:'application/json'}}).then(function(r){if(!r.ok)throw Error('Strežnik ni dosegljiv');return r.json()})).then(function(data){
-          jobs=(data.jobs||[]).map(function(j){var link=resolvedLink(j);return link===j.url?j:Object.assign({},j,{url:link})});sources=data.sources||[];planned=data.planned||[];checkedAt=data.checkedAt||'';captureMode=data.captureMode||'full';lastFullCheckedAt=data.lastFullCheckedAt||'';
+          jobs=(data.jobs||[]).map(function(j){var link=resolvedLink(j);return link===j.url?j:Object.assign({},j,{url:link})});sources=data.sources||[];planned=data.planned||[];checkedAt=data.checkedAt||'';captureMode=data.captureMode||'full';lastFullCheckedAt=data.lastFullCheckedAt||'';lastUpdatedSources=data.lastUpdatedSources||[];
           indexDuplicateGroups();updateStats();
           configureMulti('sourceFilter',sources.map(function(s){return s.name}),'Vsi portali');
           configureMulti('city',Array.from(new Set(jobs.map(function(j){return j.location}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'sl')}),'Vsi kraji');
@@ -749,7 +751,8 @@ export const page = String.raw`<!doctype html>
             noticeMessage('LOKALNI PREIZKUS: Posnetek resničnih oglasov. Ni samodejnega osveževanja; za aktualne oglase preveri povezave pri izvornih portalih.');
             $('updated').textContent='Posnetek zbran: '+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+'. Kategorije so ocenjene iz nazivov; neznane regije so označene.';
           }else{
-            $('updated').textContent=(captureMode==='incremental'?'Zadnji ciljni zajem (Mjob): ':'Zadnji zajem oglasov: ')+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+(captureMode==='incremental'&&lastFullCheckedAt?' · celoten: '+localDateTime(new Date(lastFullCheckedAt)):'');
+            var updatedNames=lastUpdatedSources.map(function(id){return id==='mjob'?'Mjob':id==='krka'?'Krka':id}).join(', ');
+            $('updated').textContent=(captureMode==='incremental'?'Zadnji ciljni zajem ('+(updatedNames||'izbrani viri')+'): ':'Zadnji zajem oglasov: ')+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+(captureMode==='incremental'&&lastFullCheckedAt?' · celoten: '+localDateTime(new Date(lastFullCheckedAt)):'');
           }
         }).catch(function(){noticeMessage('Oglasov trenutno ni mogoče pridobiti. Preveri povezavo in poskusi znova.');$('jobRows').innerHTML='<tr><td colspan="6" class="empty">Napaka pri pridobivanju podatkov.</td></tr>'}).finally(function(){$('progress').style.display='none';if(offline){$('refresh').disabled=false;$('refresh').textContent='↻   Preberi testni posnetek'}});
       }

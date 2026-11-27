@@ -27,5 +27,10 @@ jobs:
           INCREMENTAL_SOURCE: mjob
           MJOB_NEW_LIMIT: '3'
         run: npm run build:incremental
+      - name: Preveri novi Krkin javni seznam v GitHub okolju (ena poizvedba)
+        if: contains(github.event.pull_request.title, '[import:krka]')
+        env:
+          INCREMENTAL_SOURCE: krka
+        run: npm run build:incremental
       - name: Preveri podrobnosti oglasov v brskalniku in na telefonu
         run: node scripts/test-browser.mjs

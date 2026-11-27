@@ -20,6 +20,7 @@ import { getIskraemeco } from './iskraemeco.js';
 import { getMerkurRecruitee } from './recruitee.js';
 import { getFirstJob, getCinkarna } from './new-sources.js';
 import { getMjob, MJOB_SOURCE, MJOB_URL } from './mjob.js';
+import { getKrka, KRKA_SOURCE, KRKA_URL } from './krka.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -64,6 +65,7 @@ const SOURCES = [
   { id: 'firstjob', name: 'FirstJob (študentsko delo)', url: 'https://firstjob.si/prosta-dela-za-studente-in-dijake/' },
   { id: 'cinkarna', name: 'Cinkarna Celje', url: 'https://www.cinkarna.si/karierna-tocka' },
   { id: 'mjob', name: MJOB_SOURCE, url: MJOB_URL },
+  { id: 'krka', name: KRKA_SOURCE, url: KRKA_URL },
   { id: 'linkedin', name: LINKEDIN_SOURCE, url: 'https://www.linkedin.com/jobs/' },
   ...EMPLOYER_MIRRORS.map(item => ({ id: 'mirror_' + item.id, name: item.name, url: item.url })),
   { id: 'recruitee_merkur', name: 'Merkur zavarovalnica', url: 'https://merkurzavarovalnica.recruitee.com/' },
@@ -84,7 +86,6 @@ const PLANNED = [
   { name: 'Petrol', href: 'https://www.petrol.eu/sl/kariera/prosta-delovna-mesta', priority: 2, status: 'Preusmeritve izvirnih povezav', note: 'Deset izvirnih oglasov ima javne podatke JobPosting, vendar izvorni Petrolovi URL-ji trenutno preusmerijo na nedosegljivo HTTP različico. Ne objavljamo pokvarjenih povezav.' },
   { name: 'Zaposlitev.net', href: 'https://www.zaposlitev.net/', priority: 2, status: 'Ponovni poskus', note: 'Ob zadnjem neposrednem preverjanju je portal vrnil HTTP 503.' },
   ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', priority: 3, status: 'Agregator', note: 'Večinoma povezuje druge vire. Raziskati ustrezen izvoz in preveriti, ali prinaša unikatne oglase.' }] : []),
-  { name: 'Krka', href: 'https://www.krka.biz/employment/prosta-delovna-mesta/', priority: 2, status: 'ATS brez odprtega seznama', note: 'Stran vodi na Cornerstone OnDemand; preveriti uraden strojno berljiv izvoz razpisov.' },
   { name: 'Iskra', href: 'https://www.iskra.eu/sl/Prosta-delovna-mesta/', priority: 2, status: 'HTTP ni dosegljiv', note: 'Javna podstran ima neposredne oglase, pri avtomatskem HTTP preverjanju pa je povezava časovno potekla.' },
 ];
 // Uradni regionalni RSS-viri Optius. Ohranimo izvirni izvor regije,
@@ -748,7 +749,7 @@ async function getIscidelo() {
 }
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  let zrszDiagnostics, linkedinResult, mjobResult;
+  let zrszDiagnostics, linkedinResult, mjobResult, krkaResult;
   const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getPublicTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
   if (ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED) collectors.push(
     ZRSZ_OFFICIAL_HTTP_ENABLED ? previousJobs().then(async oldJobs => {
@@ -769,6 +770,7 @@ async function collect() {
       maxDetails: Math.min(50, detailLimit('MJOB_NEW_LIMIT', 8)) });
     return mjobResult.jobs;
   }),
+  getKrka().then(result => { krkaResult = result; return result.jobs; }),
   previousSnapshot().then(async snapshot => {
     linkedinResult = await getLinkedinViaDelovnaMesta({
       previous: snapshot.jobs || [],
@@ -837,6 +839,7 @@ async function collect() {
     likelyDuplicates: markedBySource.get(source.name) || 0,
     ...(source.id === 'zrsz' && zrszDiagnostics ? { zrsz: zrszDiagnostics } : {}),
     ...(source.id === 'mjob' && mjobResult ? { mjob: mjobResult.progress } : {}),
+    ...(source.id === 'krka' && krkaResult ? { krka: krkaResult.progress } : {}),
     ...(source.id === 'linkedin' && linkedinResult ? { scanProgress: linkedinResult.progress } : {}) }));
   cached = { jobs, sources, planned: PLANNED, checkedAt: new Date().toISOString(), storage: 'browser-local',
     discovery: { delovnamestaLinkedin: linkedinResult?.state || {}, mjob: mjobResult?.state || {} },
