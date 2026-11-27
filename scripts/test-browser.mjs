@@ -41,7 +41,11 @@ try {
     assert.equal(await page.locator('#sourceStatus').isVisible(), false,
       'Zaprt seznam ne sme podaljševati strani');
     assert.match(await page.locator('#sourceSummary').innerText(), /virov dosegljivih/,
-      'Dosegljivost mora biti vidna neposredno ob puščici, brez velikega okvirja');
+      'Dosegljivost mora biti vidna neposredno ob puščici znotraj panela');
+    assert.equal((await page.locator('.sourcespanel .sectionlabel').innerText()).toLocaleLowerCase('sl'), 'stanje povezav',
+      'Uokvirjeno stanje povezav mora ohraniti prejšnji naslov');
+    assert.match(await page.locator('#nextUpdate').innerText(), /Naslednji predvideni zajem:/,
+      'Glava mora kazati predvideni naslednji termin');
     assert.equal(await page.locator('#sourcesToggle .combo-chevron').count(), 1,
       'Povzetek virov mora imeti eno puščico za razpiranje');
     await page.locator('#sourcesToggle').click();
@@ -88,10 +92,17 @@ try {
       await page.locator('#activeFilters [data-remove-filter="published"]').click();
       assert.equal(await page.locator('#published').inputValue(), '',
         'X na datumu objave mora ponastaviti prvotni combobox');
-      for (const id of ['published', 'deadline', 'myStatus']) {
-        const appearance = await page.locator('#' + id).evaluate(element => getComputedStyle(element).appearance);
-        assert.notEqual(appearance, 'none', 'Izbirnik ' + id + ' mora imeti vidno izvorno puščico');
+      for (const id of ['published', 'deadline', 'myStatus', 'sort']) {
+        const look = await page.locator('#' + id).evaluate(element => ({
+          appearance: getComputedStyle(element).appearance,
+          backgroundImage: getComputedStyle(element).backgroundImage,
+        }));
+        assert.equal(look.appearance, 'none', 'Izbirnik ' + id + ' mora uporabljati poenoteno puščico');
+        assert.notEqual(look.backgroundImage, 'none', 'Puščica mora biti vidna pri ' + id);
       }
+      await page.locator('select.state').first().selectOption('interested');
+      assert.notEqual(await page.locator('select.state').first().evaluate(element => getComputedStyle(element).backgroundImage), 'none',
+        'Puščica mora ostati vidna tudi pri označenem statusu oglasa');
       await page.locator('#multi-sourceFilter .multi-trigger').click();
       const firstOption = page.locator('#multi-sourceFilter .multi-option input[type="checkbox"]').first();
       await firstOption.check();
@@ -136,8 +147,8 @@ try {
           'Pri deljivem opisu mora ostati registrska številka ZRSZ');
         assert.match(await page.locator('#jobDetailBody .detailprimary').innerText(), /Preveri v iskalniku ZRSZ/,
           'Iskanje ZRSZ mora ostati pošteno označeno, ne kot preverjena neposredna povezava');
-        assert.match(await page.locator('#jobDetailBody .detailactions a').last().getAttribute('href'),
-          /[?&]oglas=zrsz%3AIE\d+/, 'Iz odprtega oglasa je mogoče kopirati njegovo deljivo povezavo');
+        assert.equal(await page.locator('#jobDetailBody .detailactions a').filter({ hasText: 'Povezava do opisa v DeloRadarju' }).count(), 0,
+          'Odvečen lastni link v podrobnostih ni prikazan');
       }
     }
     assert.deepEqual(errors, [], 'Brskalniška skripta ne sme povzročiti napake');

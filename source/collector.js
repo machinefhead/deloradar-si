@@ -18,6 +18,7 @@ import { getPublicTrenkwalder } from './trenkwalder-search.js';
 import { EMPLOYER_MIRRORS, getEmployerViaDelovnaMesta } from './employers-via-delovnamesta.js';
 import { getIskraemeco } from './iskraemeco.js';
 import { getMerkurRecruitee } from './recruitee.js';
+import { getFirstJob, getCinkarna } from './new-sources.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -59,6 +60,8 @@ const SOURCES = [
   { id: 'telkom', name: 'Telkom d.o.o.', url: 'https://www.telkom.si/kariera/' },
   { id: 'pse', name: 'PSE d.o.o.', url: 'https://www.pse.si/sl/zaposlitve/' },
   { id: 'iskraemeco', name: 'Iskraemeco', url: 'https://iskraemeco.com/sl/kariera/odprta-delovna-mesta/' },
+  { id: 'firstjob', name: 'FirstJob (študentsko delo)', url: 'https://firstjob.si/prosta-dela-za-studente-in-dijake/' },
+  { id: 'cinkarna', name: 'Cinkarna Celje', url: 'https://www.cinkarna.si/karierna-tocka' },
   { id: 'linkedin', name: LINKEDIN_SOURCE, url: 'https://www.linkedin.com/jobs/' },
   ...EMPLOYER_MIRRORS.map(item => ({ id: 'mirror_' + item.id, name: item.name, url: item.url })),
   { id: 'recruitee_merkur', name: 'Merkur zavarovalnica', url: 'https://merkurzavarovalnica.recruitee.com/' },
@@ -75,7 +78,7 @@ const PLANNED = [
   ...(!ZRSZ_JSON_URL && !ZRSZ_OFFICIAL_HTTP_ENABLED ? [{ name: 'ZRSZ / PoiščiDelo', href: 'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z ZRSZ_OFFICIAL_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
   ...(!EURES_HTTP_ENABLED ? [{ name: 'EURES (Slovenija)', href: 'https://europa.eu/eures/portal/jv-se/search?locationCodes=si&lang=sl', priority: 1, status: 'Pripravljen HTTP uvoz', note: 'V produkciji je vključen z EURES_HTTP_ENABLED=1; tu manjka nastavitev.' }] : []),
   { name: 'HOFER Slovenija', href: 'https://kariera.hofer.si/iskanje-zaposlitve', priority: 1, status: 'JSON najden', note: 'Javni REST za iskanje zaposlitve je dosegljiv, a je ob preverjanju vrnil prazen seznam. Preveriti parametre in objave.' },
-  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev-spar', priority: 1, status: 'GitHub Actions HTTP 403', note: 'Z lokalnimi neposrednimi HTTP zahtevki je bilo potrjenih 58 aktivnih izvirnih razpisov s polnimi opisi. V GitHub Actions uradni SPAR odgovori vrnejo HTTP 403, zato uvoz source/spar.js ostane pripravljen, vendar ga ne prištevamo med redno povezane vire, dokler ne dobimo normalnega strojno berljivega izvoza.' },
+  { name: 'SPAR Slovenija', href: 'https://www.spar.si/zaposlitev', priority: 1, status: 'GitHub Actions HTTP 403', note: 'Posodobljeno 27. 11. 2026: uradna stran z razpisi je javno vidna, samodejni HTTP zajem v GitHub Actions pa je zavrnjen (403). Pripravljenega uvoza zato še ne moremo vključiti med povezane vire. Čakamo na običajen dovoljen izvoz ali dostop.' },
   { name: 'Petrol', href: 'https://www.petrol.eu/sl/kariera/prosta-delovna-mesta', priority: 2, status: 'Preusmeritve izvirnih povezav', note: 'Deset izvirnih oglasov ima javne podatke JobPosting, vendar izvorni Petrolovi URL-ji trenutno preusmerijo na nedosegljivo HTTP različico. Ne objavljamo pokvarjenih povezav.' },
   { name: 'Zaposlitev.net', href: 'https://www.zaposlitev.net/', priority: 2, status: 'Ponovni poskus', note: 'Ob zadnjem neposrednem preverjanju je portal vrnil HTTP 503.' },
   ...(!CAREERJET_DATA_API_KEY ? [{ name: 'Careerjet', href: 'https://www.careerjet.si/', priority: 3, status: 'Agregator', note: 'Večinoma povezuje druge vire. Raziskati ustrezen izvoz in preveriti, ali prinaša unikatne oglase.' }] : []),
@@ -758,7 +761,7 @@ async function collect() {
   })), previousJobs().then(oldJobs => getWhc({
     previous: oldJobs, maxDetails: detailLimit('DETAIL_WHC_LIMIT', 24),
   })), getStudentWork(), previousJobs().then(oldJobs => getCompeto({ previous: oldJobs })), getCeltra(),
-  getIzs(), getHidria(), getLthCastings(), getTelkom(), getPse(), getIskraemeco(),
+  getIzs(), getHidria(), getLthCastings(), getTelkom(), getPse(), getIskraemeco(), getFirstJob(), getCinkarna(),
   previousSnapshot().then(async snapshot => {
     linkedinResult = await getLinkedinViaDelovnaMesta({
       previous: snapshot.jobs || [],

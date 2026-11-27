@@ -109,7 +109,7 @@ assert.match(page, /id="activeFilters" class="activefilters"/, 'Aktivni filtri m
 assert.doesNotMatch(page, /class="exporthint"/, 'Odvečno besedilo pod JSON izvozi ne sme prekrivati aktivnih filtrov');
 assert.match(script, /function drawActiveFilters\(/, 'Aktivni filtri morajo biti povezani s trenutnim izborom');
 assert.match(script, /data-remove-filter=/, 'Posamezen aktivni filter mora imeti gumb za odstranitev');
-assert.match(page, /select\.field,select\.state\{appearance:auto;background-image:none/, 'Datumi, roki in statusi naj imajo enako izvorno puščico kot razvrščanje');
+assert.match(page, /select\.field,select\.state,select\.sortselect,\.pager select\{appearance:none;background-image:var\(--select-chevron\)/, 'Datumi, roki, statusi, razvrščanje in straničenje morajo imeti enako puščico');
 assert.match(page, /class="combo-chevron" aria-hidden="true"/, 'Večizbirni filtri in viri naj imajo enotno puščico navzdol');
 assert.match(page, /<dialog id="jobDialog" class="jobdialog"/, 'Podrobnosti oglasa morajo biti na voljo na isti strani');
 assert.match(page, /data-detail-id=/, 'Klik na naziv oglasa mora odpreti podrobnosti');
@@ -122,14 +122,19 @@ assert.match(script, /scope==='filtered'\?displayed\(\):jobs/, 'Filtrirani JSON 
 assert.match(script, /window\.addEventListener\('scroll',updateBackToTop,\{passive:true\}\)/, 'Gumb za vrh se mora prilagajati drsenju');
 assert.match(page, /manualLink\.textContent='↻ Osveži'/, 'Osveži mora biti povezava na ročni zajem v GitHub Actions');
 assert.match(page, /\$\('refresh'\)\.replaceWith\(manualLink\)/, 'Podvojeni gumb za branje istega posnetka ne sme ostati na javni strani');
-assert.match(page, /class="refreshinfo" id="updated">Zadnji zajem oglasov: —/, 'Datum mora biti pod gumbom za osvežitev');
+assert.match(page, /<header class="topbar">[\s\S]*?id="refresh"[\s\S]*?id="updated"[\s\S]*?id="nextUpdate"[\s\S]*?<\/header>/, 'Ročni zajem in oba časa morajo biti v glavi strani');
+assert.match(script, /function nextPlannedCapture\(now\)/, 'Naslednji predvideni zajem mora temeljiti na urniku GitHub Actions');
+assert.match(script, /Date\.UTC\(year,month,day,5,17\)/, 'Jutranji termin je 05:17 UTC');
+assert.match(script, /Date\.UTC\(year,month,day,17,17\)/, 'Večerni termin je 17:17 UTC');
+assert.doesNotMatch(page, /● Javni pregled|Poišči priložnosti iz trenutno povezanih virov/, 'Odvečni opis in oznaka javnega pregleda ne smeta ostati');
 assert.match(page, /class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur\./, 'Stanje povezav mora kazati dvanajsturni urnik');
 assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približno vsakih 12 ur\./, 'Javna stran ne sme prepisati novega urnika');
 assert.match(page, /id="sourceSummary"/, 'Povzetek dosegljivosti virov mora biti viden brez odpiranja seznama');
 assert.match(page, /<details class="sourcedetails" id="sourceDetails"><summary id="sourcesToggle"><span id="sourceSummary" class="sourcesummary" role="status">/, 'Povzetek dosegljivosti mora biti gumb za razširitev skritega seznama');
 assert.doesNotMatch(page, /<details class="sourcedetails" id="sourceDetails"\s+open/, 'Seznam povezanih virov ne sme biti privzeto odprt');
 assert.doesNotMatch(page, /this\.open\?'Skrij povezane vire':'Prikaži povezane vire'/, 'Veliki gumb in zastareli napis za razpiranje virov se ne smeta vrniti');
-assert.match(page, /\.sidebar>\.sourcedetails\{display:block\}/, 'Kompakten prikaz virov mora ostati viden tudi na telefonu');
+assert.match(page, /<div class="panel sourcespanel"><div class="sectionlabel">Stanje povezav<\/div><details class="sourcedetails"/, 'Stanje virov je v prejšnjem uokvirjenem panelu');
+assert.match(page, /\.sidebar>\.sourcespanel\{display:block\}/, 'Panel virov mora ostati viden tudi na telefonu');
 assert.match(page, /\.sourcecatalog\{display:block\}/, 'Nepovezani viri morajo biti prikazani brez klika');
 assert.match(page, /id="planned"><div class="sourcecard"><p>Pridobivam seznam nepovezanih virov/, 'Nepovezani viri morajo imeti jasen začetni prikaz');
 assert.doesNotMatch(page, /Za ta iskalnika še nimamo samodejnega izvoza/, 'Ko EURES priključimo, ne sme ostati zastarelo navodilo');
@@ -158,6 +163,8 @@ for(const name of ['Slovenske železnice','Prohuman','Pošta Slovenije','Bolha Z
   assert.ok(!plannedBlock.includes("name: '"+name+"'"),'Nizkovredni ali podvojeni vir ne spada več med kandidate: '+name);
 }
 assert.doesNotMatch(collectorSource, /id: 'spar', name: 'SPAR Slovenija'/, 'SPAR HTTP 403 v GitHub Actions ne sme blokirati celotne objave');
+assert.match(collectorSource, /id: 'firstjob', name: 'FirstJob \(študentsko delo\)'/, 'FirstJob mora biti ločen povezan vir');
+assert.match(collectorSource, /id: 'cinkarna', name: 'Cinkarna Celje'/, 'Cinkarna Celje mora biti ločen povezan vir');
 assert.match(plannedBlock, /GitHub Actions HTTP 403/, 'Razlog blokade SPAR mora biti viden na strani');
 assert.doesNotMatch(plannedBlock,/\{ name: 'LinkedIn Jobs'/,'LinkedIn iz javnega posrednega vira je med povezanimi');
 assert.match(collectorSource,/id: 'linkedin', name: LINKEDIN_SOURCE/,'Povezan LinkedIn mora biti razviden med viri');
@@ -388,8 +395,7 @@ assert.match(formatted,/<ul><li>Vzdrževanje<\/li><li>Organizacija<\/li><\/ul>/,
 assert.doesNotMatch(formatted,/&lt;p&gt;|&lt;ul&gt;|&lt;li&gt;/,'V dialogu ne smejo ostati surove oznake');
 assert.match(detailContext.detailReadable('&amp;lt;p&amp;gt;Delo&amp;lt;/p&amp;gt;'),/Delo/,'Dvakrat HTML-kodirano besedilo se razbere');
 assert.match(detailHtml,/Preveri v iskalniku ZRSZ/, 'Iskalna povezava ni predstavljena kot neposredni oglas');
-assert.match(detailHtml,/Povezava do opisa v DeloRadarju/, 'Vsak oglas omogoča deljenje natančno svojega opisa');
-assert.match(detailHtml,/oglas=zrsz%3A77/, 'Povezava do opisa vsebuje identifikator oglasa, ne nepreverjenega idp');
+assert.doesNotMatch(detailHtml,/Povezava do opisa v DeloRadarju|oglas=zrsz%3A77/, 'Odvečni link na trenutni DeloRadar je odstranjen iz dialoga');
 const ieDetail=detailContext.detailMarkup({id:'zrsz:IE18067',reference:'IE18067',
   source:'ZRSZ / PoiščiDelo',title:'Zaposlitev',company:'Primer',
   url:'https://www.ess.gov.si/iskalci-zaposlitve/iskanje-zaposlitve/iskanje-dela/#/?iskalniTekst=Primer',
