@@ -127,10 +127,10 @@ assert.match(page, /\$\('refresh'\)\.replaceWith\(manualLink\)/, 'Podvojeni gumb
 assert.match(page, /<header class="topbar">[\s\S]*?id="updated"[\s\S]*?id="nextUpdate"[\s\S]*?id="refresh"[\s\S]*?<\/header>/, 'V glavi morata biti časa levo, gumb Osveži pa desno');
 assert.match(script, /function nextPlannedCapture\(now\)/, 'Naslednji predvideni zajem mora temeljiti na urniku GitHub Actions');
 assert.match(script, /Date\.UTC\(year,month,day,5,17\)/, 'Jutranji termin je 05:17 UTC');
-assert.match(script, /Date\.UTC\(year,month,day,17,17\)/, 'Večerni termin je 17:17 UTC');
+assert.doesNotMatch(script, /Date\.UTC\(year,month,day,17,17\)/, 'Odvečni večerni termin mora biti odstranjen');
 assert.doesNotMatch(page, /● Javni pregled|Poišči priložnosti iz trenutno povezanih virov/, 'Odvečni opis in oznaka javnega pregleda ne smeta ostati');
-assert.match(page, /class="srcfooter">Oglasi se posodabljajo približno vsakih 12 ur\./, 'Stanje povezav mora kazati dvanajsturni urnik');
-assert.match(page, /\.srcfooter'\)\.textContent='Oglasi se posodabljajo približno vsakih 12 ur\./, 'Javna stran ne sme prepisati novega urnika');
+assert.match(page, /class="srcfooter">Polni zajem poteka enkrat dnevno\./, 'Stanje povezav mora kazati dnevni urnik');
+assert.match(page, /\.srcfooter'\)\.textContent='Polni zajem poteka enkrat dnevno\./, 'Javna stran ne sme prepisati novega urnika');
 assert.match(page, /id="sourceSummary"/, 'Povzetek dosegljivosti virov mora biti viden brez odpiranja seznama');
 assert.match(page, /<details class="sourcedetails" id="sourceDetails"><summary id="sourcesToggle"><span id="sourceSummary" class="sourcesummary" role="status">/, 'Povzetek dosegljivosti mora biti gumb za razširitev skritega seznama');
 assert.doesNotMatch(page, /<details class="sourcedetails" id="sourceDetails"\s+open/, 'Seznam povezanih virov ne sme biti privzeto odprt');
@@ -174,7 +174,8 @@ assert.doesNotMatch(plannedBlock,/\{ name: 'LinkedIn Jobs'/,'LinkedIn iz javnega
 assert.match(collectorSource,/id: 'linkedin', name: LINKEDIN_SOURCE/,'Povezan LinkedIn mora biti razviden med viri');
 assert.doesNotMatch(page, /Ob odprtju preberemo zadnji objavljeni posnetek/, 'Podvojeno pojasnilo pod tabelo je odvečno');
 const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
-assert.match(workflow, /cron: '17 5,17 \* \* \*'/, 'Samodejno osveževanje mora teči dvakrat dnevno (na 12 ur)');
+assert.match(workflow, /cron: '17 5 \* \* \*'/, 'Samodejno osveževanje mora teči enkrat dnevno');
+assert.match(workflow, /inputs\.mode == 'incremental'/, 'Vključiti moramo ciljni uvoz samo novega vira');
 
 const extract = (start, end) => {
   const a = script.indexOf(start), b = script.indexOf(end, a);

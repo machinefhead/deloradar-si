@@ -148,6 +148,14 @@ Podobno sta na voljo `--sources=eures` in `--sources=careerjet`. Ločeni `.githu
 
 ## GitHub Actions in objava
 
-`.github/workflows/pages.yml` je pripravljen za periodični zajem ob 05:17 in 17:17 UTC ter objavo statične strani. Na vsakem zagonu uporablja neposredni ZRSZ HTTP in omejene dopolnilne zahtevke. Pred objavo z `DELORADAR_REQUIRE_ALL_SOURCES=1` preveri, da so **vsi** povezani viri dosegljivi, nato pa lokalni brskalniški preizkus preveri dialoge, deljive povezave in oba JSON-izvoza. Ob neuspehu preverjanja se predhodna objava ne zamenja. GitHub Actions se **ne izvajajo** zaradi lokalnih sprememb. Dokler sprememb ne preverimo in namerno potisnemo na `main`, se obstoječa spletna različica ne spremeni.
+`.github/workflows/pages.yml` izvede samodejni **polni zajem enkrat na dan, ob 05:17 UTC** (pozimi 06:17, poleti 07:17 v Sloveniji). Pred objavo z `DELORADAR_REQUIRE_ALL_SOURCES=1` preveri, da so **vsi** povezani viri uspešno zajeti, nato še brskalniški preizkus. Ob napaki prejšnja javna različica ostane objavljena.
+
+Na običajnem `push` v `main` se objavi **samo spremenjeni videz** z nespremenjenim zadnjim javnim `jobs.json`: to pomeni **nič zahtevkov zaposlitvenim portalom**. Enkratni, izrecno označeni commit `[import:mjob]` izvede ciljni Mjob zajem s 12 podrobnostmi namesto tega; vsa druga mesta ostanejo nedotaknjena. Ročni `workflow_dispatch` ponuja tri načine:
+
+- `ui`: enako, samo videz, brez obiskov portalov.
+- `incremental`, `source_id=mjob`, `mjob_limit=12`: prenese zadnji javni posnetek in uradni Mjob sitemap, nato zaporedno preveri največ 12 Mjob podrobnosti. **Vseh ostalih virov ne osveži.** Ohranijo se njihovi oglasi, povezave, statistike in datum zadnjega polnega zajema.
+- `full`: celoten strogi zajem, s 8 dodatnimi Mjob podrobnostmi na zagon.
+
+Mjob je obsežen javni vir s približno 1.844 kandidatnimi povezavami; z enim ciljnim zagonom ni pregledan v celoti. `jobs.json` zato vsebuje `discovery.mjob.checkedAt` in napredek `sources[].mjob`, javna stran pa opozarja na nepopoln pregled. Ne uporabljamo prijave, skritih API-jev ali zaobidenih omejitev; ob zavrnitvi dostopa prekinemo objavo. Za ročno lokalno preverjanje brez spremembe drugih virov: `MJOB_NEW_LIMIT=3 npm run build:incremental`. GitHub Actions se **ne izvajajo** zaradi lokalnih sprememb, preden jih namerno vključimo v `main`.
 
 GitHub Pages in objavljeni `jobs.json` sta tehnično javna; pred morebitno nadaljnjo objavo je treba preveriti obseg prikazanih vsebin in želeni način zasebnega dostopa. DeloRadar ne pošilja prijav na delovna mesta in ne zbira osebnih podatkov prijaviteljev.
