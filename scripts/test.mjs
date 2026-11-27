@@ -158,7 +158,7 @@ assert.ok(plannedBlock.includes('ZRSZ / PoiščiDelo')&&plannedBlock.includes('C
 assert.ok(!plannedBlock.includes("name: 'MojeDelo.com'")&&!plannedBlock.includes("name: 'Zaposlitev.info'"),'Že povezanih portalov ne podvajamo med dodatnimi viri');
 assert.match(plannedBlock,/EURES \(Slovenija\).*locationCodes=si/,'EURES mora odpreti iskanje, omejeno na Slovenijo');
 assert.ok((plannedBlock.match(/\{ name:/g)||[]).length>=6,'Katalog mora vsebovati smiselne naslednje kandidate');
-for(const name of ['SPAR Slovenija','HOFER Slovenija','Krka','Iskra']) {
+for(const name of ['SPAR Slovenija','HOFER Slovenija','Iskra']) {
   assert.ok(plannedBlock.includes("name: '"+name+"'"),'Potencialni kandidat manjka: '+name);
 }
 assert.ok(!plannedBlock.includes("name: 'OTP banka'"),'Povezana OTP banka ne sme ostati v katalogu nepovezanih');
@@ -176,6 +176,8 @@ assert.doesNotMatch(page, /Ob odprtju preberemo zadnji objavljeni posnetek/, 'Po
 const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
 assert.match(workflow, /cron: '17 5 \* \* \*'/, 'Samodejno osveževanje mora teči enkrat dnevno');
 assert.match(workflow, /inputs\.mode == 'incremental'/, 'Vključiti moramo ciljni uvoz samo novega vira');
+assert.match(workflow, /\[import:krka\]/, 'Nova Krka mora imeti ločen ciljni uvoz');
+assert.ok(!plannedBlock.includes("name: 'Krka'"),'Povezana Krka se odstrani iz kataloga nepovezanih');
 
 const extract = (start, end) => {
   const a = script.indexOf(start), b = script.indexOf(end, a);

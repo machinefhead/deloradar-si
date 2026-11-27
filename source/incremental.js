@@ -1,24 +1,25 @@
 // Ciljni zajem: ohrani vse tuje vire in njihove statistike iz javnega posnetka.
 import { markLikelyDuplicates } from './duplicates.js';
 import { MJOB_SOURCE, MJOB_URL } from './mjob.js';
+import { KRKA_SOURCE, KRKA_URL } from './krka.js';
 
-export function mergeMjobSnapshot(baseline, result, now = new Date().toISOString()) {
+function mergeSourceSnapshot(baseline, result, target, now) {
   if (!Array.isArray(baseline?.jobs) || !baseline.jobs.length ||
       !Array.isArray(baseline.sources) || !baseline.sources.length ||
       !Array.isArray(baseline.planned) || !Number.isFinite(Date.parse(baseline.checkedAt))) {
     throw Error('Ciljni zajem: javni posnetek ni popoln');
   }
-  if (!Array.isArray(result?.jobs) || !result.jobs.length || !result.progress || !result.state?.checkedAt ||
+  if (!Array.isArray(result?.jobs) || !result.jobs.length || !result.progress ||
       !Number.isFinite(Date.parse(now))) throw Error('Ciljni zajem: novi vir ni uspešno vrnil podatkov');
-  if (baseline.sources.some(source => source.name === MJOB_SOURCE && source.id !== 'mjob')) {
-    throw Error('Ciljni zajem: ime Mjob je že uporabljeno v drugem viru');
+  if (baseline.sources.some(source => source.name === target.name && source.id !== target.id)) {
+    throw Error('Ciljni zajem: ime vira je že uporabljeno');
   }
-  const existing = baseline.jobs.filter(job => job.source !== MJOB_SOURCE);
+  const existing = baseline.jobs.filter(job => job.source !== target.name);
   const ids = new Set(existing.map(job => job.id));
   for (const job of result.jobs) {
-    if (!/^mjob:\d{4,9}$/.test(job.id) || job.source !== MJOB_SOURCE || !job.title || !job.company ||
-        !job.location || !job.description || job.url !== MJOB_URL + '/podrobnosti/' + job.id.slice(5) ||
-        ids.has(job.id)) throw Error('Ciljni zajem: neveljaven ali podvojen Mjob oglas');
+    if (!target.validate(job) || job.source !== target.name || !job.title || !job.company ||
+        !job.location || !job.description ||
+        ids.has(job.id)) throw Error('Ciljni zajem: neveljaven ali podvojen oglas');
     ids.add(job.id);
   }
   if (ids.size !== existing.length + result.jobs.length) {
@@ -29,22 +30,35 @@ export function mergeMjobSnapshot(baseline, result, now = new Date().toISOString
   for (const job of jobs) if (job.duplicateGroup) {
     duplicates.set(job.source, (duplicates.get(job.source) || 0) + 1);
   }
-  const newSource = { id: 'mjob', name: MJOB_SOURCE, url: MJOB_URL,
-    status: 'live', count: result.jobs.length, likelyDuplicates: duplicates.get(MJOB_SOURCE) || 0,
-    mjob: result.progress, lastCheckedAt: now };
-  const sources = baseline.sources.some(s => s.id === 'mjob')
-    ? baseline.sources.map(s => s.id === 'mjob' ? newSource : { ...s, likelyDuplicates: duplicates.get(s.name) || 0 })
+  const newSource = { id: target.id, name: target.name, url: target.url,
+    status: 'live', count: result.jobs.length, likelyDuplicates: duplicates.get(target.name) || 0,
+    [target.id]: result.progress, lastCheckedAt: now };
+  const sources = baseline.sources.some(s => s.id === target.id)
+    ? baseline.sources.map(s => s.id === target.id ? newSource : { ...s, likelyDuplicates: duplicates.get(s.name) || 0 })
     : [...baseline.sources.map(s => ({ ...s, likelyDuplicates: duplicates.get(s.name) || 0 })), newSource];
   // Drugi metapodatki, preverjeni URL-ji, statusi in števci ostanejo enaki.
-  for (const old of baseline.sources.filter(s => s.id !== 'mjob')) {
+  for (const old of baseline.sources.filter(s => s.id !== target.id)) {
     const next = sources.find(s => s.id === old.id);
     if (!next || next.status !== old.status || next.count !== old.count || next.url !== old.url) {
       throw Error('Ciljni zajem: poskus spremembe drugega vira');
     }
   }
   return { ...baseline, jobs, sources,
-    planned: baseline.planned.filter(p => p.name !== MJOB_SOURCE),
-    discovery: { ...baseline.discovery, mjob: result.state },
+    planned: baseline.planned.filter(p => p.name !== target.name && !target.plannedNames.includes(p.name)),
+    discovery: result.state ? { ...baseline.discovery, [target.id]: result.state } : baseline.discovery,
     lastFullCheckedAt: baseline.lastFullCheckedAt || baseline.checkedAt,
-    captureMode: 'incremental', lastUpdatedSources: ['mjob'], checkedAt: now };
+    captureMode: 'incremental', lastUpdatedSources: [target.id], checkedAt: now };
+}
+
+export function mergeMjobSnapshot(baseline, result, now = new Date().toISOString()) {
+  if (!result?.state?.checkedAt) throw Error('Ciljni zajem: novi vir ni uspešno vrnil podatkov');
+  return mergeSourceSnapshot(baseline, result, { id: 'mjob', name: MJOB_SOURCE, url: MJOB_URL,
+    plannedNames: [], validate: job => /^mjob:\d{4,9}$/.test(job.id) &&
+      job.url === MJOB_URL + '/podrobnosti/' + job.id.slice(5) }, now);
+}
+
+export function mergeKrkaSnapshot(baseline, result, now = new Date().toISOString()) {
+  return mergeSourceSnapshot(baseline, result, { id: 'krka', name: KRKA_SOURCE, url: KRKA_URL,
+    plannedNames: ['Krka'], validate: job => /^krka:\d{3,9}$/.test(job.id) &&
+      job.url === `https://krka.csod.com/ux/ats/careersite/13/home/requisition/${job.id.slice(5)}?c=krka&lang=sl-SI` }, now);
 }

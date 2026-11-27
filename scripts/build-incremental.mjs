@@ -1,16 +1,17 @@
-// Samo Mjob: prenese zadnji javni posnetek in največ nekaj podrobnosti Mjob.
+// Samo izbrani novi vir: ostale oglase in povezave ohrani iz javnega posnetka.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { page } from '../source/page.js';
 import { getMjob, MJOB_SOURCE } from '../source/mjob.js';
-import { mergeMjobSnapshot } from '../source/incremental.js';
+import { getKrka, KRKA_SOURCE } from '../source/krka.js';
+import { mergeMjobSnapshot, mergeKrkaSnapshot } from '../source/incremental.js';
 
 const publicSnapshot = 'https://machinefhead.github.io/deloradar-si/jobs.json';
 const source = process.env.INCREMENTAL_SOURCE || 'mjob';
-assert.equal(source, 'mjob', 'Ciljni zajem za ta vir še ni pripravljen');
+assert.ok(['mjob', 'krka'].includes(source), 'Ciljni zajem za ta vir še ni pripravljen');
 const maxDetails = Number(process.env.MJOB_NEW_LIMIT || 12);
-assert.ok(Number.isInteger(maxDetails) && maxDetails >= 1 && maxDetails <= 50,
+assert.ok(source !== 'mjob' || (Number.isInteger(maxDetails) && maxDetails >= 1 && maxDetails <= 50),
   'Mjob: na en zagon dovoli največ 50 podrobnosti');
 const fixtureIndex = process.argv.indexOf('--fixture');
 let bytes;
@@ -27,14 +28,17 @@ if (fixtureIndex >= 0) {
 }
 assert.ok(bytes.length > 100 && bytes.length <= 35_000_000, 'Javni posnetek je prazen ali prevelik');
 const previous = JSON.parse(bytes.toString('utf8'));
-const result = await getMjob({ previous: previous.jobs?.filter(j => j.source === MJOB_SOURCE),
-  previousState: previous.discovery?.mjob, maxDetails });
-const data = mergeMjobSnapshot(previous, result);
+const result = source === 'mjob' ? await getMjob({
+  previous: previous.jobs?.filter(j => j.source === MJOB_SOURCE),
+  previousState: previous.discovery?.mjob, maxDetails,
+}) : await getKrka();
+const data = source === 'mjob' ? mergeMjobSnapshot(previous, result) : mergeKrkaSnapshot(previous, result);
 await mkdir('dist', { recursive: true });
 await Promise.all([
   writeFile('dist/index.html', page, 'utf8'),
   writeFile('dist/jobs.json', JSON.stringify(data), 'utf8'),
 ]);
-console.log(`Ciljni zajem: Mjob ${result.jobs.length} oglasov, skupaj ${data.jobs.length}; ` +
-  `ohranjenih ${previous.jobs.length - previous.jobs.filter(j => j.source === MJOB_SOURCE).length} ` +
+const sourceName = source === 'mjob' ? MJOB_SOURCE : KRKA_SOURCE;
+console.log(`Ciljni zajem: ${sourceName} ${result.jobs.length} oglasov, skupaj ${data.jobs.length}; ` +
+  `ohranjenih ${previous.jobs.length - previous.jobs.filter(j => j.source === sourceName).length} ` +
   'oglasov iz drugih virov; drugi portali niso bili obiskani.');

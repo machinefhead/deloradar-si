@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { mergeMjobSnapshot } from '../source/incremental.js';
+import { mergeMjobSnapshot, mergeKrkaSnapshot } from '../source/incremental.js';
 import { MJOB_SOURCE, MJOB_URL } from '../source/mjob.js';
+import { KRKA_SOURCE, KRKA_URL } from '../source/krka.js';
 
 const previous = { jobs: [{ id: 'optius:A', source: 'Optius', title: 'Prodaja',
   url: 'https://www.optius.com/a', company: 'ABC', location: 'Maribor', duplicateGroup: 'staro' }],
@@ -33,4 +34,21 @@ assert.equal(second.lastFullCheckedAt, previous.checkedAt);
 assert.deepEqual(second.jobs[0], merged.jobs[0]);
 assert.throws(() => mergeMjobSnapshot(previous, { ...result, jobs: [] }), /ni uspešno/);
 assert.throws(() => mergeMjobSnapshot(previous, { ...result, jobs: [{ ...job, url: 'http://bad/' }] }), /neveljaven/);
+const baselineKrka = { ...merged, planned: [{ name: 'Krka' }, ...merged.planned] };
+const krkaJob = { id: 'krka:9221', source: KRKA_SOURCE, title: 'Tehnolog',
+  company: KRKA_SOURCE, location: 'Novo mesto', deadline: '2026-12-06', date: '',
+  description: 'Pregled in vzdrževanje laboratorijske opreme',
+  url: 'https://krka.csod.com/ux/ats/careersite/13/home/requisition/9221?c=krka&lang=sl-SI' };
+const krkaMerged = mergeKrkaSnapshot(baselineKrka, { jobs: [krkaJob],
+  progress: { checked: 1, total: 1, pending: false } }, '2026-11-28T10:00:00Z');
+assert.equal(krkaMerged.jobs.length, 3);
+assert.deepEqual(krkaMerged.jobs[0], baselineKrka.jobs[0]);
+assert.equal(krkaMerged.sources.find(s => s.id === 'mjob').count, 1);
+assert.equal(krkaMerged.sources.find(s => s.id === 'krka').url, KRKA_URL);
+assert.deepEqual(krkaMerged.lastUpdatedSources, ['krka']);
+assert.deepEqual(krkaMerged.discovery.mjob, merged.discovery.mjob);
+assert.equal(krkaMerged.planned.some(s => s.name === 'Krka'), false);
+assert.equal(krkaMerged.lastFullCheckedAt, previous.checkedAt);
+assert.throws(() => mergeKrkaSnapshot(baselineKrka, { jobs: [{ ...krkaJob, url: 'https://bad.invalid/' }],
+  progress: { checked: 1, total: 1 } }), /neveljaven/);
 console.log('Ciljni zajem: stari oglasi, viri, opis, načrti in datum polnega zajema ostanejo ohranjeni.');

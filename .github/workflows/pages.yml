@@ -23,6 +23,7 @@ on:
         type: choice
         options:
           - mjob
+          - krka
       mjob_limit:
         description: 'Največ Mjob podrobnosti na zagon (1–50)'
         required: true
@@ -53,12 +54,12 @@ jobs:
       - name: Preveri kodo
         run: npm test
       - name: Pripravi samo videz iz zadnjega javnega posnetka
-        if: (github.event_name == 'push' && !contains(github.event.head_commit.message, '[import:mjob]')) || (github.event_name == 'workflow_dispatch' && inputs.mode == 'ui')
+        if: (github.event_name == 'push' && !contains(github.event.head_commit.message, '[import:mjob]') && !contains(github.event.head_commit.message, '[import:krka]')) || (github.event_name == 'workflow_dispatch' && inputs.mode == 'ui')
         run: npm run build:ui
       - name: Ciljno preveri in objavi samo izbrani novi vir
-        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[import:mjob]')) || (github.event_name == 'workflow_dispatch' && inputs.mode == 'incremental')
+        if: (github.event_name == 'push' && (contains(github.event.head_commit.message, '[import:mjob]') || contains(github.event.head_commit.message, '[import:krka]'))) || (github.event_name == 'workflow_dispatch' && inputs.mode == 'incremental')
         env:
-          INCREMENTAL_SOURCE: ${{ github.event_name == 'push' && 'mjob' || inputs.source_id }}
+          INCREMENTAL_SOURCE: ${{ github.event_name == 'push' && (contains(github.event.head_commit.message, '[import:krka]') && 'krka' || 'mjob') || inputs.source_id }}
           MJOB_NEW_LIMIT: ${{ github.event_name == 'push' && '12' || inputs.mjob_limit }}
         run: npm run build:incremental
       - name: Pridobi oglase in zgradi stran
