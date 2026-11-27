@@ -32,5 +32,10 @@ jobs:
         env:
           INCREMENTAL_SOURCE: krka
         run: npm run build:incremental
+      - name: Preveri uradne Telekomove razpise (samo ta vir)
+        if: contains(github.event.pull_request.title, '[import:telekom]')
+        env:
+          INCREMENTAL_SOURCE: telekom
+        run: npm run build:incremental
       - name: Preveri podrobnosti oglasov v brskalniku in na telefonu
         run: node scripts/test-browser.mjs

@@ -5,11 +5,12 @@ import { resolve } from 'node:path';
 import { page } from '../source/page.js';
 import { getMjob, MJOB_SOURCE } from '../source/mjob.js';
 import { getKrka, KRKA_SOURCE } from '../source/krka.js';
-import { mergeMjobSnapshot, mergeKrkaSnapshot } from '../source/incremental.js';
+import { getTelekom, TELEKOM_SOURCE } from '../source/telekom.js';
+import { mergeMjobSnapshot, mergeKrkaSnapshot, mergeTelekomSnapshot } from '../source/incremental.js';
 
 const publicSnapshot = 'https://machinefhead.github.io/deloradar-si/jobs.json';
 const source = process.env.INCREMENTAL_SOURCE || 'mjob';
-assert.ok(['mjob', 'krka'].includes(source), 'Ciljni zajem za ta vir še ni pripravljen');
+assert.ok(['mjob', 'krka', 'telekom'].includes(source), 'Ciljni zajem za ta vir še ni pripravljen');
 const maxDetails = Number(process.env.MJOB_NEW_LIMIT || 12);
 assert.ok(source !== 'mjob' || (Number.isInteger(maxDetails) && maxDetails >= 1 && maxDetails <= 50),
   'Mjob: na en zagon dovoli največ 50 podrobnosti');
@@ -31,14 +32,15 @@ const previous = JSON.parse(bytes.toString('utf8'));
 const result = source === 'mjob' ? await getMjob({
   previous: previous.jobs?.filter(j => j.source === MJOB_SOURCE),
   previousState: previous.discovery?.mjob, maxDetails,
-}) : await getKrka();
-const data = source === 'mjob' ? mergeMjobSnapshot(previous, result) : mergeKrkaSnapshot(previous, result);
+}) : source === 'krka' ? await getKrka() : await getTelekom();
+const data = source === 'mjob' ? mergeMjobSnapshot(previous, result) :
+  source === 'krka' ? mergeKrkaSnapshot(previous, result) : mergeTelekomSnapshot(previous, result);
 await mkdir('dist', { recursive: true });
 await Promise.all([
   writeFile('dist/index.html', page, 'utf8'),
   writeFile('dist/jobs.json', JSON.stringify(data), 'utf8'),
 ]);
-const sourceName = source === 'mjob' ? MJOB_SOURCE : KRKA_SOURCE;
+const sourceName = source === 'mjob' ? MJOB_SOURCE : source === 'krka' ? KRKA_SOURCE : TELEKOM_SOURCE;
 console.log(`Ciljni zajem: ${sourceName} ${result.jobs.length} oglasov, skupaj ${data.jobs.length}; ` +
   `ohranjenih ${previous.jobs.length - previous.jobs.filter(j => j.source === sourceName).length} ` +
   'oglasov iz drugih virov; drugi portali niso bili obiskani.');

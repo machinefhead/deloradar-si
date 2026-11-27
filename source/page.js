@@ -85,7 +85,7 @@ export const page = String.raw`<!doctype html>
     .sourceshead,.sourceitem{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
     .sourceshead{padding:5px 0 9px;color:var(--muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px}
     .sourceshead span:last-child{text-align:right}
-    .sourceslist .sourceitem{margin:0;padding:9px 0;border-bottom:1px solid var(--line)}
+    .sourceslist .sourceitem{margin:0;padding:9px 0}
     .sourceitem .name{min-width:0;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
     .sourceitem .pill{justify-self:end;min-width:47px;text-align:center;white-space:nowrap;padding:5px 8px;font-size:11px;font-variant-numeric:tabular-nums}
     .sourceinsights{margin-top:13px;border-top:1px solid var(--line);padding-top:11px;color:var(--muted)}
@@ -190,7 +190,7 @@ export const page = String.raw`<!doctype html>
 </head>
 <body>
   <div class="shell">
-    <header class="topbar"><a class="brand" href="./"><span class="mark">⌁</span><span>Delo<span>Radar</span></span></a><div class="refreshbox"><div class="refreshmeta"><p class="refreshinfo" id="updated">Zadnji zajem oglasov: —</p><p class="refreshinfo" id="nextUpdate">Naslednji predvideni zajem: —</p></div><button id="refresh" class="refresh" type="button">↻ &nbsp; Osveži oglase</button></div></header>
+    <header class="topbar"><a class="brand" href="./"><span class="mark">⌁</span><span>Delo<span>Radar</span></span></a><div class="refreshbox"><div class="refreshmeta"><p class="refreshinfo" id="updated">Zadnji celotni zajem: —</p><p class="refreshinfo" id="nextUpdate">Naslednji predvideni zajem: —</p></div><button id="refresh" class="refresh" type="button">↻ &nbsp; Osveži oglase</button></div></header>
     <section class="intro"><div><div class="eyebrow">Tvoj pregled slovenskega trga dela</div><h1>Vsa zanimiva dela.<br>Na enem mestu.</h1></div></section>
     <section class="stats" aria-label="Statistika"><div class="stat highlight"><span class="kicker">Zajeti oglasi</span><span class="n" id="total">—</span><span class="lightdot"></span><span class="foot">v povezanih virih</span></div><div class="stat"><span class="kicker">Povezani viri</span><span class="n" id="sourcesNum">—</span><span class="foot">od 2 začetnih</span></div><div class="stat"><span class="kicker">Shranjeni</span><span class="n" id="savedNum">0</span><span class="foot">v tem brskalniku</span></div><div class="stat"><span class="kicker">Kontaktirani</span><span class="n" id="appliedNum">0</span><span class="foot">označeno ročno</span></div></section>
     <div class="content"><aside class="sidebar"><div class="panel"><div class="filterhead"><div class="sectionlabel">Filtriraj oglase</div><button class="clear" id="clear" type="button">Počisti</button></div><div class="filtergroup"><label for="search">Naziv, podjetje ali kraj</label><input class="field" type="search" id="search" placeholder="npr. električar, Maribor" autocomplete="off"></div><div class="filtergroup"><label for="sourceFilter">Zaposlitveni portal</label><select class="field" id="sourceFilter"><option value="">Vsi povezani</option><option>Optius</option><option>Kariera.si</option></select></div><div class="filtergroup"><label for="place">Lokacija</label><input class="field" id="place" placeholder="Cela Slovenija"></div><div class="filtergroup"><label>Moje oznake</label><label class="checkrow"><input type="checkbox" id="onlySaved"> Samo shranjeni</label><label class="checkrow"><input type="checkbox" id="hideApplied"> Skrij kontaktirane</label></div></div>
@@ -204,7 +204,7 @@ export const page = String.raw`<!doctype html>
   <script>
     (function(){
       'use strict';
-      var jobs=[], sources=[], planned=[], checkedAt='', captureMode='', lastFullCheckedAt='', lastUpdatedSources=[], state={};
+      var jobs=[], sources=[], planned=[], checkedAt='', captureMode='', lastFullCheckedAt='', state={};
       var key='deloradar-status-v1';
       try {state=JSON.parse(localStorage.getItem(key)||'{}')||{}}catch(e){state={}}
       var $=function(id){return document.getElementById(id)};
@@ -486,6 +486,8 @@ export const page = String.raw`<!doctype html>
         if(mjobSource)insights.push('<p><strong>Mjob:</strong> '+mjobSource.count+' zajetih študentskih del · pregledanih '+mjobSource.mjob.checked+' od '+mjobSource.mjob.total+' javnih povezav · '+(mjobSource.mjob.pending?'zajem je še nepopoln in se nadaljuje postopno':'vsi kandidati preverjeni')+'.</p>');
         var krkaSource=sources.find(function(s){return s.id==='krka'&&s.status==='live'&&s.krka});
         if(krkaSource)insights.push('<p><strong>Krka:</strong> '+krkaSource.count+' aktualnih razpisov · pregledanih '+krkaSource.krka.checked+' od '+krkaSource.krka.total+' javnih objav · '+krkaSource.krka.general+' splošnih prijav izločenih · brez dodatnega obiskovanja posameznih oglasov.</p>');
+        var telekomSource=sources.find(function(s){return s.id==='telekom'&&s.status==='live'&&s.telekom});
+        if(telekomSource)insights.push('<p><strong>Telekom Slovenije:</strong> '+telekomSource.count+' aktualnih razpisov · pregledanih '+telekomSource.telekom.checked+' od '+telekomSource.telekom.total+' uradnih objav.</p>');
         $('sourceInsightsBody').innerHTML=insights.join('');
         $('sourceInsights').hidden=!insights.length;
         var active=sources.filter(function(s){return s.status==='live'}).length;
@@ -493,7 +495,7 @@ export const page = String.raw`<!doctype html>
         $('sourcesNum').textContent=active;
         document.querySelector('.stats .stat:nth-child(2) .foot').textContent='od '+sources.length+' povezanih';
         var linkedNames=new Set(sources.map(function(s){return s.name}));
-        var pending=planned.filter(function(s){return !linkedNames.has(s.name)}).slice().sort(function(a,b){return (a.priority||3)-(b.priority||3)||a.name.localeCompare(b.name,'sl')});
+        var pending=planned.filter(function(s){return s.name!=='Careerjet'&&!linkedNames.has(s.name)}).slice().sort(function(a,b){return (a.priority||3)-(b.priority||3)||a.name.localeCompare(b.name,'sl')});
         $('planned').innerHTML=pending.map(function(s){return '<div class="sourcecard"><a target="_blank" rel="noopener noreferrer" href="'+safe(s.href)+'">'+safe(s.name)+' ↗</a><p>'+safe(s.note)+'</p><span class="tag">'+safe(s.status||'V raziskavi')+'</span></div>'}).join('')||'<p>Vsi načrtovani viri so trenutno povezani.</p>';
         var broken=sources.filter(function(s){return s.status!=='live'});
         $('notice').innerHTML=broken.length?'<div class="notice">Pozor: '+broken.map(function(x){return safe(x.name)}).join(', ')+' trenutno ni dosegljiv. Spodaj so samo uspešno pridobljeni oglasi.</div>':'';
@@ -739,7 +741,7 @@ export const page = String.raw`<!doctype html>
         if(offline){$('refresh').disabled=true;$('refresh').textContent='↻   Nalagam posnetek …'}
         $('progress').style.display='block';
         (offline?Promise.resolve(window.__DELORADAR_OFFLINE_DATA__):fetch((window.__DELORADAR_DATA_URL__||'./jobs.json')+'?v='+Date.now(),{cache:'no-store',headers:{accept:'application/json'}}).then(function(r){if(!r.ok)throw Error('Strežnik ni dosegljiv');return r.json()})).then(function(data){
-          jobs=(data.jobs||[]).map(function(j){var link=resolvedLink(j);return link===j.url?j:Object.assign({},j,{url:link})});sources=data.sources||[];planned=data.planned||[];checkedAt=data.checkedAt||'';captureMode=data.captureMode||'full';lastFullCheckedAt=data.lastFullCheckedAt||'';lastUpdatedSources=data.lastUpdatedSources||[];
+          jobs=(data.jobs||[]).map(function(j){var link=resolvedLink(j);return link===j.url?j:Object.assign({},j,{url:link})});sources=data.sources||[];planned=(data.planned||[]).filter(function(s){return s.name!=='Careerjet'});checkedAt=data.checkedAt||'';captureMode=data.captureMode||'full';lastFullCheckedAt=data.lastFullCheckedAt||'';
           indexDuplicateGroups();updateStats();
           configureMulti('sourceFilter',sources.map(function(s){return s.name}),'Vsi portali');
           configureMulti('city',Array.from(new Set(jobs.map(function(j){return j.location}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'sl')}),'Vsi kraji');
@@ -751,8 +753,8 @@ export const page = String.raw`<!doctype html>
             noticeMessage('LOKALNI PREIZKUS: Posnetek resničnih oglasov. Ni samodejnega osveževanja; za aktualne oglase preveri povezave pri izvornih portalih.');
             $('updated').textContent='Posnetek zbran: '+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+'. Kategorije so ocenjene iz nazivov; neznane regije so označene.';
           }else{
-            var updatedNames=lastUpdatedSources.map(function(id){return id==='mjob'?'Mjob':id==='krka'?'Krka':id}).join(', ');
-            $('updated').textContent=(captureMode==='incremental'?'Zadnji ciljni zajem ('+(updatedNames||'izbrani viri')+'): ':'Zadnji zajem oglasov: ')+(checkedAt?new Intl.DateTimeFormat('sl-SI',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Ljubljana'}).format(new Date(checkedAt)):'—')+(captureMode==='incremental'&&lastFullCheckedAt?' · celoten: '+localDateTime(new Date(lastFullCheckedAt)):'');
+            var fullCapture=captureMode==='incremental'?lastFullCheckedAt:checkedAt;
+            $('updated').textContent='Zadnji celotni zajem: '+(fullCapture?localDateTime(new Date(fullCapture)):'—');
           }
         }).catch(function(){noticeMessage('Oglasov trenutno ni mogoče pridobiti. Preveri povezavo in poskusi znova.');$('jobRows').innerHTML='<tr><td colspan="6" class="empty">Napaka pri pridobivanju podatkov.</td></tr>'}).finally(function(){$('progress').style.display='none';if(offline){$('refresh').disabled=false;$('refresh').textContent='↻   Preberi testni posnetek'}});
       }

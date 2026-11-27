@@ -2,6 +2,7 @@
 import { markLikelyDuplicates } from './duplicates.js';
 import { MJOB_SOURCE, MJOB_URL } from './mjob.js';
 import { KRKA_SOURCE, KRKA_URL } from './krka.js';
+import { TELEKOM_SOURCE, TELEKOM_URL } from './telekom.js';
 
 function mergeSourceSnapshot(baseline, result, target, now) {
   if (!Array.isArray(baseline?.jobs) || !baseline.jobs.length ||
@@ -44,7 +45,7 @@ function mergeSourceSnapshot(baseline, result, target, now) {
     }
   }
   return { ...baseline, jobs, sources,
-    planned: baseline.planned.filter(p => p.name !== target.name && !target.plannedNames.includes(p.name)),
+    planned: baseline.planned.filter(p => p.name !== 'Careerjet' && p.name !== target.name && !target.plannedNames.includes(p.name)),
     discovery: result.state ? { ...baseline.discovery, [target.id]: result.state } : baseline.discovery,
     lastFullCheckedAt: baseline.lastFullCheckedAt || baseline.checkedAt,
     captureMode: 'incremental', lastUpdatedSources: [target.id], checkedAt: now };
@@ -61,4 +62,11 @@ export function mergeKrkaSnapshot(baseline, result, now = new Date().toISOString
   return mergeSourceSnapshot(baseline, result, { id: 'krka', name: KRKA_SOURCE, url: KRKA_URL,
     plannedNames: ['Krka'], validate: job => /^krka:\d{3,9}$/.test(job.id) &&
       job.url === `https://krka.csod.com/ux/ats/careersite/13/home/requisition/${job.id.slice(5)}?c=krka&lang=sl-SI` }, now);
+}
+
+export function mergeTelekomSnapshot(baseline, result, now = new Date().toISOString()) {
+  return mergeSourceSnapshot(baseline, result, { id: 'telekom', name: TELEKOM_SOURCE, url: TELEKOM_URL,
+    plannedNames: [], validate: job => /^telekom:\d{8,12}$/.test(job.id) &&
+      new URL(job.url).origin === 'https://zaposlitev.telekom.si' &&
+      new URL(job.url).pathname.endsWith(`/${job.id.slice(8)}/`) }, now);
 }
