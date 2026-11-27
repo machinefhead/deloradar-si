@@ -49,7 +49,7 @@ function slDate(value) {
   return Number.isFinite(Date.parse(date + 'T00:00:00Z')) ? date : '';
 }
 
-export function parseSparJob(html, url, category, regions = [], today = new Date().toISOString().slice(0, 10)) {
+export function parseSparJob(html, url, category, regions = [], today = new Date().toISOString().slice(0, 10), verifiedAt = new Date().toISOString()) {
   if (!html) return null; // 404/410 = že umaknjen razpis.
   const parsed = new URL(url);
   if (parsed.origin !== ORIGIN || !/^\/zaposlitev\/[a-z0-9-]+$/.test(parsed.pathname)) {
@@ -86,7 +86,7 @@ export function parseSparJob(html, url, category, regions = [], today = new Date
     ...(category ? { jobCategory: category } : {}),
     ...(category === 'Študentsko delo' ? { employmentType: 'Študentsko delo' } : {}),
     ...(regions.length ? { regions } : {}),
-    sparVerifiedAt: new Date().toISOString(),
+    sparVerifiedAt: verifiedAt,
   };
 }
 
@@ -127,7 +127,7 @@ export async function getSpar({ previous = [], fetchHtml = publicHtml,
         requested++;
         const html = await fetchHtml(item.url);
         if (!html) { removed++; return null; }
-        return parseSparJob(html, item.url, item.category, item.regions, now.slice(0, 10));
+        return parseSparJob(html, item.url, item.category, item.regions, now.slice(0, 10), now);
       } catch (error) {
         failures++;
         console.warn(`SPAR: neuspelo preverjanje javnega oglasa (${String(error?.message || error)})`);

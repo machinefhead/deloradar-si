@@ -46,6 +46,14 @@ try {
       'Uokvirjeno stanje povezav mora ohraniti prejšnji naslov');
     assert.match(await page.locator('#nextUpdate').innerText(), /Naslednji predvideni zajem:/,
       'Glava mora kazati predvideni naslednji termin');
+    const fullCapture = snapshot.captureMode === 'incremental' ? snapshot.lastFullCheckedAt : snapshot.checkedAt;
+    const fullCaptureLabel = fullCapture ? new Intl.DateTimeFormat('sl-SI', {
+      dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Ljubljana',
+    }).format(new Date(fullCapture)) : '—';
+    assert.equal(await page.locator('#updated').innerText(), 'Zadnji celotni zajem: ' + fullCaptureLabel,
+      'Ciljni zajemi ne smejo spremeniti datuma zadnjega celotnega zajema v glavi');
+    assert.equal(await page.locator('#planned .sourcecard').filter({ hasText: 'Careerjet' }).count(), 0,
+      'Careerjet kot agregator ni več kandidat za samostojen uvoz');
     const headerLayout = await page.evaluate(() => ({
       // Produkcijska stran zamenja gumb z varno povezavo na GitHub Actions.
       refresh: document.querySelector('.refreshbox .refresh').getBoundingClientRect().toJSON(),
@@ -62,6 +70,9 @@ try {
     assert.equal(await page.locator('#sourceDetails').evaluate(element => element.open), true);
     assert.equal(await page.locator('#sourceStatus').isVisible(), true,
       'Gumb mora omogočiti prikaz vseh povezanih virov');
+    assert.equal(await page.locator('#sourceStatus .sourceitem').first().evaluate(element =>
+      getComputedStyle(element).borderBottomWidth), '0px',
+    'Posamezne vrstice povezanih virov nimajo ločilnih črt');
     const sourceLayout = await page.locator('#sourceStatus').evaluate(element => ({
       height: element.clientHeight, fullHeight: element.scrollHeight,
       badges: [...element.querySelectorAll('.sourceitem .pill')].slice(0, 12).map(badge => badge.getBoundingClientRect().right),

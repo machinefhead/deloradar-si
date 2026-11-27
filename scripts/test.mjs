@@ -136,6 +136,9 @@ assert.match(page, /<details class="sourcedetails" id="sourceDetails"><summary i
 assert.doesNotMatch(page, /<details class="sourcedetails" id="sourceDetails"\s+open/, 'Seznam povezanih virov ne sme biti privzeto odprt');
 assert.doesNotMatch(page, /this\.open\?'Skrij povezane vire':'Prikaži povezane vire'/, 'Veliki gumb in zastareli napis za razpiranje virov se ne smeta vrniti');
 assert.match(page, /<div class="panel sourcespanel"><div class="sectionlabel">Stanje povezav<\/div><details class="sourcedetails"/, 'Stanje virov je v prejšnjem uokvirjenem panelu');
+assert.match(page, /\.sourceslist \.sourceitem\{margin:0;padding:9px 0\}/, 'Seznam virov ne sme imeti ločilnih črt');
+assert.match(page, /Zadnji celotni zajem: —/, 'V glavi mora biti samo datum zadnjega celotnega zajema');
+assert.doesNotMatch(page, /Zadnji ciljni zajem/, 'Ciljni zajemi ne smejo biti izpisani v glavi');
 assert.match(page, /\.sourceslist\{[^}]*max-height:none;overflow:visible\}/, 'Odprt seznam virov ne sme imeti notranjega drsnika');
 assert.match(page, /id="sourceInsights"/, 'Tehnične podrobnosti o zajemu naj bodo ločene od poravnanih vrstic virov');
 assert.match(page, /\.sidebar>\.sourcespanel\{display:block\}/, 'Panel virov mora ostati viden tudi na telefonu');
@@ -144,7 +147,7 @@ assert.match(page, /id="planned"><div class="sourcecard"><p>Pridobivam seznam ne
 assert.doesNotMatch(page, /Za ta iskalnika še nimamo samodejnega izvoza/, 'Ko EURES priključimo, ne sme ostati zastarelo navodilo');
 assert.doesNotMatch(page, /id="showCatalog"|id="topSources"|function showSources\(/, 'Odvečna gumba za prikaz istih povezav morata biti odstranjena');
 assert.doesNotMatch(page, /sidebar\.sources-open/, 'Seznam virov ne sme zahtevati dodatne mobilne navigacije');
-assert.match(script, /planned\.filter\(function\(s\)\{return !linkedNames\.has\(s\.name\)\}\)/, 'Na dnu pokažemo vse načrtovane, a še nepovezane vire');
+assert.match(script, /planned\.filter\(function\(s\)\{return s\.name!=='Careerjet'&&!linkedNames\.has\(s\.name\)\}\)/, 'Na dnu pokažemo samo smiselne nepovezane vire, brez Careerjeta');
 assert.match(script, /safe\(s\.status\|\|'V raziskavi'\)/, 'Status raziskave vira mora biti viden');
 assert.match(script, /sources\.slice\(\)\.sort\(function\(a,b\)\{return b\.count-a\.count/, 'Seznam virov naj bo razvrščen po količini oglasov');
 assert.doesNotMatch(page, /Več oglasov na velikih portalih/, 'Povezana portala se ne smeta prikazovati kot nepovezana');
@@ -154,7 +157,7 @@ assert.match(page, /Iskanje po delodajalcu/, 'Pri ZRSZ mora biti jasno, da povez
 assert.match(page, /<h2>Še nepovezani viri<\/h2>/, 'Seznam naj jasno razlikuje nepovezane vire od že zajetih');
 const collectorSource=readFileSync(new URL('../source/collector.js',import.meta.url),'utf8');
 const plannedBlock=collectorSource.match(/const PLANNED = \[([\s\S]*?)\n\];/)?.[1]||'';
-assert.ok(plannedBlock.includes('ZRSZ / PoiščiDelo')&&plannedBlock.includes('Careerjet'),'Dostop do dveh glavnih nepovezanih iskalnikov mora ostati');
+assert.ok(plannedBlock.includes('ZRSZ / PoiščiDelo')&&!plannedBlock.includes("name: 'Careerjet'"),'Careerjet kot agregator odstranimo iz katalogiziranih kandidatov');
 assert.ok(!plannedBlock.includes("name: 'MojeDelo.com'")&&!plannedBlock.includes("name: 'Zaposlitev.info'"),'Že povezanih portalov ne podvajamo med dodatnimi viri');
 assert.match(plannedBlock,/EURES \(Slovenija\).*locationCodes=si/,'EURES mora odpreti iskanje, omejeno na Slovenijo');
 assert.ok((plannedBlock.match(/\{ name:/g)||[]).length>=6,'Katalog mora vsebovati smiselne naslednje kandidate');
@@ -198,7 +201,8 @@ const sourceContext = {
     { id: 'eures', name: 'EURES', status: 'live', count: 25 },
     { id: 'adecco', name: 'Adecco', status: 'live', count: 161 },
   ],
-  planned: [{ name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Še ni uvoza' }],
+  planned: [{ name: 'Careerjet', href: 'https://www.careerjet.si/', note: 'Agregator' },
+    { name: 'HOFER Slovenija', href: 'https://kariera.hofer.si/', note: 'V raziskavi' }],
   $: id => sourceElements.get(id),
   safe: value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;'),
   document: { querySelector: () => sourceFooter },
@@ -215,7 +219,8 @@ assert.match(sourceElements.get('sourceInsightsBody').innerHTML, /uradni iskalni
   'Stanje povezav mora pošteno prikazati različno število iz obeh uradnih seznamov');
 assert.match(sourceElements.get('sourceInsightsBody').innerHTML, /opis v DeloRadarju in iskanje ZRSZ/, 'Manjkajoči uradni ID dobi pošteno označen način dostopa');
 assert.match(sourceElements.get('sourceStatus').innerHTML, /EURES/);
-assert.match(sourceElements.get('planned').innerHTML, /Careerjet/);
+assert.match(sourceElements.get('planned').innerHTML, /HOFER Slovenija/);
+assert.doesNotMatch(sourceElements.get('planned').innerHTML, /Careerjet/, 'Stari javni posnetki lahko vsebujejo Careerjet, vendar ga UI skrije');
 assert.doesNotMatch(sourceElements.get('planned').innerHTML, /EURES/, 'Povezanega EURES ne smemo prikazati kot nepovezan vir');
 assert.equal(sourceElements.get('notice').innerHTML, '', 'Ko vsi viri delujejo, ne prikazujemo opozorila');
 sourceContext.sources[1].status = 'error';

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { mergeMjobSnapshot, mergeKrkaSnapshot } from '../source/incremental.js';
+import { mergeMjobSnapshot, mergeKrkaSnapshot, mergeTelekomSnapshot } from '../source/incremental.js';
 import { MJOB_SOURCE, MJOB_URL } from '../source/mjob.js';
 import { KRKA_SOURCE, KRKA_URL } from '../source/krka.js';
+import { TELEKOM_SOURCE, TELEKOM_URL } from '../source/telekom.js';
 
 const previous = { jobs: [{ id: 'optius:A', source: 'Optius', title: 'Prodaja',
   url: 'https://www.optius.com/a', company: 'ABC', location: 'Maribor', duplicateGroup: 'staro' }],
@@ -51,4 +52,20 @@ assert.equal(krkaMerged.planned.some(s => s.name === 'Krka'), false);
 assert.equal(krkaMerged.lastFullCheckedAt, previous.checkedAt);
 assert.throws(() => mergeKrkaSnapshot(baselineKrka, { jobs: [{ ...krkaJob, url: 'https://bad.invalid/' }],
   progress: { checked: 1, total: 1 } }), /neveljaven/);
+const telekomJob = { id: 'telekom:1458743333', source: TELEKOM_SOURCE,
+  title: 'tehnik na terenu', company: 'Telekom Slovenije, d.d.', location: 'Maribor',
+  description: 'Javna ponudba za terenskega tehnika v Mariboru', date: '2026-11-19',
+  deadline: '2026-11-29',
+  url: 'https://zaposlitev.telekom.si/job/tehnik-na-terenu/1458743333/' };
+const baselineTelekom = { ...krkaMerged, planned: [...krkaMerged.planned, { name: 'Careerjet' }] };
+const telecomMerged = mergeTelekomSnapshot(baselineTelekom, { jobs: [telekomJob],
+  progress: { checked: 1, total: 1, pending: false } }, '2026-11-28T10:00:00Z');
+assert.equal(telecomMerged.jobs.length, 4);
+assert.equal(telecomMerged.sources.find(s => s.id === 'telekom').url, TELEKOM_URL);
+assert.deepEqual(telecomMerged.lastUpdatedSources, ['telekom']);
+assert.equal(telecomMerged.lastFullCheckedAt, previous.checkedAt);
+assert.equal(telecomMerged.planned.some(s => s.name === 'Careerjet'), false);
+assert.deepEqual(telecomMerged.jobs.slice(0, -1), krkaMerged.jobs);
+assert.throws(() => mergeTelekomSnapshot(baselineTelekom, { jobs: [{ ...telekomJob,
+  url: 'https://bad.invalid/' }], progress: { checked: 1, total: 1 } }), /neveljaven/);
 console.log('Ciljni zajem: stari oglasi, viri, opis, načrti in datum polnega zajema ostanejo ohranjeni.');
