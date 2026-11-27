@@ -3,6 +3,7 @@ import { markLikelyDuplicates } from './duplicates.js';
 import { MJOB_SOURCE, MJOB_URL } from './mjob.js';
 import { KRKA_SOURCE, KRKA_URL } from './krka.js';
 import { TELEKOM_SOURCE, TELEKOM_URL } from './telekom.js';
+import { A1_SOURCE, A1_URL } from './a1.js';
 
 function mergeSourceSnapshot(baseline, result, target, now) {
   if (!Array.isArray(baseline?.jobs) || !baseline.jobs.length ||
@@ -69,4 +70,11 @@ export function mergeTelekomSnapshot(baseline, result, now = new Date().toISOStr
     plannedNames: [], validate: job => /^telekom:\d{8,12}$/.test(job.id) &&
       new URL(job.url).origin === 'https://zaposlitev.telekom.si' &&
       new URL(job.url).pathname.endsWith(`/${job.id.slice(8)}/`) }, now);
+}
+
+export function mergeA1Snapshot(baseline, result, now = new Date().toISOString()) {
+  return mergeSourceSnapshot(baseline, result, { id: 'a1', name: A1_SOURCE, url: A1_URL,
+    plannedNames: [], validate: job => /^a1:\d{2,8}$/.test(job.id) &&
+      /^https:\/\/jobs\.a1\.com\/sl\/jobs\/job\/\d{2,8}-[^/]+\/?$/i.test(job.url) &&
+      new URL(job.url).pathname.match(/^\/sl\/jobs\/job\/(\d{2,8})-/)?.[1] === job.id.slice(3) }, now);
 }

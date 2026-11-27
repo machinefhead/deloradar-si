@@ -22,6 +22,7 @@ import { getFirstJob, getCinkarna } from './new-sources.js';
 import { getMjob, MJOB_SOURCE, MJOB_URL } from './mjob.js';
 import { getKrka, KRKA_SOURCE, KRKA_URL } from './krka.js';
 import { getTelekom, TELEKOM_SOURCE, TELEKOM_URL } from './telekom.js';
+import { getA1, A1_SOURCE, A1_URL } from './a1.js';
 import { markLikelyDuplicates } from './duplicates.js';
 import { fetchEuresAdditional, excludeExistingEures, reuseRecentEuresJobs } from './eures-source.js';
 import { jobPostingDetails, readableJobText } from './job-details.js';
@@ -68,6 +69,7 @@ const SOURCES = [
   { id: 'mjob', name: MJOB_SOURCE, url: MJOB_URL },
   { id: 'krka', name: KRKA_SOURCE, url: KRKA_URL },
   { id: 'telekom', name: TELEKOM_SOURCE, url: TELEKOM_URL },
+  { id: 'a1', name: A1_SOURCE, url: A1_URL },
   { id: 'linkedin', name: LINKEDIN_SOURCE, url: 'https://www.linkedin.com/jobs/' },
   ...EMPLOYER_MIRRORS.map(item => ({ id: 'mirror_' + item.id, name: item.name, url: item.url })),
   { id: 'recruitee_merkur', name: 'Merkur zavarovalnica', url: 'https://merkurzavarovalnica.recruitee.com/' },
@@ -750,7 +752,7 @@ async function getIscidelo() {
 }
 async function collect() {
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
-  let zrszDiagnostics, linkedinResult, mjobResult, krkaResult, telekomResult;
+  let zrszDiagnostics, linkedinResult, mjobResult, krkaResult, telekomResult, a1Result;
   const collectors = [getOptius(), getKariera(), getGov(), getAtama(), getPublicTrenkwalder(), getAgado(), getAdecco(), getRekruter(), getNove(), getLidl(), getKolektor(), getMojeDelo(), getZaposlitevInfo(), getMercator(), getIscidelo()];
   if (ZRSZ_JSON_URL || ZRSZ_OFFICIAL_HTTP_ENABLED) collectors.push(
     ZRSZ_OFFICIAL_HTTP_ENABLED ? previousJobs().then(async oldJobs => {
@@ -773,6 +775,7 @@ async function collect() {
   }),
   getKrka().then(result => { krkaResult = result; return result.jobs; }),
   getTelekom().then(result => { telekomResult = result; return result.jobs; }),
+  getA1().then(result => { a1Result = result; return result.jobs; }),
   previousSnapshot().then(async snapshot => {
     linkedinResult = await getLinkedinViaDelovnaMesta({
       previous: snapshot.jobs || [],
@@ -843,6 +846,7 @@ async function collect() {
     ...(source.id === 'mjob' && mjobResult ? { mjob: mjobResult.progress } : {}),
     ...(source.id === 'krka' && krkaResult ? { krka: krkaResult.progress } : {}),
     ...(source.id === 'telekom' && telekomResult ? { telekom: telekomResult.progress } : {}),
+    ...(source.id === 'a1' && a1Result ? { a1: a1Result.progress } : {}),
     ...(source.id === 'linkedin' && linkedinResult ? { scanProgress: linkedinResult.progress } : {}) }));
   cached = { jobs, sources, planned: PLANNED, checkedAt: new Date().toISOString(), storage: 'browser-local',
     discovery: { delovnamestaLinkedin: linkedinResult?.state || {}, mjob: mjobResult?.state || {} },

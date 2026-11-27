@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { mergeMjobSnapshot, mergeKrkaSnapshot, mergeTelekomSnapshot } from '../source/incremental.js';
+import { mergeMjobSnapshot, mergeKrkaSnapshot, mergeTelekomSnapshot, mergeA1Snapshot } from '../source/incremental.js';
 import { MJOB_SOURCE, MJOB_URL } from '../source/mjob.js';
 import { KRKA_SOURCE, KRKA_URL } from '../source/krka.js';
 import { TELEKOM_SOURCE, TELEKOM_URL } from '../source/telekom.js';
+import { A1_SOURCE, A1_URL } from '../source/a1.js';
 
 const previous = { jobs: [{ id: 'optius:A', source: 'Optius', title: 'Prodaja',
   url: 'https://www.optius.com/a', company: 'ABC', location: 'Maribor', duplicateGroup: 'staro' }],
@@ -68,4 +69,17 @@ assert.equal(telecomMerged.planned.some(s => s.name === 'Careerjet'), false);
 assert.deepEqual(telecomMerged.jobs.slice(0, -1), krkaMerged.jobs);
 assert.throws(() => mergeTelekomSnapshot(baselineTelekom, { jobs: [{ ...telekomJob,
   url: 'https://bad.invalid/' }], progress: { checked: 1, total: 1 } }), /neveljaven/);
+const a1Job = { id: 'a1:9570', source: A1_SOURCE, company: A1_SOURCE,
+  title: 'Ekspert za informacijsko varnost', location: 'Ljubljana',
+  description: 'Uradni javni opis informacijskih varnostnih nalog', date: '2026-11-27',
+  deadline: '2026-12-11', url: 'https://jobs.a1.com/sl/jobs/job/9570-ekspert-za-informacijsko-varnost' };
+const a1Merged = mergeA1Snapshot(telecomMerged, { jobs: [a1Job],
+  progress: { checked: 4, total: 4, foreign: 1, general: 1, pending: false } }, '2026-11-28T10:00:00Z');
+assert.equal(a1Merged.jobs.length, 5);
+assert.equal(a1Merged.sources.find(s => s.id === 'a1').url, A1_URL);
+assert.deepEqual(a1Merged.lastUpdatedSources, ['a1']);
+assert.equal(a1Merged.lastFullCheckedAt, previous.checkedAt);
+assert.deepEqual(a1Merged.jobs.slice(0, -1), telecomMerged.jobs);
+assert.throws(() => mergeA1Snapshot(telecomMerged, { jobs: [{ ...a1Job, url: 'https://bad.invalid/' }],
+  progress: { checked: 1, total: 1 } }), /neveljaven/);
 console.log('Ciljni zajem: stari oglasi, viri, opis, načrti in datum polnega zajema ostanejo ohranjeni.');
