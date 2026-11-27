@@ -47,7 +47,8 @@ try {
     assert.match(await page.locator('#nextUpdate').innerText(), /Naslednji predvideni zajem:/,
       'Glava mora kazati predvideni naslednji termin');
     const headerLayout = await page.evaluate(() => ({
-      refresh: document.querySelector('#refresh').getBoundingClientRect().toJSON(),
+      // Produkcijska stran zamenja gumb z varno povezavo na GitHub Actions.
+      refresh: document.querySelector('.refreshbox .refresh').getBoundingClientRect().toJSON(),
       metadata: document.querySelector('.refreshmeta').getBoundingClientRect().toJSON(),
       topbar: document.querySelector('.topbar').getBoundingClientRect().toJSON(),
     }));
